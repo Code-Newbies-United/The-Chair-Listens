@@ -22,8 +22,8 @@ The Chair responds (by text or voice) sharing reflections, stories, concerns, or
 <pre>
 ┌────────────────────────────────────────┐
 │              MOBILE BROWSER             │
-│      (HTML5 / Tailwind / React / Vue)   │
-└───────────────────┬────────────────────┘
+│      (HTML5 / Tailwind / React / Vue)   │        *make structure horizontal, separate
+└───────────────────┬────────────────────┘          
                      │
         ┌────────────┴────────────┐
         ▼                         ▼
@@ -33,22 +33,25 @@ The Chair responds (by text or voice) sharing reflections, stories, concerns, or
 │  8th Wall / MindAR.js│  │  jsQR / Geolocation  │
 └─────────────────────┘  └─────────────────────┘
         │                         │
-        └────────────┬────────────┘
+        └────────────┬────────────┘*give person a token (look into lefa vaults)
                       │ HTTPS API Calls
-                      ▼
+                      ▼(API gate way)
 ┌────────────────────────────────────────┐
 │             EXPRESS BACKEND             │
-│  • Haversine GPS Distance Check         │
-│  • QR Token Decryption                  │
+│  • Haversine GPS Distance Check         │*authentication
+│  • QR Token Decryption                  │*separate the components
 │  • AR Token Issuance                    │
 └───────────────────┬────────────────────┘
                      │
                      ▼
 ┌────────────────────────────────────────┐
-│            DATA PERSISTENCE             │
-│  • PostgreSQL / SQLite (Locations)      │
+│            DATA PERSISTENCE             │*4chen
+│  • PostgreSQL / SQLite (Locations)**NB**|
 │  • Cloudinary CDN (3D Assets/Photos)    │
 └────────────────────────────────────────┘
+
+  *
+  
 </pre>
 
 <h3>Layer Breakdown</h3>
