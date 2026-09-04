@@ -1,246 +1,253 @@
-# The-Chair-Listens (WebAR Location Experience)
-The Chair is an interactive, browser-based Augmented Reality (AR) web application that brings a symbolic figure "_The Chair_" to life at iconic real-world South African landmarks.
-Users scan a physical QR code placed at a designated landmark, verify their GPS presence at that location, and step into a WebAR experience where they encounter The Chair face-to-face. Through carefully designed prompts, The Chair opens conversations around mental health, wellbeing, masculinity, prostate health, and the men who matter most in a person's life.
-The Chair responds (by text or voice) sharing reflections, stories, concerns, or messages the user might need to hear in that moment. As users engage with The Chair across different landmarks, they can collect digital badges and souvenir photo cards, turning each encounter into part of a larger journey.
+<h1>The Chair Listens</h1>
+
+<p><strong>The Chair Listens</strong> is an interactive, browser-based digital experience built around <strong>The Blue Chair</strong>, a physical, travelling symbol for men&rsquo;s health awareness across South Africa.</p>
+
+<p>A person takes a seat at The Blue Chair, scans a QR code placed on it, and is guided through a short, judgment-free digital conversation. The chair prompts carefully designed questions around <strong>mental health, wellbeing, masculinity, prostate health, and the men who matter to them</strong>. Responses can be shared by <strong>text or voice</strong>: a thought, a story, a concern, or a message he wants someone else to hear.</p>
+
+<p>Every response becomes part of a growing, <strong>anonymised digital archive</strong> of men&rsquo;s (and women&rsquo;s) voices from across South Africa. As The Blue Chair travels from city to city, each interaction is tagged to that location and surfaced on a live digital map, building an evolving picture of what men are thinking, feeling, and saying, and where those conversations are happening.</p>
+
+<hr>
+
+<h2>The Journey: Sit &rarr; Ask &rarr; Listen &rarr; Collect &rarr; Connect</h2>
+<ol>
+  <li><strong>Sit.</strong> A person takes a seat at The Blue Chair and scans the QR code, opening the digital experience on their own phone.</li>
+  <li><strong>The Chair Asks.</strong> The platform prompts him with carefully designed questions around mental health, wellbeing, masculinity, prostate health, and the men who matter to him.</li>
+  <li><strong>The Chair Listens.</strong> He responds by text or voice, sharing a thought, story, concern, or message he wants another person to hear.</li>
+  <li><strong>The Chair Collects.</strong> Every story becomes part of a growing, anonymised digital archive of voices from across South Africa.</li>
+  <li><strong>The Chair Travels.</strong> As The Blue Chair moves between cities, every interaction is geo-tagged and visualised on a live digital map.</li>
+  <li><strong>The Chair Connects.</strong> Stories, insights, and conversations surface through the campaign platform, creating an evolving picture of what men are thinking, feeling, and saying.</li>
+</ol>
+
+<hr>
 
 <h2>Core Features</h2>
 <ul>
-  <li><strong>Zero-Install WebAR</strong> &mdash; Powered by WebXR / WebAR technology (runs directly in mobile Safari or Chrome without requiring an app store download)</li>
-  <li><strong>Location-Verified Access</strong> &mdash; GPS check confirms presence at a designated landmark before unlocking the experience</li>
-  <li><strong>QR-Triggered Entry</strong> &mdash; no app install required, runs directly in the browser</li>
-  <li><strong>WebAR Interaction</strong> &mdash; The Chair appears in the user&rsquo;s real-world environment</li>
-  <li><strong>Guided Conversation</strong> &mdash; prompts exploring mental health, masculinity, and wellbeing</li>
-  <li><strong>Text or Voice Responses</strong> &mdash; flexible, accessible interaction modes</li>
-  <li><strong>Collectible Badges</strong> &mdash; earned by visiting landmarks and completing interactions</li>
-  <li><strong>Souvenir Photo Cards</strong> &mdash; shareable AR photo mementos of each encounter</li>
+  <li><strong>Zero-Install, QR-Triggered Access:</strong> No app download. Scanning the QR code on the chair opens the experience directly in the phone&rsquo;s browser.</li>
+  <li><strong>Consent-First Design:</strong> Before anything is submitted, the platform clearly explains how responses and data will be used.</li>
+  <li><strong>Text or Voice Responses:</strong> Flexible, accessible ways to share a thought, story, or concern.</li>
+  <li><strong>Flexible Question Interface:</strong> Campaign questions can be uploaded and updated without needing a redevelopment cycle.</li>
+  <li><strong>Anonymised Response Archive:</strong> Stories are captured and stored without collecting unnecessary personal information.</li>
+  <li><strong>Geo-Tagged Locations:</strong> Every response is associated with the campaign stop it came from, enabling a live map of where conversations are happening.</li>
+  <li><strong>Analytics Dashboard:</strong> Gives the campaign team visibility into participation metrics, response volumes, and reach.</li>
 </ul>
+
+<hr>
 
 <h2>System Architecture</h2>
 
-<p>The Chair is built as a lightweight, browser-first architecture &mdash; no native app installation required. It combines client-side AR rendering with a lean backend responsible for location verification and secure session issuance.</p>
+<p>The Chair Listens is a lightweight, browser-first web application. A physical QR code on The Blue Chair links directly to the web experience, and everything from there runs as a standard mobile-responsive site backed by a small API and database.</p>
 
 <pre>
 ┌────────────────────────────────────────┐
-│              MOBILE BROWSER             │
-│      (HTML5 / Tailwind / React / Vue)   │        *make structure horizontal, separate
-└───────────────────┬────────────────────┘          
+│         PHYSICAL QR CODE (ON CHAIR)     │
+│   Encodes a URL + campaign location ID  │
+└───────────────────┬────────────────────┘
+                     │ Scanned with phone camera
+                     ▼
+┌────────────────────────────────────────┐
+│           MOBILE / DESKTOP BROWSER      │
+│   Next.js + Tailwind CSS + JavaScript   │
+│   Consent → Question Flow → Response    │
+└───────────────────┬────────────────────┘
+                     │ HTTPS API Calls
+                     ▼
+┌────────────────────────────────────────┐
+│              API LAYER                  │
+│   Next.js API Routes / Node + Express   │
+│  • Consent logging                      │
+│  • Question retrieval (CMS-driven)      │
+│  • Response submission (text/voice)     │
+│  • Location tagging                     │
+└───────────────────┬────────────────────┘
                      │
         ┌────────────┴────────────┐
         ▼                         ▼
 ┌─────────────────────┐  ┌─────────────────────┐
-│  WebAR & 3D Engine   │  │  Sensors & Scanner   │
-│  Three.js / A-Frame /│  │  Html5-QRCode /      │
-│  8th Wall / MindAR.js│  │  jsQR / Geolocation  │
+│  DATABASE (Supabase/ │  │  MEDIA STORAGE       │
+│  PostgreSQL)         │  │  (Cloudinary)        │
+│  • Questions         │  │  • Voice recordings   │
+│  • Responses         │  │  • Compressed/CDN-    │
+│  • Locations         │  │    served             │
+│  • Consent records   │  │                       │
 └─────────────────────┘  └─────────────────────┘
-        │                         │
-        └────────────┬────────────┘*give person a token (look into lefa vaults)
-                      │ HTTPS API Calls
-                      ▼(API gate way)
-┌────────────────────────────────────────┐
-│             EXPRESS BACKEND             │
-│  • Haversine GPS Distance Check         │*authentication
-│  • QR Token Decryption                  │*separate the components
-│  • AR Token Issuance                    │
-└───────────────────┬────────────────────┘
                      │
                      ▼
 ┌────────────────────────────────────────┐
-│            DATA PERSISTENCE             │*4chen
-│  • PostgreSQL / SQLite (Locations)**NB**|
-│  • Cloudinary CDN (3D Assets/Photos)    │
+│              ADMIN DASHBOARD            │
+│  • Question management (CMS)            │
+│  • Participation analytics              │
+│  • Live map of campaign locations       │
 └────────────────────────────────────────┘
-
-  *
-  
 </pre>
 
 <h3>Layer Breakdown</h3>
 
-<h4>1. Mobile Browser (Client Layer)</h4>
-<p>The entry point for all users &mdash; no app store, no install. Built with <strong>HTML5</strong>, styled via <strong>Tailwind</strong>, and powered by <strong>React</strong> or <strong>Vue</strong> for state management and UI flow (QR scan &rarr; GPS check &rarr; AR session &rarr; badge/photo capture).</p>
+<h4>1. Physical QR Code</h4>
+<p>A sticker or plaque on The Blue Chair itself. No scanning logic lives inside the app. The code simply encodes a URL, with a location identifier as a query parameter, opened by the phone&rsquo;s native camera.</p>
 
-<h4>2. WebAR &amp; 3D Engine</h4>
-<p>Renders The Chair in the user&rsquo;s real-world environment using <strong>Three.js</strong>, <strong>A-Frame</strong>, <strong>8th Wall</strong>, or <strong>MindAR.js</strong>. Handles 3D model loading, plane/surface tracking, animations, and voice/text response overlays.</p>
+<h4>2. Mobile / Desktop Browser (Client Layer)</h4>
+<p>A responsive web app built with <strong>Next.js</strong> and <strong>Tailwind CSS</strong>. Guides the user through consent, the question flow, and text/voice response capture. No install, no account required.</p>
 
-<h4>3. Sensors &amp; Scanner</h4>
-<p>Reads the physical QR code via <strong>Html5-QRCode</strong> or <strong>jsQR</strong>, and captures the user&rsquo;s live coordinates via the browser&rsquo;s <strong>Geolocation API</strong>. Both feed into the location-verification step before AR unlocks.</p>
+<h4>3. API Layer</h4>
+<p>Handles consent logging, question retrieval, response submission, and location tagging. Built as <strong>Next.js API routes</strong> (or a separate Node/Express service if preferred) to keep the stack small for a short build window.</p>
 
-<h4>4. Express Backend (API Layer)</h4>
-<p>A lean <strong>Node.js/Express</strong> service responsible for:</p>
-<ul>
-  <li><strong>Haversine GPS Distance Check</strong> &mdash; confirms the user is physically within range of the landmark&rsquo;s registered coordinates</li>
-  <li><strong>QR Token Decryption</strong> &mdash; validates the scanned QR code maps to a legitimate, un-tampered landmark token</li>
-  <li><strong>AR Token Issuance</strong> &mdash; issues a short-lived session token that unlocks the WebAR experience only after GPS + QR checks pass</li>
-</ul>
+<h4>4. Database &amp; Media Storage</h4>
+<p><strong>Supabase (PostgreSQL)</strong> stores questions, responses, consent records, and campaign locations. <strong>Cloudinary</strong> stores and serves voice recordings, compressed and CDN-delivered.</p>
 
-<h4>5. Data Persistence</h4>
-<ul>
-  <li><strong>PostgreSQL / SQLite</strong> &mdash; stores landmark metadata (coordinates, QR token mappings, badge definitions, user progress)</li>
-  <li><strong>Cloudinary CDN</strong> &mdash; hosts and serves 3D assets (Chair models, animations) and generated souvenir photo cards</li>
-</ul>
+<h4>5. Admin Dashboard</h4>
+<p>An authenticated section where the campaign team can manage questions, view participation analytics, and see a live map of where The Blue Chair has travelled and how each stop performed.</p>
 
-<h3>Request Flow</h3>
-<ol>
-  <li>User scans QR code at landmark &rarr; token extracted client-side</li>
-  <li>Browser requests Geolocation permission &rarr; coordinates captured</li>
-  <li>Client sends QR token + GPS coordinates to Express backend</li>
-  <li>Backend decrypts QR token, runs Haversine check against stored landmark coordinates</li>
-  <li>If valid &rarr; backend issues a short-lived AR session token</li>
-  <li>Client loads WebAR scene, fetching 3D assets from Cloudinary</li>
-  <li>User interacts with The Chair &rarr; responses served via text/voice</li>
-  <li>On completion &rarr; badge awarded and photo card generated/stored</li>
-</ol>
-
-<h2>Repo Structure</h2>
- 
-<pre>
-the-chair-ar/
-├── client/                        # Frontend (React/Vue + WebAR)
-│   ├── public/
-│   │   ├── models/                # 3D assets (Chair models, animations)
-│   │   └── index.html
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── QRScanner/         # Html5-QRCode / jsQR scanning logic
-│   │   │   ├── ARScene/           # Three.js / A-Frame / MindAR.js scene
-│   │   │   ├── GeoCheck/          # Geolocation permission + capture
-│   │   │   ├── ChatInterface/     # Text/voice conversation UI
-│   │   │   ├── BadgeDisplay/      # Collectible badge UI
-│   │   │   └── PhotoCard/         # Souvenir photo card generator
-│   │   ├── hooks/                 # useGeolocation, useARSession, etc.
-│   │   ├── services/              # API calls to Express backend
-│   │   ├── pages/                 # Landing, Scan, AR Experience, Badges
-│   │   ├── styles/                # Tailwind config/overrides
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── tests/
-│   │   ├── unit/                  # Jest + React Testing Library / Vue Test Utils
-│   │   │   ├── components/
-│   │   │   │   ├── QRScanner.test.jsx
-│   │   │   │   ├── ARScene.test.jsx
-│   │   │   │   ├── ChatInterface.test.jsx
-│   │   │   │   └── BadgeDisplay.test.jsx
-│   │   │   └── hooks/
-│   │   │       └── useGeolocation.test.js
-│   │   └── e2e/                   # Playwright / Cypress
-│   │       ├── scan-to-badge.spec.js       # Full user journey
-│   │       ├── gps-denied.spec.js
-│   │       └── ar-scene-smoke.spec.js
-│   ├── package.json
-│   ├── jest.config.js
-│   ├── playwright.config.js       # or cypress.config.js
-│   └── vite.config.js             # or webpack.config.js
-│
-├── server/                        # Backend (Node.js + Express)
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js
-│   │   │   ├── location.routes.js # GPS + Haversine check endpoints
-│   │   │   ├── qr.routes.js       # QR token decryption/validation
-│   │   │   ├── ar.routes.js       # AR session token issuance
-│   │   │   ├── badges.routes.js
-│   │   │   └── photos.routes.js
-│   │   ├── controllers/
-│   │   ├── services/
-│   │   │   ├── haversine.service.js
-│   │   │   ├── qrToken.service.js
-│   │   │   ├── cloudinary.service.js
-│   │   │   └── voice.service.js   # TTS or audio response handling
-│   │   ├── models/                 # Sequelize/Prisma models
-│   │   │   ├── Location.js
-│   │   │   ├── User.js
-│   │   │   ├── Badge.js
-│   │   │   └── PhotoCard.js
-│   │   ├── middleware/
-│   │   │   ├── validateToken.js
-│   │   │   └── errorHandler.js
-│   │   ├── config/
-│   │   │   ├── db.config.js
-│   │   │   └── cloudinary.config.js
-│   │   └── app.js
-│   ├── tests/
-│   │   ├── unit/                  # Jest
-│   │   │   ├── services/
-│   │   │   │   ├── haversine.service.test.js
-│   │   │   │   ├── qrToken.service.test.js
-│   │   │   │   └── cloudinary.service.test.js
-│   │   │   ├── controllers/
-│   │   │   └── middleware/
-│   │   │       └── validateToken.test.js
-│   │   └── acceptance/            # Supertest — API contract tests
-│   │       ├── location.routes.test.js
-│   │       ├── qr.routes.test.js
-│   │       ├── ar.routes.test.js
-│   │       └── badges.routes.test.js
-│   ├── migrations/                # DB schema migrations
-│   ├── seeders/                   # Seed landmark data
-│   ├── package.json
-│   ├── jest.config.js
-│   └── server.js
-│
-├── database/
-│   ├── schema.sql                 # PostgreSQL/SQLite schema
-│   └── seed-data/                 # Landmark coordinates, QR mappings
-│
-├── assets/
-│   ├── 3d-models/                 # Source .glb/.gltf Chair models
-│   └── audio/                     # Pre-recorded voice lines (if applicable)
-│
-├── docs/
-│   ├── architecture.md
-│   ├── api-reference.md
-│   ├── testing.md                 # Testing strategy, coverage targets
-│   └── landmarks.md               # List of AR landmark locations
-│
-├── .github/
-│   └── workflows/
-│       ├── ci-unit.yml            # Runs on every PR
-│       └── ci-acceptance.yml      # Runs on merge to main / nightly
-│
-├── .env.example
-├── .gitignore
-├── docker-compose.yml             # Optional: local Postgres + services
-├── LICENSE
-└── README.md
-</pre>
+<hr>
 
 <h2>Tech Stack</h2>
 
-<h3>Frontend (Client Layer)</h3>
+<h3>Frontend</h3>
 <ul>
-  <li><strong>HTML5 / CSS3 (Tailwind)</strong> &mdash; structure and utility-first styling</li>
-  <li><strong>JavaScript (ES6+)</strong> &mdash; core client logic</li>
-  <li><strong>React / Vue</strong> &mdash; UI components and state management</li>
-  <li><strong>Three.js / A-Frame</strong> &mdash; 3D scene rendering</li>
-  <li><strong>WebXR API</strong> &mdash; browser-native AR runtime</li>
-  <li><strong>AR Engine:</strong> 8th Wall (Production) or MindAR.js / AR.js (Open Source)</li>
-  <li><strong>Html5-QRCode / jsQR</strong> &mdash; QR code scanning</li>
-  <li><strong>Geolocation API</strong> &mdash; browser-native GPS capture</li>
+  <li><strong>Next.js:</strong> single project serving both the public chair experience and the admin dashboard</li>
+  <li><strong>Tailwind CSS:</strong> styling</li>
+  <li><strong>JavaScript (ES6+):</strong> core client logic</li>
+  <li><strong>MediaRecorder API</strong> (browser-native): captures voice responses, no external library needed</li>
+  <li><strong>Leaflet.js / Mapbox:</strong> renders the live map of campaign locations</li>
 </ul>
 
-<h3>Backend (API Layer)</h3>
+<h3>Backend</h3>
 <ul>
-  <li><strong>Node.js</strong> &mdash; runtime environment</li>
-  <li><strong>Express.js</strong> &mdash; REST API framework</li>
-  <li><strong>TypeScript</strong> &mdash; type safety across the stack (recommended, shared types with frontend)</li>
-  <li><strong>jsonwebtoken (JWT)</strong> &mdash; AR session token issuance &amp; validation</li>
-  <li><strong>Sequelize / Prisma</strong> &mdash; ORM for database access</li>
-  <li><strong>Custom Haversine Service</strong> &mdash; GPS distance verification logic</li>
-  <li><strong>QR Token Decryption Service</strong> &mdash; validates scanned landmark tokens (crypto / jose)</li>
+  <li><strong>Next.js API Routes</strong> (or Node.js + Express as a standalone service): consent, questions, responses, location tagging</li>
+  <li><strong>Supabase:</strong> PostgreSQL database, file storage, and admin authentication in one service</li>
 </ul>
 
-<h3>Data Persistence</h3>
+<h3>Media &amp; Optional Services</h3>
 <ul>
-  <li><strong>SQLite</strong> &mdash; local development database</li>
-  <li><strong>PostgreSQL</strong> &mdash; production database</li>
-  <li><strong>Cloudinary / AWS S3</strong> &mdash; asset hosting (Draco-compressed 3D mesh files, souvenir photo cards)</li>
+  <li><strong>Cloudinary:</strong> voice recording storage, compression, CDN delivery</li>
+  <li><strong>Speech-to-Text</strong> (Google Cloud Speech-to-Text / AssemblyAI / Deepgram): optional, only needed if searchable transcripts are required rather than raw audio playback</li>
+</ul>
+
+<h3>Hosting &amp; Infrastructure</h3>
+<ul>
+  <li><strong>Vercel:</strong> frontend + API hosting, automatic SSL, pairs natively with Next.js</li>
+  <li><strong>Supabase:</strong> managed database and storage</li>
+  <li><strong>Domain registrar</strong> (Namecheap / domains.co.za): campaign domain</li>
+</ul>
+
+<h3>Monitoring &amp; Reliability</h3>
+<ul>
+  <li><strong>Sentry:</strong> error tracking in production, important since the app runs unattended at live activations</li>
+  <li><strong>UptimeRobot:</strong> uptime alerts during campaign events</li>
 </ul>
 
 <h3>DevOps &amp; Tooling</h3>
 <ul>
-  <li><strong>Docker</strong> &mdash; containerized local development (Node service + Postgres)</li>
-  <li><strong>GitHub Actions</strong> &mdash; CI/CD pipeline (build, test, deploy)</li>
-  <li><strong>Postman / Swagger (swagger-jsdoc)</strong> &mdash; API documentation and testing</li>
-  <li><strong>ESLint / Prettier</strong> &mdash; code quality and formatting</li>
-  <li><strong>Vercel / AWS Lambda / Render</strong> &mdash; hosting/deployment target (lightweight Node cold starts fit serverless well)</li>
+  <li><strong>GitHub:</strong> version control, Issues for task tracking</li>
+  <li><strong>GitHub Actions:</strong> CI (build, test on every PR)</li>
+  <li><strong>ESLint / Prettier:</strong> code quality and formatting</li>
 </ul>
+
+<hr>
+
+<h2>Repo Structure</h2>
+
+<pre>
+the-chair-listens/
+├── app/                            # Next.js app (frontend + API routes)
+│   ├── public/
+│   │   └── index.html
+│   ├── pages/ (or app/ router)
+│   │   ├── index.jsx               # Landing / consent screen
+│   │   ├── questions/[step].jsx    # Question flow screens
+│   │   ├── response.jsx            # Text/voice response capture
+│   │   ├── thank-you.jsx           # Confirmation screen
+│   │   └── admin/
+│   │       ├── login.jsx
+│   │       ├── dashboard.jsx       # Analytics dashboard
+│   │       ├── questions.jsx       # Question CMS
+│   │       └── map.jsx             # Live location map
+│   ├── components/
+│   │   ├── ConsentForm/
+│   │   ├── QuestionCard/
+│   │   ├── VoiceRecorder/          # MediaRecorder wrapper
+│   │   ├── TextResponse/
+│   │   └── LocationMap/            # Leaflet/Mapbox component
+│   ├── api/
+│   │   ├── consent.js
+│   │   ├── questions.js            # GET/POST/PUT for CMS
+│   │   ├── responses.js            # Submit text/voice responses
+│   │   └── locations.js            # Campaign stop management
+│   ├── lib/
+│   │   ├── supabaseClient.js
+│   │   ├── cloudinary.js
+│   │   └── validators.js
+│   ├── styles/
+│   ├── tests/
+│   │   ├── unit/                   # Jest
+│   │   │   ├── components/
+│   │   │   └── api/
+│   │   └── acceptance/             # Supertest / Playwright
+│   │       ├── consent-flow.spec.js
+│   │       ├── question-cms.spec.js
+│   │       ├── response-submission.spec.js
+│   │       └── admin-dashboard.spec.js
+│   ├── package.json
+│   ├── jest.config.js
+│   └── next.config.js
+│
+├── database/
+│   ├── schema.sql                  # questions, responses, locations, consent
+│   └── seed-data/                  # initial questions, campaign locations
+│
+├── docs/
+│   ├── architecture.md
+│   ├── api-reference.md
+│   ├── testing.md
+│   ├── data-privacy.md             # POPIA-aligned consent & data handling notes
+│   └── campaign-locations.md
+│
+├── .github/
+│   └── workflows/
+│       ├── ci-unit.yml
+│       └── ci-acceptance.yml
+│
+├── .env.example
+├── .gitignore
+├── LICENSE
+└── README.md
+</pre>
+
+<hr>
+
+<h2>Testing</h2>
+
+<h3>Unit Tests</h3>
+<ul>
+  <li><strong>Jest:</strong> components, API route handlers, validators</li>
+  <li><strong>React Testing Library:</strong> ConsentForm, QuestionCard, VoiceRecorder, TextResponse</li>
+  <li><strong>Coverage target:</strong> 80% or higher for consent logging, response submission, and question CRUD. These are the paths most tied to data integrity and compliance.</li>
+</ul>
+
+<h3>Acceptance / End-to-End Tests</h3>
+<ul>
+  <li><strong>Playwright / Cypress:</strong> full user journey covering scan link, consent, question flow, text/voice response, and confirmation</li>
+  <li><strong>API Contract Tests:</strong> Supertest against consent, questions, responses, and locations endpoints</li>
+  <li><strong>Admin Dashboard Tests:</strong> question CMS edits persist correctly; analytics reflect submitted responses accurately</li>
+</ul>
+
+<h3>Example Test Scenarios</h3>
+<ul>
+  <li>User cannot submit a response without first giving consent</li>
+  <li>Text response is stored without any identifying personal information</li>
+  <li>Voice response uploads successfully and is retrievable from storage</li>
+  <li>A response is correctly tagged to the active campaign location</li>
+  <li>An admin can add, edit, or remove a question and it reflects immediately in the live flow</li>
+  <li>Analytics dashboard totals match the number of stored responses</li>
+</ul>
+
+<h3>CI Integration</h3>
+<ul>
+  <li>Unit tests run on every pull request via <strong>GitHub Actions</strong></li>
+  <li>Acceptance suite runs on merge to <code>main</code> and before any live activation</li>
+  <li>Failed acceptance tests block deployment</li>
+</ul>
+
+<hr>
+
+<h2>Data Privacy Note</h2>
+<p>This platform captures personal stories about mental health, masculinity, and prostate health. Even where data is anonymised, this project should be built and reviewed with <strong>POPIA (Protection of Personal Information Act)</strong> compliance in mind, particularly around consent language, voice data handling, and what counts as personal information. Legal sign-off on the consent flow and privacy policy should sit with the campaign owner, not be assumed by the development team.</p>
