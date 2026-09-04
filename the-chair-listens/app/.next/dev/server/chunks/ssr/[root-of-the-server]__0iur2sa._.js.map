@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 40, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Portia/Documents/Github/ClientWork/The-Chair-Listens/the-chair-listens/app/pages/response.jsx"],"sourcesContent":["import { useRouter } from \"next/router\";\r\n\r\nexport default function Response() {\r\n  const router = useRouter();\r\n  const { answers } = router.query;\r\n\r\n  const parsedAnswers = answers ? JSON.parse(answers) : [];\r\n\r\n  return (\r\n    <main className=\"min-h-screen flex items-center justify-center p-6\">\r\n      <div className=\"max-w-md w-full text-center\">\r\n        <h1 className=\"text-2xl font-semibold mb-4\">Thank you.</h1>\r\n        <p className=\"text-gray-600 mb-8\">\r\n          Your {parsedAnswers.length} answers have been received.\r\n        </p>\r\n      </div>\r\n    </main>\r\n  );\r\n}"],"names":["Response","router","answers","query","parsedAnswers","JSON","parse","className","length"],"mappings":";;;;;AAAA;;;AAEe,SAASA;IACtB,MAAMC,SAAS,IAAA,oIAAS;IACxB,MAAM,EAAEC,OAAO,EAAE,GAAGD,OAAOE,KAAK;IAEhC,MAAMC,gBAAgBF,UAAUG,KAAKC,KAAK,CAACJ,WAAW,EAAE;IAExD,qBACE,qKAAC;QAAKK,WAAU;kBACd,cAAA,qKAAC;YAAIA,WAAU;;8BACb,qKAAC;oBAAGA,WAAU;8BAA8B;;;;;;8BAC5C,qKAAC;oBAAEA,WAAU;;wBAAqB;wBAC1BH,cAAcI,MAAM;wBAAC;;;;;;;;;;;;;;;;;;AAKrC"}}]
+}
