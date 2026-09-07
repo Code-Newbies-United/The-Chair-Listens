@@ -2,6 +2,6 @@
   "/": "pages/index.js",
   "/_app": "pages/_app.js",
   "/_document": "pages/_document.js",
-  "/_error": "pages/_error.js",
+  "/consent-terms": "pages/consent-terms.js",
   "/questions": "pages/questions.js"
 }
