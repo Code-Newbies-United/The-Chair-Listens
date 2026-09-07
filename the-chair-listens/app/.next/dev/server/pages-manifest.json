@@ -3,6 +3,5 @@
   "/_app": "pages/_app.js",
   "/_document": "pages/_document.js",
   "/_error": "pages/_error.js",
-  "/questions": "pages/questions.js",
-  "/response": "pages/response.js"
+  "/questions": "pages/questions.js"
 }

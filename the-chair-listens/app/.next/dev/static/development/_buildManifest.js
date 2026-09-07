@@ -8,9 +8,6 @@ self.__BUILD_MANIFEST = {
   "/questions": [
     "static/chunks/pages/questions.js"
   ],
-  "/response": [
-    "static/chunks/pages/response.js"
-  ],
   "__rewrites": {
     "afterFiles": [],
     "beforeFiles": [],

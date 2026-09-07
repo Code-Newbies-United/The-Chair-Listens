@@ -2,5 +2,5 @@
   "version": 3,
   "sources": [],
   "sections": [
-    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Portia/Documents/Github/ClientWork/The-Chair-Listens/the-chair-listens/app/styles/globals.css"],"sourcesContent":["@import \"tailwindcss\";"],"names":[],"mappings":""}}]
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/i5%20Lenovo/Documents/The-Chair-Listens-1/the-chair-listens/app/styles/globals.css"],"sourcesContent":["@import \"tailwindcss\";"],"names":[],"mappings":""}}]
 }
