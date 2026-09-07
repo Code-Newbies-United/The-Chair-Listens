@@ -18,11 +18,21 @@ export default function Home({ locationName = "Pretoria" }) {
   const router = useRouter();
   const [consented, setConsented] = useState(false);
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!consented) return;
-    router.push("/questions");
-  }
 
+    try {
+      await fetch("/api/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location_id: "test-location" }),
+      });
+    
+    router.push("/questions");
+  } catch (error) {
+    console.error(error);
+  }
+}
   return (
     <main style={styles.page}>
       <style>{`

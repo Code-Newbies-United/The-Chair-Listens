@@ -13,7 +13,7 @@ export default function Questions() {
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [answers, setAnswers] = useState([]);
 
-  function handleNext() {
+  async function handleNext() {
     const updatedAnswers = [...answers, currentAnswer];
     setAnswers(updatedAnswers);
     setCurrentAnswer("");
@@ -21,10 +21,19 @@ export default function Questions() {
     if (index + 1 < QUESTIONS.length) {
       setIndex(index + 1);
     } else {
+      try {
+        await fetch("/api/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: updatedAnswers }),
+      });
       router.push({
         pathname: "/response",
         query: { answers: JSON.stringify(updatedAnswers) },
       });
+    }catch (error) {
+      console.error(error);
+      }
     }
   }
 
