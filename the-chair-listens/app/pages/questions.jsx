@@ -115,9 +115,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
+      // Navigate to responses page and pass answers
       router.push({
-        pathname: "/complete",
-        query: { script: activeScriptKey },
+        pathname: "/responses",
+        query: {
+          script: activeScriptKey,
+          answers: JSON.stringify(updatedAnswers),
+        },
       });
     }
   }
