@@ -51,9 +51,23 @@ function Home({ locationName = "Pretoria" }) {
     _s();
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$router$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useRouter"])();
     const [consented, setConsented] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$index$2e$js__$5b$client$5d$__$28$ecmascript$29$__["useState"])(false);
-    function handleContinue() {
+    async function handleContinue() {
         if (!consented) return;
-        router.push("/select-script");
+        try {
+            await fetch("/api/consent", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    location_id: "test-location"
+                })
+            });
+            router.push("/select-script");
+        } catch (error) {
+            console.error(error);
+            router.push("/select-script");
+        }
     }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
         style: styles.page,
@@ -89,7 +103,7 @@ function Home({ locationName = "Pretoria" }) {
       `
             }, void 0, false, {
                 fileName: "[project]/pages/index.jsx",
-                lineNumber: 28,
+                lineNumber: 40,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -103,7 +117,7 @@ function Home({ locationName = "Pretoria" }) {
                                 "aria-hidden": "true"
                             }, void 0, false, {
                                 fileName: "[project]/pages/index.jsx",
-                                lineNumber: 59,
+                                lineNumber: 71,
                                 columnNumber: 11
                             }, this),
                             "Sitting today in ",
@@ -111,7 +125,7 @@ function Home({ locationName = "Pretoria" }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/pages/index.jsx",
-                        lineNumber: 58,
+                        lineNumber: 70,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -132,14 +146,14 @@ function Home({ locationName = "Pretoria" }) {
                                             d: "M62 190 L40 230"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 73,
+                                            lineNumber: 85,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                             d: "M178 190 L200 230"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 74,
+                                            lineNumber: 86,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -147,7 +161,7 @@ function Home({ locationName = "Pretoria" }) {
                                             opacity: "0.55"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 75,
+                                            lineNumber: 87,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -155,13 +169,13 @@ function Home({ locationName = "Pretoria" }) {
                                             opacity: "0.55"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 76,
+                                            lineNumber: 88,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 72,
+                                    lineNumber: 84,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -173,7 +187,7 @@ function Home({ locationName = "Pretoria" }) {
                                     fill: "#1F3A85"
                                 }, void 0, false, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 80,
+                                    lineNumber: 92,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -185,7 +199,7 @@ function Home({ locationName = "Pretoria" }) {
                                     fill: "#2A4FA0"
                                 }, void 0, false, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 83,
+                                    lineNumber: 95,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -197,7 +211,7 @@ function Home({ locationName = "Pretoria" }) {
                                     fill: "#2A4FA0"
                                 }, void 0, false, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 84,
+                                    lineNumber: 96,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -209,7 +223,7 @@ function Home({ locationName = "Pretoria" }) {
                                     fill: "#2A4FA0"
                                 }, void 0, false, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 87,
+                                    lineNumber: 99,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -222,7 +236,7 @@ function Home({ locationName = "Pretoria" }) {
                                     opacity: "0.18"
                                 }, void 0, false, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 88,
+                                    lineNumber: 100,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("g", {
@@ -235,34 +249,34 @@ function Home({ locationName = "Pretoria" }) {
                                             d: "M120 62 L92 90 L120 118 L148 90 Z"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 92,
+                                            lineNumber: 104,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                             d: "M120 118 L92 146 L120 174 L148 146 Z"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 93,
+                                            lineNumber: 105,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                             d: "M92 90 L64 118 L92 146"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 94,
+                                            lineNumber: 106,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                             d: "M148 90 L176 118 L148 146"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 95,
+                                            lineNumber: 107,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 91,
+                                    lineNumber: 103,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("g", {
@@ -275,7 +289,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 98,
+                                            lineNumber: 110,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -284,7 +298,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 99,
+                                            lineNumber: 111,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -293,7 +307,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 100,
+                                            lineNumber: 112,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -302,7 +316,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 101,
+                                            lineNumber: 113,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -311,7 +325,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 102,
+                                            lineNumber: 114,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -320,7 +334,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 103,
+                                            lineNumber: 115,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -329,7 +343,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 104,
+                                            lineNumber: 116,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -338,7 +352,7 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 105,
+                                            lineNumber: 117,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -347,13 +361,13 @@ function Home({ locationName = "Pretoria" }) {
                                             r: "2.6"
                                         }, void 0, false, {
                                             fileName: "[project]/pages/index.jsx",
-                                            lineNumber: 106,
+                                            lineNumber: 118,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 97,
+                                    lineNumber: 109,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -366,18 +380,18 @@ function Home({ locationName = "Pretoria" }) {
                                     opacity: "0.5"
                                 }, void 0, false, {
                                     fileName: "[project]/pages/index.jsx",
-                                    lineNumber: 110,
+                                    lineNumber: 122,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/pages/index.jsx",
-                            lineNumber: 64,
+                            lineNumber: 76,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/pages/index.jsx",
-                        lineNumber: 63,
+                        lineNumber: 75,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -388,7 +402,7 @@ function Home({ locationName = "Pretoria" }) {
                                 children: "The Chair Listens"
                             }, void 0, false, {
                                 fileName: "[project]/pages/index.jsx",
-                                lineNumber: 115,
+                                lineNumber: 127,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -396,7 +410,7 @@ function Home({ locationName = "Pretoria" }) {
                                 children: "Sit for a minute. Say what's on your mind"
                             }, void 0, false, {
                                 fileName: "[project]/pages/index.jsx",
-                                lineNumber: 116,
+                                lineNumber: 128,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -404,13 +418,13 @@ function Home({ locationName = "Pretoria" }) {
                                 children: "— nobody here needs your name."
                             }, void 0, false, {
                                 fileName: "[project]/pages/index.jsx",
-                                lineNumber: 119,
+                                lineNumber: 131,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/pages/index.jsx",
-                        lineNumber: 114,
+                        lineNumber: 126,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -426,7 +440,7 @@ function Home({ locationName = "Pretoria" }) {
                                 style: styles.checkbox
                             }, void 0, false, {
                                 fileName: "[project]/pages/index.jsx",
-                                lineNumber: 126,
+                                lineNumber: 138,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -442,20 +456,20 @@ function Home({ locationName = "Pretoria" }) {
                                         children: "POPIA Privacy Notice & Consent Terms"
                                     }, void 0, false, {
                                         fileName: "[project]/pages/index.jsx",
-                                        lineNumber: 138,
+                                        lineNumber: 150,
                                         columnNumber: 13
                                     }, this),
                                     "."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/pages/index.jsx",
-                                lineNumber: 134,
+                                lineNumber: 146,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/pages/index.jsx",
-                        lineNumber: 125,
+                        lineNumber: 137,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -472,7 +486,7 @@ function Home({ locationName = "Pretoria" }) {
                         children: "Continue"
                     }, void 0, false, {
                         fileName: "[project]/pages/index.jsx",
-                        lineNumber: 150,
+                        lineNumber: 162,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -480,19 +494,19 @@ function Home({ locationName = "Pretoria" }) {
                         children: "Type it out, or just say it out loud."
                     }, void 0, false, {
                         fileName: "[project]/pages/index.jsx",
-                        lineNumber: 165,
+                        lineNumber: 177,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/pages/index.jsx",
-                lineNumber: 57,
+                lineNumber: 69,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/pages/index.jsx",
-        lineNumber: 27,
+        lineNumber: 39,
         columnNumber: 5
     }, this);
 }
