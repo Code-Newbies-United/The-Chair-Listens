@@ -1,69 +1,22 @@
-import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
 /**
- * The Chair Listens — AI Feedback & Reflection
- * Connects to Groq via /api/groq to provide personalized validation and reflection.
+ * The Chair Listens — Final Completion & Summary Page
  */
-
-const SCRIPT_TITLES = {
-  men_mental_health: "For Men",
-  ally_support: "Ally & Support System",
-  fast_track_activations: "Today's Event",
-};
 
 export default function ResponsesPage({ locationName = "Pretoria" }) {
   const router = useRouter();
-  const { script, answers: rawAnswers } = router.query;
+  const { script } = router.query;
 
-  const [aiResponse, setAiResponse] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const SCRIPT_LABELS = {
+    men_mental_health: "For Men",
+    ally_support: "Ally & Support System",
+    fast_track_activations: "Today's Event",
+  };
 
-  const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
+  const topicLabel = SCRIPT_LABELS[script] || "Community Reflection";
 
-  useEffect(() => {
-    if (!router.isReady) return;
-
-    let parsedAnswers = {};
-    if (rawAnswers) {
-      try {
-        parsedAnswers = JSON.parse(rawAnswers);
-      } catch (e) {
-        console.error("Failed to parse answers query param", e);
-      }
-    }
-
-    async function fetchGroqReflection() {
-      setLoading(true);
-      setError(false);
-
-      try {
-        const res = await fetch("/api/groq", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            script: activeScriptKey,
-            answers: parsedAnswers,
-          }),
-        });
-
-        if (!res.ok) throw new Error("API call failed");
-
-        const data = await res.json();
-        setAiResponse(data.text);
-      } catch (err) {
-        console.error(err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchGroqReflection();
-  }, [router.isReady, script, rawAnswers]);
-
-  function handleRestart() {
+  function handleReturnHome() {
     router.push("/");
   }
 
@@ -72,71 +25,58 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
-        .clisten-btn {
+        .clisten-btn-home {
           transition: transform 160ms ease, box-shadow 160ms ease;
         }
-        .clisten-btn:hover {
+        .clisten-btn-home:hover {
           transform: translateY(-1px);
           box-shadow: 0 10px 24px rgba(185, 155, 91, 0.28);
         }
-        .clisten-btn:active {
+        .clisten-btn-home:active {
           transform: translateY(0px) scale(0.98);
-        }
-        .pulse-loader {
-          animation: pulse 1.5s infinite ease-in-out;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
         }
       `}</style>
 
       <div style={styles.frame}>
+        {/* Top Header */}
         <div style={styles.topRow}>
-          <div style={styles.scriptBadge}>{SCRIPT_TITLES[activeScriptKey]}</div>
+          <div style={styles.scriptBadge}>{topicLabel}</div>
           <div style={styles.locationTag}>
             <span style={styles.locationDot} aria-hidden="true" />
             Sitting in {locationName}
           </div>
         </div>
 
+        {/* Completion Card */}
         <div style={styles.card}>
-          <span style={styles.subhead}>A Moment of Reflection</span>
-          <h1 style={styles.title}>Thank You for Sharing</h1>
+          <div style={styles.iconCircle}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#B99B5B" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          </div>
 
-          {loading && (
-            <div className="pulse-loader" style={styles.loadingBox}>
-              <div style={styles.spinnerDot} />
-              <p style={styles.loadingText}>The Chair is reflecting on your words...</p>
-            </div>
-          )}
+          <span style={styles.subhead}>Session Complete</span>
+          <h1 style={styles.title}>Thank You for Taking a Seat</h1>
 
-          {!loading && error && (
-            <div style={styles.errorBox}>
-              <p style={styles.responseText}>
-                Thank you for taking a seat today. Your words matter, and taking time to acknowledge them is a courageous step.
-              </p>
-            </div>
-          )}
+          <p style={styles.bodyText}>
+            Speaking your thoughts out loud or putting them into words takes quiet courage. Every story shared helps break the silence and build stronger, more understanding communities.
+          </p>
 
-          {!loading && !error && (
-            <div style={styles.responseContent}>
-              {aiResponse.split("\n\n").map((paragraph, idx) => (
-                <p key={idx} style={styles.responseText}>
-                  {paragraph}
-                </p>
-              ))}
-            </div>
-          )}
+          <div style={styles.divider} />
+
+          <p style={styles.reminderText}>
+            Take this reflection with you today. Remember that carrying heavy things becomes easier when we allow ourselves space to pause and be heard.
+          </p>
         </div>
 
+        {/* Action Button */}
         <button
           type="button"
-          onClick={handleRestart}
-          className="clisten-btn"
+          onClick={handleReturnHome}
+          className="clisten-btn-home"
           style={styles.cta}
         >
-          Return to Home
+          Return to Start
         </button>
 
         <p style={styles.footnote}>
@@ -187,7 +127,6 @@ const styles = {
     gap: "7px",
     color: "#D9C489",
     fontSize: "13px",
-    letterSpacing: "0.01em",
     fontWeight: 500,
   },
   locationDot: {
@@ -202,10 +141,24 @@ const styles = {
     backgroundColor: "rgba(15, 30, 74, 0.6)",
     border: "1.5px solid rgba(174, 184, 214, 0.2)",
     borderRadius: "16px",
-    padding: "24px 20px",
+    padding: "32px 24px",
     boxSizing: "border-box",
     marginBottom: "24px",
-    textAlign: "left",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  iconCircle: {
+    width: "56px",
+    height: "56px",
+    borderRadius: "50%",
+    backgroundColor: "rgba(185, 155, 91, 0.12)",
+    border: "1px solid rgba(185, 155, 91, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "16px",
   },
   subhead: {
     fontSize: "12px",
@@ -217,42 +170,30 @@ const styles = {
     marginBottom: "6px",
   },
   title: {
-    fontFamily: "'IBM Plex Sans', sans-serif",
     fontWeight: 700,
     fontSize: "22px",
     color: "#F5F6FA",
-    margin: "0 0 18px 0",
+    margin: "0 0 16px 0",
+    lineHeight: 1.3,
   },
-  loadingBox: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: "30px 0",
-    gap: "12px",
-  },
-  spinnerDot: {
-    width: "12px",
-    height: "12px",
-    borderRadius: "50%",
-    backgroundColor: "#B99B5B",
-  },
-  loadingText: {
-    fontSize: "14px",
-    color: "#AEB8D6",
-  },
-  responseContent: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-  },
-  responseText: {
+  bodyText: {
     fontSize: "15px",
     lineHeight: 1.6,
-    color: "#F5F6FA",
+    color: "#AEB8D6",
     margin: 0,
   },
-  errorBox: {
-    padding: "10px 0",
+  divider: {
+    width: "60px",
+    height: "1px",
+    backgroundColor: "rgba(174, 184, 214, 0.25)",
+    margin: "20px 0",
+  },
+  reminderText: {
+    fontSize: "14px",
+    lineHeight: 1.5,
+    color: "#D9C489",
+    fontStyle: "italic",
+    margin: 0,
   },
   cta: {
     appearance: "none",
@@ -262,9 +203,8 @@ const styles = {
     fontFamily: "'IBM Plex Sans', sans-serif",
     fontWeight: 600,
     fontSize: "16px",
-    padding: "15px 56px",
+    padding: "15px 48px",
     borderRadius: "999px",
-    letterSpacing: "0.01em",
     cursor: "pointer",
     width: "100%",
     maxWidth: "280px",

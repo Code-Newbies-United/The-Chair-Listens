@@ -1,4 +1,16 @@
 self.__BUILD_MANIFEST = {
+  "/": [
+    "static/chunks/pages/index.js"
+  ],
+  "/_error": [
+    "static/chunks/pages/_error.js"
+  ],
+  "/questions": [
+    "static/chunks/pages/questions.js"
+  ],
+  "/select-script": [
+    "static/chunks/pages/select-script.js"
+  ],
   "__rewrites": {
     "afterFiles": [],
     "beforeFiles": [],
@@ -13,6 +25,7 @@ self.__BUILD_MANIFEST = {
     "/admin/map",
     "/admin/questions",
     "/api/consent",
+    "/api/groq",
     "/api/locations",
     "/api/questions",
     "/api/responses",

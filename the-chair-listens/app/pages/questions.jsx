@@ -1,13 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 
 /**
- * The Chair Listens — Dynamic Question Flow
- *
- * Question Bank categorized by script pathway:
- * - men_mental_health: Deep-dive, honest questions about men's well-being
- * - ally_support: Questions for loved ones carrying and observing from the outside
- * - fast_track_activations: Quick, high-impact questions for today's event/activation
+ * The Chair Listens — Immediate Feedback Per Question
  */
 
 const QUESTION_BANK = {
@@ -16,21 +11,18 @@ const QUESTION_BANK = {
       id: "mmh_1",
       title: "The Silent Load",
       question: "What is something heavy you’ve been carrying lately that you haven't spoken out loud to anyone?",
-      type: "text",
-      placeholder: "Say what's on your mind... no names needed.",
+      placeholder: "Say what's on your mind... type or speak below.",
     },
     {
       id: "mmh_2",
       title: "Where You Go",
       question: "When things get overwhelming, where do you usually retreat or turn to?",
-      type: "text",
       placeholder: "e.g., Silence, working out, driving, bottling it up...",
     },
     {
       id: "mmh_3",
       title: "What Needs to Change",
       question: "What expectation placed on men feels the most exhausting to maintain right now?",
-      type: "text",
       placeholder: "e.g., Financial pressure, having to always be strong...",
     },
   ],
@@ -40,21 +32,18 @@ const QUESTION_BANK = {
       id: "ally_1",
       title: "What You Notice",
       question: "What have you observed the man in your life struggling with that he rarely talks about?",
-      type: "text",
       placeholder: "Share what you notice from the outside...",
     },
     {
       id: "ally_2",
       title: "The Unsaid Words",
       question: "If you knew he would truly listen without feeling defensive, what is one thing you would want him to hear?",
-      type: "text",
       placeholder: "Write what you wish he knew...",
     },
     {
       id: "ally_3",
       title: "Creating Safe Ground",
       question: "What do you think makes it hardest for men to open up when they are hurting?",
-      type: "text",
       placeholder: "e.g., Fear of being a burden, lack of safe spaces...",
     },
   ],
@@ -64,14 +53,12 @@ const QUESTION_BANK = {
       id: "fast_1",
       title: "Right Now",
       question: "Sitting in this chair today, what is the primary emotion you are feeling in three words or less?",
-      type: "text",
       placeholder: "e.g., Tired, hopeful, uncertain...",
     },
     {
       id: "fast_2",
       title: "Today's Message",
       question: "What is one truth you wish more people understood about your daily reality?",
-      type: "text",
       placeholder: "Share a short thought...",
     },
   ],
@@ -87,48 +74,175 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
   const { script } = router.query;
 
-  // Match key from select-script, fallback to men_mental_health
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
   const questions = QUESTION_BANK[activeScriptKey];
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
   const [currentText, setCurrentText] = useState("");
+  
+  // Reflection & AI State
+  const [reflection, setReflection] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Speech Recognition (Voice Input)
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const recognitionRef = useRef(null);
+
+  // Text to Speech (Natural Voice Output)
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100);
 
-  // Sync state when step changes or query loads
+  // Initialize Speech Recognition
   useEffect(() => {
-    if (currentQuestion) {
-      setCurrentText(answers[currentQuestion.id] || "");
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-ZA";
+
+      recognition.onresult = (event) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setCurrentText((prev) => {
+          const baseText = prev ? prev.trim() + " " : "";
+          return baseText + transcript;
+        });
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech error:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => setIsListening(false);
+      recognitionRef.current = recognition;
+    } else {
+      setIsSpeechSupported(false);
+    }
+  }, []);
+
+  // Stop recording or audio playback on question step change
+  useEffect(() => {
+    setCurrentText("");
+    setReflection(null);
+    stopAudio();
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
     }
   }, [currentIndex, activeScriptKey]);
 
-  function handleNext() {
-    const updatedAnswers = {
-      ...answers,
-      [currentQuestion.id]: currentText,
-    };
-    setAnswers(updatedAnswers);
+  function stopAudio() {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+  }
 
+  function toggleListening() {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (err) {
+        console.error("Start speech failed", err);
+      }
+    }
+  }
+
+  async function handleGetReflection() {
+    if (!currentText.trim()) return;
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
+    setLoading(true);
+    stopAudio();
+
+    try {
+      const res = await fetch("/api/groq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script: activeScriptKey,
+          question: currentQuestion.question,
+          answer: currentText,
+        }),
+      });
+
+      if (!res.ok) throw new Error("API call failed");
+
+      const data = await res.json();
+      setReflection(data.text);
+    } catch (err) {
+      console.error("Reflection error:", err);
+      setReflection("Thank you for sharing your thoughts today. Your voice matters.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggleSpeechSynthesis() {
+    if (!reflection || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    const synth = window.speechSynthesis;
+
+    if (isPlaying) {
+      synth.cancel();
+      setIsPlaying(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(reflection);
+    utterance.rate = 0.92;
+    utterance.pitch = 0.95;
+
+    const voices = synth.getVoices();
+    const naturalVoice = voices.find(
+      (v) =>
+        v.lang.startsWith("en") &&
+        (v.name.includes("Natural") ||
+          v.name.includes("Google") ||
+          v.name.includes("Enhanced") ||
+          v.name.includes("Premium"))
+    ) || voices.find((v) => v.lang.startsWith("en"));
+
+    if (naturalVoice) utterance.voice = naturalVoice;
+
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+
+    setIsPlaying(true);
+    synth.speak(utterance);
+  }
+
+  function handleNextQuestion() {
+    stopAudio();
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
-      // Navigate to responses page and pass answers
-      router.push({
-        pathname: "/responses",
-        query: {
-          script: activeScriptKey,
-          answers: JSON.stringify(updatedAnswers),
-        },
-      });
+      router.push("/responses");
     }
   }
 
   function handleBack() {
+    stopAudio();
     if (currentIndex > 0) {
-      setAnswers((prev) => ({ ...prev, [currentQuestion.id]: currentText }));
       setCurrentIndex((prev) => prev - 1);
     } else {
       router.push("/select-script");
@@ -141,7 +255,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
         .clisten-btn-nav {
-          transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+          transition: transform 160ms ease, box-shadow 160ms ease;
         }
         .clisten-btn-nav:hover {
           transform: translateY(-1px);
@@ -150,28 +264,33 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         .clisten-btn-nav:active {
           transform: translateY(0px) scale(0.98);
         }
-        .clisten-back-btn {
-          transition: color 160ms ease;
+        .clisten-mic-btn.active {
+          background-color: #D9534F !important;
+          border-color: #FF6B6B !important;
+          animation: micPulse 1.2s infinite ease-in-out;
         }
-        .clisten-back-btn:hover {
-          color: #F5F6FA !important;
+        @keyframes micPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.5); }
+          50% { box-shadow: 0 0 0 8px rgba(217, 83, 79, 0); }
         }
         .clisten-textarea:focus {
           outline: none;
           border-color: #B99B5B !important;
           box-shadow: 0 0 0 2px rgba(185, 155, 91, 0.25);
         }
+        .pulse-loader {
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
       `}</style>
 
       <div style={styles.frame}>
-        {/* Top Header Row */}
+        {/* Top Header */}
         <div style={styles.topRow}>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="clisten-back-btn"
-            style={styles.backButton}
-          >
+          <button type="button" onClick={handleBack} style={styles.backButton}>
             &larr; {currentIndex === 0 ? "Change Topic" : "Previous"}
           </button>
           <div style={styles.locationTag}>
@@ -180,12 +299,12 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           </div>
         </div>
 
-        {/* Progress Tracker */}
+        {/* Progress Bar */}
         <div style={styles.progressContainer}>
           <div style={styles.progressHeader}>
             <span style={styles.scriptBadge}>{SCRIPT_TITLES[activeScriptKey]}</span>
             <span style={styles.progressText}>
-              {currentIndex + 1} of {questions.length}
+              Question {currentIndex + 1} of {questions.length}
             </span>
           </div>
           <div style={styles.track}>
@@ -202,25 +321,94 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
             value={currentText}
             onChange={(e) => setCurrentText(e.target.value)}
             placeholder={currentQuestion.placeholder}
-            rows={5}
+            rows={4}
+            disabled={reflection !== null || loading}
             className="clisten-textarea"
-            style={styles.textarea}
+            style={{
+              ...styles.textarea,
+              opacity: reflection ? 0.7 : 1,
+            }}
           />
+
+          {/* Voice Input Controls */}
+          {!reflection && isSpeechSupported && (
+            <div style={styles.micRow}>
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`clisten-mic-btn ${isListening ? "active" : ""}`}
+                style={styles.micBtn}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                </svg>
+                {isListening ? "Stop Recording..." : "Speak Answer"}
+              </button>
+              {isListening && <span style={styles.listeningIndicator}>Listening...</span>}
+            </div>
+          )}
+
+          {/* Submit Answer Button */}
+          {!reflection && !loading && (
+            <button
+              type="button"
+              onClick={handleGetReflection}
+              disabled={!currentText.trim()}
+              className="clisten-btn-nav"
+              style={{
+                ...styles.cta,
+                marginTop: "16px",
+                opacity: currentText.trim() ? 1 : 0.5,
+                cursor: currentText.trim() ? "pointer" : "not-allowed",
+              }}
+            >
+              Share & Reflect
+            </button>
+          )}
+
+          {/* AI Loader */}
+          {loading && (
+            <div className="pulse-loader" style={styles.loadingBox}>
+              <div style={styles.spinnerDot} />
+              <p style={styles.loadingText}>The Chair is reflecting on your answer...</p>
+            </div>
+          )}
+
+          {/* AI Reflection Box */}
+          {reflection && (
+            <div style={styles.reflectionBox}>
+              <div style={styles.reflectionHeader}>
+                <span style={styles.reflectionTitle}>The Chair's Reflection</span>
+                <button
+                  type="button"
+                  onClick={toggleSpeechSynthesis}
+                  style={styles.audioBtn}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    {isPlaying ? (
+                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                    ) : (
+                      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                    )}
+                  </svg>
+                  {isPlaying ? "Pause" : "Listen"}
+                </button>
+              </div>
+
+              <p style={styles.reflectionText}>{reflection}</p>
+
+              <button
+                type="button"
+                onClick={handleNextQuestion}
+                className="clisten-btn-nav"
+                style={{ ...styles.cta, marginTop: "16px" }}
+              >
+                {currentIndex === questions.length - 1 ? "Complete Session" : "Next Question"}
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Next Button */}
-        <button
-          type="button"
-          onClick={handleNext}
-          className="clisten-btn-nav"
-          style={styles.cta}
-        >
-          {currentIndex === questions.length - 1 ? "Finish Session" : "Next Question"}
-        </button>
-
-        <p style={styles.footnote}>
-          Type it out, or just say what you feel.
-        </p>
       </div>
     </main>
   );
@@ -241,7 +429,7 @@ const styles = {
   },
   frame: {
     width: "100%",
-    maxWidth: "420px",
+    maxWidth: "440px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -269,7 +457,6 @@ const styles = {
     gap: "7px",
     color: "#D9C489",
     fontSize: "13px",
-    letterSpacing: "0.01em",
     fontWeight: 500,
   },
   locationDot: {
@@ -331,12 +518,11 @@ const styles = {
     marginBottom: "8px",
   },
   questionText: {
-    fontFamily: "'IBM Plex Sans', sans-serif",
     fontWeight: 600,
     fontSize: "19px",
     lineHeight: 1.35,
     color: "#F5F6FA",
-    margin: "0 0 20px 0",
+    margin: "0 0 16px 0",
   },
   textarea: {
     width: "100%",
@@ -351,6 +537,30 @@ const styles = {
     resize: "none",
     boxSizing: "border-box",
   },
+  micRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginTop: "10px",
+  },
+  micBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    backgroundColor: "rgba(185, 155, 91, 0.15)",
+    border: "1px solid #B99B5B",
+    color: "#D9C489",
+    borderRadius: "8px",
+    padding: "6px 12px",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+    fontFamily: "'IBM Plex Sans', sans-serif",
+  },
+  listeningIndicator: {
+    fontSize: "12px",
+    color: "#FF6B6B",
+    fontWeight: 500,
+  },
   cta: {
     appearance: "none",
     border: "none",
@@ -358,18 +568,65 @@ const styles = {
     color: "#0A1735",
     fontFamily: "'IBM Plex Sans', sans-serif",
     fontWeight: 600,
-    fontSize: "16px",
-    padding: "15px 56px",
+    fontSize: "15px",
+    padding: "13px 20px",
     borderRadius: "999px",
-    letterSpacing: "0.01em",
-    cursor: "pointer",
     width: "100%",
-    maxWidth: "280px",
   },
-  footnote: {
-    marginTop: "16px",
+  loadingBox: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    padding: "20px 0 10px 0",
+  },
+  spinnerDot: {
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    backgroundColor: "#B99B5B",
+  },
+  loadingText: {
     fontSize: "13px",
-    color: "#7E88AC",
-    textAlign: "center",
+    color: "#AEB8D6",
+    margin: 0,
+  },
+  reflectionBox: {
+    marginTop: "20px",
+    paddingTop: "16px",
+    borderTop: "1px dashed rgba(174, 184, 214, 0.25)",
+  },
+  reflectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "10px",
+  },
+  reflectionTitle: {
+    fontSize: "12px",
+    fontWeight: 600,
+    color: "#B99B5B",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  },
+  reflectionText: {
+    fontSize: "14px",
+    lineHeight: 1.55,
+    color: "#F5F6FA",
+    margin: 0,
+  },
+  audioBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    backgroundColor: "rgba(185, 155, 91, 0.15)",
+    border: "1px solid #B99B5B",
+    color: "#D9C489",
+    borderRadius: "16px",
+    padding: "4px 10px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "'IBM Plex Sans', sans-serif",
   },
 };

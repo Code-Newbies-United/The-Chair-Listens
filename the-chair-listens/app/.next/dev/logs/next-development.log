@@ -1,1 +1,4 @@
-{"timestamp":"00:00:01.105","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:02.302","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:14.743","source":"Server","level":"LOG","message":"test-location"}
+{"timestamp":"00:00:14.763","source":"Server","level":"LOG","message":"test-location"}
+{"timestamp":"00:01:55.768","source":"Server","level":"ERROR","message":"PageNotFoundError: Cannot find module for page: /responses"}
