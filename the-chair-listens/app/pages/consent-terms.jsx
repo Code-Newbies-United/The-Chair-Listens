@@ -136,6 +136,17 @@ const styles = {
               responses are automatically redacted or removed prior to
               public archiving.
             </li>
+            <li>
+              <strong>AI-Generated Reflections:</strong> Your response is
+              sent to a third-party AI service (Groq, running Meta's
+              Llama model) to generate a short reflective reply after
+              each question, and one overall reflection at the end of
+              your session. This content is generated automatically and
+              is not read or written by a person in real time. The AI
+              service receives the text of your response in order to
+              generate this reflection, but does not receive your name
+              or contact details.
+            </li>
           </ul>
         </Section>
  
@@ -157,6 +168,11 @@ const styles = {
         </Section>
  
         <Section num="5" title="Non-Clinical Disclaimer & Crisis Support">
+          {/*
+            TODO: Confirm these helpline numbers directly against SADAG's
+            current published listings before launch. Accuracy here matters
+            more than anywhere else on this page.
+          */}
           <p style={{ margin: "0 0 14px 0" }}>
             This installation provides health reflection and
             awareness&mdash;it does not offer medical diagnoses or

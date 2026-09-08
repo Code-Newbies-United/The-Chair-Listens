@@ -20,7 +20,7 @@ export default function Home({ locationName = "Pretoria" }) {
 
   function handleContinue() {
     if (!consented) return;
-    router.push("/questions");
+    router.push("/select-script");
   }
 
   return (

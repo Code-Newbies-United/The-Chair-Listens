@@ -8,6 +8,9 @@ self.__BUILD_MANIFEST = {
   "/questions": [
     "static/chunks/pages/questions.js"
   ],
+  "/select-script": [
+    "static/chunks/pages/select-script.js"
+  ],
   "__rewrites": {
     "afterFiles": [],
     "beforeFiles": [],
@@ -24,6 +27,7 @@ self.__BUILD_MANIFEST = {
     "/consent-terms",
     "/questions",
     "/response",
+    "/select-script",
     "/thank-you"
   ]
 };self.__BUILD_MANIFEST_CB && self.__BUILD_MANIFEST_CB()
