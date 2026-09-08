@@ -20,11 +20,6 @@ export default function Home({ locationName = "Pretoria" }) {
 
   async function handleContinue() {
     if (!consented) return;
-<<<<<<< HEAD
-    router.push("/select-script");
-  }
-=======
->>>>>>> 46a48d5429f65d1db26d88e79d6c4d5c9ea396be
 
     try {
       await fetch("/api/consent", {
@@ -32,12 +27,14 @@ export default function Home({ locationName = "Pretoria" }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ location_id: "test-location" }),
       });
-    
-    router.push("/questions");
-  } catch (error) {
-    console.error(error);
+
+      router.push("/select-script");
+    } catch (error) {
+      console.error(error);
+      router.push("/select-script");
+    }
   }
-}
+
   return (
     <main style={styles.page}>
       <style>{`
@@ -184,6 +181,7 @@ export default function Home({ locationName = "Pretoria" }) {
     </main>
   );
 }
+
 
 const styles = {
   page: {
