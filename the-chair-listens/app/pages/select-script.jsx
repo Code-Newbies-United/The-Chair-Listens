@@ -93,7 +93,7 @@ export default function SelectScript({ locationName = "Pretoria" }) {
         </div>
 
         <div style={styles.textBlock}>
-          <h1 style={styles.headline}>Choose Your Perspective</h1>
+          <h1 style={styles.headline}>Settle in and pick your lens</h1>
           <p style={styles.body}>
             Select how you'd like to participate in today's listening session.
           </p>
