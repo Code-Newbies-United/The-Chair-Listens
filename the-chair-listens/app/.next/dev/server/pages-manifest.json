@@ -1,7 +1,0 @@
-{
-  "/": "pages/index.js",
-  "/_app": "pages/_app.js",
-  "/_document": "pages/_document.js",
-  "/api/consent": "pages/api/consent.js",
-  "/select-script": "pages/select-script.js"
-}
