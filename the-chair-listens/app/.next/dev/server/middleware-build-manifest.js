@@ -25,18 +25,6 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/pages__app_0du2_q-._.js",
       "static/chunks/turbopack-pages__app_0u0yjja._.js"
     ],
-    "/consent-terms": [
-      "static/chunks/node_modules_next_dist_compiled_14ibvna._.js",
-      "static/chunks/node_modules_next_dist_shared_lib_0t7i3pr._.js",
-      "static/chunks/node_modules_next_dist_client_01nfwoe._.js",
-      "static/chunks/node_modules_next_dist_0zk-zb1._.js",
-      "static/chunks/node_modules_next_link_09uu1er.js",
-      "static/chunks/node_modules_react-dom_0kla17-._.js",
-      "static/chunks/node_modules_1z0m79v._.js",
-      "static/chunks/[root-of-the-server]__1hton4i._.js",
-      "static/chunks/pages_consent-terms_0du2_q-._.js",
-      "static/chunks/turbopack-pages_consent-terms_1m-qh1s._.js"
-    ],
     "/questions": [
       "static/chunks/node_modules_next_dist_compiled_14ibvna._.js",
       "static/chunks/node_modules_next_dist_shared_lib_196_nl_._.js",
@@ -48,6 +36,18 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/[root-of-the-server]__16wue5c._.js",
       "static/chunks/pages_questions_0du2_q-._.js",
       "static/chunks/turbopack-pages_questions_06w-xr0._.js"
+    ],
+    "/responses": [
+      "static/chunks/node_modules_next_dist_compiled_14ibvna._.js",
+      "static/chunks/node_modules_next_dist_shared_lib_196_nl_._.js",
+      "static/chunks/node_modules_next_dist_client_16lnmlo._.js",
+      "static/chunks/node_modules_next_dist_0zk-zb1._.js",
+      "static/chunks/node_modules_next_router_04z7-rq.js",
+      "static/chunks/node_modules_react-dom_0kla17-._.js",
+      "static/chunks/node_modules_1z0m79v._.js",
+      "static/chunks/[root-of-the-server]__1nj8nvd._.js",
+      "static/chunks/pages_responses_0du2_q-._.js",
+      "static/chunks/turbopack-pages_responses_0k-m5gq._.js"
     ],
     "/select-script": [
       "static/chunks/node_modules_next_dist_compiled_14ibvna._.js",

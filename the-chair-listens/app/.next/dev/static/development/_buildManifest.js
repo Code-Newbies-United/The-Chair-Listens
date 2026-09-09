@@ -2,11 +2,11 @@ self.__BUILD_MANIFEST = {
   "/": [
     "static/chunks/pages/index.js"
   ],
-  "/consent-terms": [
-    "static/chunks/pages/consent-terms.js"
-  ],
   "/questions": [
     "static/chunks/pages/questions.js"
+  ],
+  "/responses": [
+    "static/chunks/pages/responses.js"
   ],
   "/select-script": [
     "static/chunks/pages/select-script.js"
@@ -29,9 +29,11 @@ self.__BUILD_MANIFEST = {
     "/api/locations",
     "/api/questions",
     "/api/responses",
+    "/api/session-reflection",
+    "/api/transcribe",
     "/consent-terms",
     "/questions",
-    "/response",
+    "/responses",
     "/select-script",
     "/thank-you"
   ]

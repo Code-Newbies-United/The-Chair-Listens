@@ -1,12 +1,12 @@
-// pages/api/groq.js
+// Destination: pages/api/groq.js
 
 const SYSTEM_PROMPTS = {
   men_mental_health:
-    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens. Respond in 3-5 full sentences, speaking directly to the man who just answered. Do not give medical advice or diagnoses.",
+    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens. Respond in 2-3 sentences, speaking directly to the man who just answered. Do not give medical advice or diagnoses.",
   ally_support:
-    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens. This response is from someone supporting a man in their life. Respond in 3-5 full sentences, acknowledging their care and perspective. Do not give medical advice or diagnoses.",
+    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens. This response is from someone supporting a man in their life. Respond in 2-3 sentences, acknowledging their care and perspective. Do not give medical advice or diagnoses.",
   fast_track_activations:
-    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens, responding at a live event. Keep your response to 2-3 full short sentences. Do not give medical advice or diagnoses.",
+    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens, responding at a live event. Keep your response to 1-2 short sentences. Do not give medical advice or diagnoses.",
 };
 
 export default async function handler(req, res) {
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-120b", 
+        model: "openai/gpt-oss-120b", // verify against Groq's current model list
         messages: [
           { role: "system", content: systemPrompt },
           {
