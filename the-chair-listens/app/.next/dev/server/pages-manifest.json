@@ -4,8 +4,6 @@
   "/_document": "pages/_document.js",
   "/api/consent": "pages/api/consent.js",
   "/api/groq": "pages/api/groq.js",
-  "/api/session-reflection": "pages/api/session-reflection.js",
   "/questions": "pages/questions.js",
-  "/responses": "pages/responses.js",
   "/select-script": "pages/select-script.js"
 }

@@ -5,9 +5,6 @@ self.__BUILD_MANIFEST = {
   "/questions": [
     "static/chunks/pages/questions.js"
   ],
-  "/responses": [
-    "static/chunks/pages/responses.js"
-  ],
   "/select-script": [
     "static/chunks/pages/select-script.js"
   ],

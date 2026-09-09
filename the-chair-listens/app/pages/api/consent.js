@@ -1,4 +1,6 @@
-export default function manage_communication(req, res) {
+import { supabase } from "@/lib/supabaseClient";
+
+export default async function manage_communication(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({
             error: "Method Not Allowed",
@@ -14,6 +16,13 @@ export default function manage_communication(req, res) {
         })
     }
 
-    console.log(location_id);
+    const { error } = await supabase.from('consent').insert({ location_id });
+    if (error) {
+        return res.status(500).json({
+            error: "Connection failed",
+            message: "Failed to save consent"
+        })
+    }
+
     res.status(200).json({success: true});
 }
