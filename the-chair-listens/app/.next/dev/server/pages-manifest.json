@@ -2,8 +2,11 @@
   "/": "pages/index.js",
   "/_app": "pages/_app.js",
   "/_document": "pages/_document.js",
+  "/_error": "pages/_error.js",
   "/api/consent": "pages/api/consent.js",
   "/api/groq": "pages/api/groq.js",
+  "/api/session-reflection": "pages/api/session-reflection.js",
   "/questions": "pages/questions.js",
+  "/responses": "pages/responses.js",
   "/select-script": "pages/select-script.js"
 }
