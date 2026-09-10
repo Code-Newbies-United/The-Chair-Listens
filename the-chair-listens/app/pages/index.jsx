@@ -28,10 +28,10 @@ export default function Home({ locationName = "Pretoria" }) {
         body: JSON.stringify({ location_id: "test-location" }),
       });
 
-      router.push("/select-script");
+      router.push("/check-in");
     } catch (error) {
       console.error(error);
-      router.push("/select-script");
+      router.push("/check-in");
     }
   }
 
