@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export default async function manage_communication(req, res) {
-    if (req.method !== 'POST') {
+    if (req.method !== "POST") {
         return res.status(405).json({
             error: "Method Not Allowed",
             message:"Only POST requests are accepted on this endpoint"
