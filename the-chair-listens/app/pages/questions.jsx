@@ -74,8 +74,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
   const { script } = router.query;
 
+  // Derive active script key synchronously
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
-  const questions = QUESTION_BANK[activeScriptKey];
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -92,53 +92,52 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   // Text to Speech (Natural Voice Output)
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const currentQuestion = questions[currentIndex];
-  const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100);
+  // Ref to track if script key changed explicitly
+  const lastScriptKeyRef = useRef(null);
 
-  // Initialize Speech Recognition
+  // Check speech recognition capability on mount
   useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-ZA";
-
-      recognition.onresult = (event) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setCurrentText((prev) => {
-          const baseText = prev ? prev.trim() + " " : "";
-          return baseText + transcript;
-        });
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech error:", event.error);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => setIsListening(false);
-      recognitionRef.current = recognition;
-    } else {
-      setIsSpeechSupported(false);
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setIsSpeechSupported(false);
+      }
     }
   }, []);
 
-  // Stop recording or audio playback on question step change
+  // Handle explicit Script or Index navigation changes ONLY
   useEffect(() => {
-    setCurrentText("");
-    setReflection(null);
-    stopAudio();
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+    if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== activeScriptKey) {
+      setCurrentIndex(0);
+      setCurrentText("");
+      setReflection(null);
     }
-  }, [currentIndex, activeScriptKey]);
+    lastScriptKeyRef.current = activeScriptKey;
+  }, [activeScriptKey]);
+
+  // Reset input when user manually advances to a new question index
+  const handleNextQuestion = () => {
+    stopAudio();
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+      setCurrentText("");
+      setReflection(null);
+    } else {
+      router.push("/responses");
+    }
+  };
+
+  const handleBack = () => {
+    stopAudio();
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+      setCurrentText("");
+      setReflection(null);
+    } else {
+      router.push("/select-script");
+    }
+  };
 
   function stopAudio() {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -147,18 +146,55 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     setIsPlaying(false);
   }
 
-  function toggleListening() {
-    if (!recognitionRef.current) return;
+  function initSpeechRecognition() {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    if (!SpeechRecognition) return null;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-ZA";
+
+    recognition.onresult = (event) => {
+      let fullTranscript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        fullTranscript += event.results[i][0].transcript;
+      }
+      setCurrentText(fullTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech error:", event.error);
+      setIsListening(false);
+      if (event.error === "not-allowed") {
+        alert("Microphone permission was denied. Please allow microphone access in your browser settings.");
+      }
+    };
+
+    recognition.onend = () => setIsListening(false);
+    return recognition;
+  }
+
+  function toggleListening() {
     if (isListening) {
-      recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       setIsListening(false);
     } else {
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (err) {
-        console.error("Start speech failed", err);
+      if (!recognitionRef.current) {
+        recognitionRef.current = initSpeechRecognition();
+      }
+
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setIsListening(true);
+        } catch (err) {
+          console.error("Start speech failed:", err);
+        }
       }
     }
   }
@@ -231,23 +267,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     synth.speak(utterance);
   }
 
-  function handleNextQuestion() {
-    stopAudio();
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      router.push("/responses");
-    }
-  }
-
-  function handleBack() {
-    stopAudio();
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-    } else {
-      router.push("/select-script");
-    }
-  }
+  const questions = QUESTION_BANK[activeScriptKey];
+  const currentQuestion = questions[currentIndex];
+  const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100);
 
   return (
     <main style={styles.page}>

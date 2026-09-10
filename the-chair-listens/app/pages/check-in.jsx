@@ -125,7 +125,7 @@ export default function CheckInPage() {
               onClick={handleProceedToScripts}
               style={styles.cta}
             >
-              Choose Reflection Journey →
+              Choose Reflection Journey
             </button>
           </div>
         )}
