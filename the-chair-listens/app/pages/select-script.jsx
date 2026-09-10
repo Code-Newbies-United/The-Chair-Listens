@@ -8,6 +8,7 @@ import { useRouter } from "next/router";
  * 1. Man (Men's Mental Health)
  * 2. Ally / Support (Mother, Sister, Partner, Wife, Friend)
  * 3. Specific Activation Days (Fast-tracked questions)
+ * 4. Prostate Cancer Knowledge Check (Interactive Quiz)
  */
 
 const PATHWAYS = [
@@ -15,19 +16,33 @@ const PATHWAYS = [
     id: "men_mental_health",
     tag: "For Men",
     title: "I'm Here for Me",
-    description: "This is your seat. A few honest questions about how you're really doing, mentally, physically, and everything in between. No judgment, no names attached.",
+    description:
+      "This is your seat. A few honest questions about how you're really doing, mentally, physically, and everything in between. No judgment, no names attached.",
+    isQuiz: false,
   },
   {
     id: "ally_support",
     tag: "Ally & Support System",
     title: "I'm Here for Someone I Love",
-    description: "Maybe it's your son, your partner, your brother, your dad. You're not the one carrying it, but you carry it with him. Tell us what you've noticed, what you wish he knew, or what you want him to hear",
+    description:
+      "Maybe it's your son, your partner, your brother, your dad. You're not the one carrying it, but you carry it with him. Tell us what you've noticed, what you wish he knew, or what you want him to hear.",
+    isQuiz: false,
   },
   {
     id: "fast_track_activations",
     tag: "Today",
     title: "I'm Here for Today's Event",
     description: "Answer a quick set of questions made just for today.",
+    isQuiz: false,
+  },
+  {
+    id: "prostate_quiz",
+    tag: "Awareness Check",
+    title: "Prostate Cancer Knowledge Check",
+    description:
+      "A short 3-question myth vs. fact check to test your awareness on prostate health, risks, and screening.",
+    isQuiz: true,
+    path: "/quiz",
   },
 ];
 
@@ -36,15 +51,22 @@ export default function SelectScript({ locationName = "Pretoria" }) {
   const [selectedScript, setSelectedScript] = useState(null);
 
   function handleBack() {
-    router.push("/");
+    router.push("/check-in");
   }
 
   function handleContinue() {
     if (!selectedScript) return;
-    router.push({
-      pathname: "/questions",
-      query: { script: selectedScript },
-    });
+
+    const chosenPathway = PATHWAYS.find((p) => p.id === selectedScript);
+
+    if (chosenPathway?.isQuiz) {
+      router.push(chosenPathway.path);
+    } else {
+      router.push({
+        pathname: "/questions",
+        query: { script: selectedScript },
+      });
+    }
   }
 
   return (
@@ -95,11 +117,15 @@ export default function SelectScript({ locationName = "Pretoria" }) {
         <div style={styles.textBlock}>
           <h1 style={styles.headline}>Settle in and pick your lens</h1>
           <p style={styles.body}>
-            Select how you'd like to participate in today's listening session.
+            Select how you'd like to participate in today's listening session or take a short knowledge check.
           </p>
         </div>
 
-        <div style={styles.cardsContainer} role="radiogroup" aria-label="Select participant pathway">
+        <div
+          style={styles.cardsContainer}
+          role="radiogroup"
+          aria-label="Select participant pathway"
+        >
           {PATHWAYS.map((pathway) => {
             const isSelected = selectedScript === pathway.id;
             return (
@@ -153,7 +179,9 @@ export default function SelectScript({ locationName = "Pretoria" }) {
             cursor: selectedScript ? "pointer" : "not-allowed",
           }}
         >
-          Continue
+          {PATHWAYS.find((p) => p.id === selectedScript)?.isQuiz
+            ? "Start Quiz"
+            : "Continue"}
         </button>
 
         <p style={styles.footnote}>
