@@ -7,14 +7,14 @@ const MOOD_OPTIONS = [
     emoji: "🌧️",
     label: "Carrying a Lot",
     subtext: "Feeling weighed down or overwhelmed",
-    gratitudeMessage: "Thank you for taking a seat anyway. You don't have to carry it all right now—let's unburden a piece of it together.",
+    gratitudeMessage: "Thank you for taking a seat anyway. You don't have to carry it all right now,let's unburden a piece of it together.",
   },
   {
     id: "processing",
     emoji: "🌫️",
     label: "Processing",
     subtext: "Trying to make sense of things",
-    gratitudeMessage: "It takes strength to sit with uncertainty. Take your time—this space is yours to unpack at your own pace.",
+    gratitudeMessage: "It takes strength to sit with uncertainty. Take your time, this space is yours to unpack at your own pace.",
   },
   {
     id: "grounded",
