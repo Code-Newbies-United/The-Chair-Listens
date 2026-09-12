@@ -5,65 +5,6 @@ import { useRouter } from "next/router";
  * The Chair Listens — Immediate Feedback Per Question
  */
 
-const QUESTION_BANK = {
-  men_mental_health: [
-    {
-      id: "mmh_1",
-      title: "The Silent Load",
-      question: "What is something heavy you’ve been carrying lately that you haven't spoken out loud to anyone?",
-      placeholder: "Say what's on your mind... type or speak below.",
-    },
-    {
-      id: "mmh_2",
-      title: "Where You Go",
-      question: "When things get overwhelming, where do you usually retreat or turn to?",
-      placeholder: "e.g., Silence, working out, driving, bottling it up...",
-    },
-    {
-      id: "mmh_3",
-      title: "What Needs to Change",
-      question: "What expectation placed on men feels the most exhausting to maintain right now?",
-      placeholder: "e.g., Financial pressure, having to always be strong...",
-    },
-  ],
-
-  ally_support: [
-    {
-      id: "ally_1",
-      title: "What You Notice",
-      question: "What have you observed the man in your life struggling with that he rarely talks about?",
-      placeholder: "Share what you notice from the outside...",
-    },
-    {
-      id: "ally_2",
-      title: "The Unsaid Words",
-      question: "If you knew he would truly listen without feeling defensive, what is one thing you would want him to hear?",
-      placeholder: "Write what you wish he knew...",
-    },
-    {
-      id: "ally_3",
-      title: "Creating Safe Ground",
-      question: "What do you think makes it hardest for men to open up when they are hurting?",
-      placeholder: "e.g., Fear of being a burden, lack of safe spaces...",
-    },
-  ],
-
-  fast_track_activations: [
-    {
-      id: "fast_1",
-      title: "Right Now",
-      question: "Sitting in this chair today, what is the primary emotion you are feeling in three words or less?",
-      placeholder: "e.g., Tired, hopeful, uncertain...",
-    },
-    {
-      id: "fast_2",
-      title: "Today's Message",
-      question: "What is one truth you wish more people understood about your daily reality?",
-      placeholder: "Share a short thought...",
-    },
-  ],
-};
-
 const SCRIPT_TITLES = {
   men_mental_health: "For Men",
   ally_support: "Ally & Support System",
@@ -79,7 +20,11 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
-  
+
+  // Questions fetched from Supabase
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+
   // Reflection & AI State
   const [reflection, setReflection] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -105,6 +50,35 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       }
     }
   }, []);
+
+  // Fetch questions for the active script from Supabase
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    async function fetchQuestions() {
+      setQuestionsLoading(true);
+      try {
+        const res = await fetch(`/api/questions?script=${activeScriptKey}`);
+        const result = await res.json();
+
+        const mapped = (result.questions || []).map((q) => ({
+          id: q.id,
+          title: q.title,
+          question: q.question_text,
+          placeholder: q.placeholder,
+        }));
+
+        setQuestions(mapped);
+      } catch (err) {
+        console.error("Failed to fetch questions:", err);
+        setQuestions([]);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    }
+
+    fetchQuestions();
+  }, [router.isReady, activeScriptKey]);
 
   // Handle explicit Script or Index navigation changes ONLY
   useEffect(() => {
@@ -267,7 +241,15 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     synth.speak(utterance);
   }
 
-  const questions = QUESTION_BANK[activeScriptKey];
+  // Show a loading state until questions have arrived from Supabase
+  if (questionsLoading || questions.length === 0) {
+    return (
+      <main style={styles.page}>
+        <p style={{ color: "#AEB8D6" }}>Loading questions...</p>
+      </main>
+    );
+  }
+
   const currentQuestion = questions[currentIndex];
   const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100);
 

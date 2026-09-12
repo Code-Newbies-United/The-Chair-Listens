@@ -1,14 +1,28 @@
-// pages/api/questions.js
-export default function handler(req, res) {
+import { supabase } from "@/lib/supabaseClient";
+
+export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const QUESTIONS = [
-    "What's on your mind right now?",
-    "What's something you're looking forward to?",
-    "What's something you're carrying that you'd like to set down?",
-  ];
+  const { script } = req.query;
 
-  res.status(200).json({ questions: QUESTIONS });
+  if (!script) {
+    return res.status(400).json({ message: "Missing script parameter" });
+  }
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select('*')
+    .eq('script_key', script)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    return res.status(500).json({
+      error: "Connection failed",
+      message: "Failed to fetch questions"
+    });
+  }
+
+  res.status(200).json({ questions: data });
 }
