@@ -25,6 +25,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const [questions, setQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
 
+  // All answers collected across the session so far
+  const [collectedAnswers, setCollectedAnswers] = useState([]);
+
   // Reflection & AI State
   const [reflection, setReflection] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -86,21 +89,50 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       setCurrentIndex(0);
       setCurrentText("");
       setReflection(null);
+      setCollectedAnswers([]);
     }
     lastScriptKeyRef.current = activeScriptKey;
   }, [activeScriptKey]);
 
-  // Reset input when user manually advances to a new question index
+  // Save the current answer, then either move to the next question or finish
   const handleNextQuestion = () => {
     stopAudio();
+
+    const updatedAnswers = [
+      ...collectedAnswers,
+      {
+        questionId: currentQuestion.id,
+        title: currentQuestion.title,
+        question: currentQuestion.question,
+        answer: currentText,
+      },
+    ];
+    setCollectedAnswers(updatedAnswers);
+
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       setCurrentText("");
       setReflection(null);
     } else {
-      router.push("/responses");
+      finishSession(updatedAnswers);
     }
   };
+
+  // Save all answers to Supabase, then navigate to the summary page with the data
+  async function finishSession(answers) {
+    try {
+      await fetch("/api/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      });
+    } catch (err) {
+      console.error("Failed to save responses:", err);
+    }
+
+    const encodedData = encodeURIComponent(JSON.stringify(answers));
+    router.push(`/responses?script=${activeScriptKey}&data=${encodedData}`);
+  }
 
   const handleBack = () => {
     stopAudio();
