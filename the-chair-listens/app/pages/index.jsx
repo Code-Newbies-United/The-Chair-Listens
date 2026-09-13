@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
 /**
@@ -10,6 +10,11 @@ import { useRouter } from "next/router";
  *
  * Continue is disabled until the POPIA consent checkbox is checked.
  * Swap POPIA_TERMS_URL below for the real link to the full notice.
+ *
+ * Location is now detected automatically via the browser's Geolocation
+ * API, then reverse-geocoded to a place name using OpenStreetMap's
+ * Nominatim service (free, no API key required). If the visitor denies
+ * permission or geolocation fails, we fall back to the locationName prop.
  */
 
 const POPIA_TERMS_URL = "/consent-terms";
@@ -17,6 +22,42 @@ const POPIA_TERMS_URL = "/consent-terms";
 export default function Home({ locationName = "Pretoria" }) {
   const router = useRouter();
   const [consented, setConsented] = useState(false);
+  const [detectedLocation, setDetectedLocation] = useState(null);
+
+  // Detect the visitor's location on page load
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
+
+          const place =
+            data?.address?.city ||
+            data?.address?.town ||
+            data?.address?.village ||
+            data?.address?.suburb ||
+            null;
+
+          if (place) setDetectedLocation(place);
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err);
+        }
+      },
+      (err) => {
+        console.error("Geolocation permission denied or unavailable:", err);
+      }
+    );
+  }, []);
+
+  // Use the detected location if we have it, otherwise fall back to the prop
+  const displayLocation = detectedLocation || locationName;
 
   async function handleContinue() {
     if (!consented) return;
@@ -25,13 +66,19 @@ export default function Home({ locationName = "Pretoria" }) {
       await fetch("/api/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location_id: "test-location" }),
+        body: JSON.stringify({ location_id: displayLocation }),
       });
 
-      router.push("/check-in");
+      router.push({
+        pathname: "/check-in",
+        query: { location: displayLocation },
+      });
     } catch (error) {
       console.error(error);
-      router.push("/check-in");
+      router.push({
+        pathname: "/check-in",
+        query: { location: displayLocation },
+      });
     }
   }
 
@@ -69,7 +116,7 @@ export default function Home({ locationName = "Pretoria" }) {
       <div style={styles.frame}>
         <div style={styles.locationTag}>
           <span style={styles.locationDot} aria-hidden="true" />
-          Sitting today in {locationName}
+          Sitting today in {displayLocation}
         </div>
 
         <div style={styles.heroWrap}>

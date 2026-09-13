@@ -48,7 +48,10 @@ export default function CheckInPage() {
   }
 
   function handleProceedToScripts() {
-    router.push("/select-script");
+    router.push({
+      pathname: "/select-script",
+      query: { location: router.query.location },
+    });
   }
 
   return (

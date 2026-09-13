@@ -18,6 +18,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   // Derive active script key synchronously
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
 
+  // Prefer the location passed through from earlier pages, fall back to the prop
+  const displayLocation = router.query.location || locationName;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
 
@@ -131,7 +134,11 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
 
     const encodedData = encodeURIComponent(JSON.stringify(answers));
-    router.push(`/responses?script=${activeScriptKey}&data=${encodedData}`);
+    router.push(
+      `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(
+        displayLocation
+      )}`
+    );
   }
 
   const handleBack = () => {
@@ -141,7 +148,10 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       setCurrentText("");
       setReflection(null);
     } else {
-      router.push("/select-script");
+      router.push({
+        pathname: "/select-script",
+        query: { location: displayLocation },
+      });
     }
   };
 
@@ -331,7 +341,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           </button>
           <div style={styles.locationTag}>
             <span style={styles.locationDot} aria-hidden="true" />
-            Sitting in {locationName}
+            Sitting in {displayLocation}
           </div>
         </div>
 

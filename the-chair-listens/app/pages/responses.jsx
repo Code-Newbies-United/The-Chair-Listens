@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
 export default function ResponsesPage({ locationName = "Pretoria" }) {
   const router = useRouter();
   const { script, data } = router.query;
+
+  // Prefer the location passed through from earlier pages, fall back to the prop
+  const displayLocation = router.query.location || locationName;
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +89,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           <div style={styles.scriptBadge}>{topicLabel}</div>
           <div style={styles.locationTag}>
             <span style={styles.locationDot} />
-            Sitting in {locationName}
+            Sitting in {displayLocation}
           </div>
         </div>
 

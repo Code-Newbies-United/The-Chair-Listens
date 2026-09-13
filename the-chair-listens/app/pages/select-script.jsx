@@ -50,8 +50,14 @@ export default function SelectScript({ locationName = "Pretoria" }) {
   const router = useRouter();
   const [selectedScript, setSelectedScript] = useState(null);
 
+  // Prefer the location passed through from the consent page, fall back to the prop
+  const displayLocation = router.query.location || locationName;
+
   function handleBack() {
-    router.push("/check-in");
+    router.push({
+      pathname: "/check-in",
+      query: { location: displayLocation },
+    });
   }
 
   function handleContinue() {
@@ -60,11 +66,14 @@ export default function SelectScript({ locationName = "Pretoria" }) {
     const chosenPathway = PATHWAYS.find((p) => p.id === selectedScript);
 
     if (chosenPathway?.isQuiz) {
-      router.push(chosenPathway.path);
+      router.push({
+        pathname: chosenPathway.path,
+        query: { location: displayLocation },
+      });
     } else {
       router.push({
         pathname: "/questions",
-        query: { script: selectedScript },
+        query: { script: selectedScript, location: displayLocation },
       });
     }
   }
@@ -110,7 +119,7 @@ export default function SelectScript({ locationName = "Pretoria" }) {
           </button>
           <div style={styles.locationTag}>
             <span style={styles.locationDot} aria-hidden="true" />
-            Sitting in {locationName}
+            Sitting in {displayLocation}
           </div>
         </div>
 
