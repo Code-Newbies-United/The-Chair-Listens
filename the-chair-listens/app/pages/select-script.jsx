@@ -115,7 +115,7 @@ export default function SelectScript({ locationName = "Pretoria" }) {
             className="clisten-back-btn"
             style={styles.backButton}
           >
-            &larr; Back
+            « Back
           </button>
           <div style={styles.locationTag}>
             <span style={styles.locationDot} aria-hidden="true" />

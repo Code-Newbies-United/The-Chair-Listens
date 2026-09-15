@@ -1,3 +1,4 @@
+// Destination: pages/responses.jsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
@@ -48,7 +49,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         console.error("Error fetching summary:", err);
         setSummary({
           overallReflection:
-            "Thank you for taking the time to share your perspective today.",
+              "Thank you for taking the time to share your perspective today.",
           takeaways: [
             "Acknowledging your journey is an important step forward.",
             "Your voice contributes meaningfully to our collective healing.",
@@ -63,8 +64,8 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
   }, [router.isReady, script, data]);
 
   return (
-    <main style={styles.page}>
-      <style>{`
+      <main style={styles.page}>
+        <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
         .clisten-btn-home {
@@ -83,65 +84,74 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         }
       `}</style>
 
-      <div style={styles.frame}>
-        {/* Top Header Row */}
-        <div style={styles.topRow}>
-          <div style={styles.scriptBadge}>{topicLabel}</div>
-          <div style={styles.locationTag}>
-            <span style={styles.locationDot} />
-            Sitting in {displayLocation}
-          </div>
-        </div>
+        <div style={styles.frame}>
+          {/* Return to Start — moved here, styled like the back link on other pages */}
+          <button
+              type="button"
+              onClick={() => router.push("/")}
+              style={styles.back}
+          >
+            « Return to Start
+          </button>
 
-        {/* Main Card */}
-        <div style={styles.card}>
-          <span style={styles.subhead}>Session Complete</span>
-          <h1 style={styles.title}>Your Reflection</h1>
-
-          {loading ? (
-            <div className="pulse-loader" style={styles.loadingBox}>
-              <div style={styles.chairIcon}>🪑</div>
-              <p style={styles.loadingText}>
-                The Chair is bringing your reflection together...
-              </p>
+          {/* Top Header Row */}
+          <div style={styles.topRow}>
+            <div style={styles.scriptBadge}>{topicLabel}</div>
+            <div style={styles.locationTag}>
+              <span style={styles.locationDot} />
+              Sitting in {displayLocation}
             </div>
-          ) : (
-            <>
-              {/* Overall Reflection Section */}
-              <div style={styles.reflectionSection}>
-                <span style={styles.sectionHeader}>Summary</span>
-                <p style={styles.bodyText}>{summary?.overallReflection}</p>
-              </div>
+          </div>
 
-              <div style={styles.divider} />
+          {/* Main Card */}
+          <div style={styles.card}>
+            <span style={styles.subhead}>Session Complete</span>
+            <h1 style={styles.title}>Your Reflection</h1>
 
-              {/* Key Takeaways Section */}
-              <div style={styles.takeawaysSection}>
-                <span style={styles.sectionHeader}>Key Takeaways</span>
-                <ul style={styles.takeawayList}>
-                  {summary?.takeaways?.map((item, index) => (
-                    <li key={index} style={styles.takeawayItem}>
-                      <span style={styles.bulletDot}>✦</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
+            {loading ? (
+                <div className="pulse-loader" style={styles.loadingBox}>
+                  <div style={styles.chairIcon}>🪑</div>
+                  <p style={styles.loadingText}>
+                    The Chair is bringing your reflection together...
+                  </p>
+                </div>
+            ) : (
+                <>
+                  {/* Overall Reflection Section */}
+                  <div style={styles.reflectionSection}>
+                    <span style={styles.sectionHeader}>Summary</span>
+                    <p style={styles.bodyText}>{summary?.overallReflection}</p>
+                  </div>
+
+                  <div style={styles.divider} />
+
+                  {/* Key Takeaways Section */}
+                  <div style={styles.takeawaysSection}>
+                    <span style={styles.sectionHeader}>Key Takeaways</span>
+                    <ul style={styles.takeawayList}>
+                      {summary?.takeaways?.map((item, index) => (
+                          <li key={index} style={styles.takeawayItem}>
+                            <span style={styles.bulletDot}>✦</span>
+                            <span>{item}</span>
+                          </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+            )}
+          </div>
+
+          {/* Footer Action — now leads into the Take Action flow, not home */}
+          <button
+              type="button"
+              onClick={() => router.push("/take-action")}
+              className="clisten-btn-home"
+              style={styles.cta}
+          >
+            Take Action
+          </button>
         </div>
-
-        {/* Footer Actions */}
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          className="clisten-btn-home"
-          style={styles.cta}
-        >
-          Return to Start
-        </button>
-      </div>
-    </main>
+      </main>
   );
 }
 
@@ -153,7 +163,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     background:
-      "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+        "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
     fontFamily: "'IBM Plex Sans', sans-serif",
     padding: "32px 20px",
     boxSizing: "border-box",
@@ -164,6 +174,17 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
+  },
+  back: {
+    alignSelf: "flex-start",
+    background: "none",
+    border: "none",
+    color: "#AEB8D6",
+    fontSize: "14px",
+    fontFamily: "'IBM Plex Sans', sans-serif",
+    cursor: "pointer",
+    padding: 0,
+    marginBottom: "20px",
   },
   topRow: {
     width: "100%",

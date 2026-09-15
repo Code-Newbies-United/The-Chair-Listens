@@ -1,18 +1,23 @@
-export default function administrate_login(req, res) {
+// Destination: pages/api/admin-login.js
+import { createAdminSessionCookie } from "@/lib/adminsession";
+
+export default async function handler(req, res) {
     if (req.method !== "POST") {
-        return res.status(405).json({
-            error: "Method Not Allowed",
-            message: "Only POST requests are accepted on this endpoint"
-        })
+        return res.status(405).json({ success: false, message: "Method not allowed" });
     }
 
-    const password = req.body.password;
+    try {
+        const { password } = req.body;
 
-    if (password === process.env.ADMIN_PASSWORD) {
-        return res.status(200).json({ success: true});
+        if (!password || password !== process.env.ADMIN_PASSWORD) {
+            // Same message either way — don't hint at what went wrong
+            return res.status(401).json({ success: false, message: "Incorrect password." });
+        }
 
+        res.setHeader("Set-Cookie", createAdminSessionCookie());
+        return res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("Admin login error:", err);
+        return res.status(500).json({ success: false, message: "Server error, please try again." });
     }
-    return res.status(401).json({ 
-        success: false, 
-        message: "Incorrect password" })
 }

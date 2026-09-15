@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import ChairJourneyMap from "@/components/ChairJourneyMap";
 
 /**
  * The Chair Listens — Home / landing + consent
@@ -15,6 +16,9 @@ import { useRouter } from "next/router";
  * API, then reverse-geocoded to a place name using OpenStreetMap's
  * Nominatim service (free, no API key required). If the visitor denies
  * permission or geolocation fails, we fall back to the locationName prop.
+ *
+ * Below the consent flow, a "Where The Chair Has Been" section shows a
+ * live status badge and a map of every campaign stop so far.
  */
 
 const POPIA_TERMS_URL = "/consent-terms";
@@ -29,30 +33,30 @@ export default function Home({ locationName = "Pretoria" }) {
     if (typeof window === "undefined" || !navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+        async (position) => {
+          const { latitude, longitude } = position.coords;
 
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await res.json();
+          try {
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await res.json();
 
-          const place =
-            data?.address?.city ||
-            data?.address?.town ||
-            data?.address?.village ||
-            data?.address?.suburb ||
-            null;
+            const place =
+                data?.address?.city ||
+                data?.address?.town ||
+                data?.address?.village ||
+                data?.address?.suburb ||
+                null;
 
-          if (place) setDetectedLocation(place);
-        } catch (err) {
-          console.error("Reverse geocoding failed:", err);
+            if (place) setDetectedLocation(place);
+          } catch (err) {
+            console.error("Reverse geocoding failed:", err);
+          }
+        },
+        (err) => {
+          console.error("Geolocation permission denied or unavailable:", err);
         }
-      },
-      (err) => {
-        console.error("Geolocation permission denied or unavailable:", err);
-      }
     );
   }, []);
 
@@ -83,9 +87,9 @@ export default function Home({ locationName = "Pretoria" }) {
   }
 
   return (
-    <main style={styles.page}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+      <main style={styles.page}>
+        <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600;700&display=swap');
 
         .clisten-continue {
           transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
@@ -111,121 +115,134 @@ export default function Home({ locationName = "Pretoria" }) {
           text-underline-offset: 2px;
         }
         .clisten-link:hover { color: #F5F6FA; }
-      `}</style>
 
-      <div style={styles.frame}>
-        <div style={styles.locationTag}>
-          <span style={styles.locationDot} aria-hidden="true" />
-          Sitting today in {displayLocation}
-        </div>
+        @keyframes chairLivePulse {
+          0% { box-shadow: 0 0 0 0 rgba(143, 209, 158, 0.6); }
+          70% { box-shadow: 0 0 0 8px rgba(143, 209, 158, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(143, 209, 158, 0); }
+        }
+      `}
+        </style>
 
-        <div style={styles.heroWrap}>
-          <svg
-            viewBox="0 0 240 240"
-            width="200"
-            height="200"
-            role="img"
-            aria-label="A simple illustration of a blue upholstered armchair"
-          >
-            {/* wooden legs */}
-            <g stroke="#8B5E34" strokeWidth="6" strokeLinecap="round">
-              <path d="M62 190 L40 230" />
-              <path d="M178 190 L200 230" />
-              <path d="M62 190 L88 230" opacity="0.55" />
-              <path d="M178 190 L152 230" opacity="0.55" />
-            </g>
+        <div style={styles.frame}>
+          <div style={styles.locationTag}>
+            <span style={styles.locationDot} aria-hidden="true" />
+            Sitting today in {displayLocation}
+          </div>
 
-            {/* seat base */}
-            <rect x="48" y="168" width="144" height="30" rx="8" fill="#1F3A85" />
+          <div style={styles.heroWrap}>
+            <svg
+                viewBox="0 0 240 240"
+                width="200"
+                height="200"
+                role="img"
+                aria-label="A simple illustration of a blue upholstered armchair"
+            >
+              {/* wooden legs */}
+              <g stroke="#8B5E34" strokeWidth="6" strokeLinecap="round">
+                <path d="M62 190 L40 230" />
+                <path d="M178 190 L200 230" />
+                <path d="M62 190 L88 230" opacity="0.55" />
+                <path d="M178 190 L152 230" opacity="0.55" />
+              </g>
 
-            {/* armrests */}
-            <rect x="34" y="118" width="26" height="72" rx="13" fill="#2A4FA0" />
-            <rect x="180" y="118" width="26" height="72" rx="13" fill="#2A4FA0" />
+              {/* seat base */}
+              <rect x="48" y="168" width="144" height="30" rx="8" fill="#1F3A85" />
 
-            {/* backrest */}
-            <rect x="56" y="46" width="128" height="132" rx="26" fill="#2A4FA0" />
-            <rect x="56" y="46" width="128" height="132" rx="26" fill="#1F3A85" opacity="0.18" />
+              {/* armrests */}
+              <rect x="34" y="118" width="26" height="72" rx="13" fill="#2A4FA0" />
+              <rect x="180" y="118" width="26" height="72" rx="13" fill="#2A4FA0" />
 
-            {/* tufting diamonds */}
-            <g stroke="#16265E" strokeWidth="2" opacity="0.6" fill="none">
-              <path d="M120 62 L92 90 L120 118 L148 90 Z" />
-              <path d="M120 118 L92 146 L120 174 L148 146 Z" />
-              <path d="M92 90 L64 118 L92 146" />
-              <path d="M148 90 L176 118 L148 146" />
-            </g>
-            <g fill="#16265E" opacity="0.7">
-              <circle cx="120" cy="62" r="2.6" />
-              <circle cx="92" cy="90" r="2.6" />
-              <circle cx="148" cy="90" r="2.6" />
-              <circle cx="120" cy="118" r="2.6" />
-              <circle cx="92" cy="146" r="2.6" />
-              <circle cx="148" cy="146" r="2.6" />
-              <circle cx="120" cy="174" r="2.6" />
-              <circle cx="64" cy="118" r="2.6" />
-              <circle cx="176" cy="118" r="2.6" />
-            </g>
+              {/* backrest */}
+              <rect x="56" y="46" width="128" height="132" rx="26" fill="#2A4FA0" />
+              <rect x="56" y="46" width="128" height="132" rx="26" fill="#1F3A85" opacity="0.18" />
 
-            {/* seat cushion highlight */}
-            <rect x="48" y="168" width="144" height="8" rx="4" fill="#4C74C9" opacity="0.5" />
-          </svg>
-        </div>
+              {/* tufting diamonds */}
+              <g stroke="#16265E" strokeWidth="2" opacity="0.6" fill="none">
+                <path d="M120 62 L92 90 L120 118 L148 90 Z" />
+                <path d="M120 118 L92 146 L120 174 L148 146 Z" />
+                <path d="M92 90 L64 118 L92 146" />
+                <path d="M148 90 L176 118 L148 146" />
+              </g>
+              <g fill="#16265E" opacity="0.7">
+                <circle cx="120" cy="62" r="2.6" />
+                <circle cx="92" cy="90" r="2.6" />
+                <circle cx="148" cy="90" r="2.6" />
+                <circle cx="120" cy="118" r="2.6" />
+                <circle cx="92" cy="146" r="2.6" />
+                <circle cx="148" cy="146" r="2.6" />
+                <circle cx="120" cy="174" r="2.6" />
+                <circle cx="64" cy="118" r="2.6" />
+                <circle cx="176" cy="118" r="2.6" />
+              </g>
 
-        <div style={styles.textBlock}>
-          <h1 style={styles.headline}>The Chair Listens</h1>
-          <p style={styles.body}>
-            Sit for a minute. Say what's on your mind
-          </p>
-          <p style={styles.body}>
-            &mdash; nobody here
-            needs your name.
-          </p>
-        </div>
+              {/* seat cushion highlight */}
+              <rect x="48" y="168" width="144" height="8" rx="4" fill="#4C74C9" opacity="0.5" />
+            </svg>
+          </div>
 
-        <label style={styles.consentRow} htmlFor="popia-consent">
-          <input
-            id="popia-consent"
-            type="checkbox"
-            className="clisten-checkbox"
-            checked={consented}
-            onChange={(e) => setConsented(e.target.checked)}
-            style={styles.checkbox}
-          />
-          <span style={styles.consentText}>
+          <div style={styles.textBlock}>
+            <h1 style={styles.headline}>The Chair Listens</h1>
+            <p style={styles.body}>
+              Sit for a minute. Say what's on your mind
+            </p>
+            <p style={styles.body}>
+              &mdash; nobody here
+              needs your name.
+            </p>
+          </div>
+
+          <label style={styles.consentRow} htmlFor="popia-consent">
+            <input
+                id="popia-consent"
+                type="checkbox"
+                className="clisten-checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+                style={styles.checkbox}
+            />
+            <span style={styles.consentText}>
             I confirm I am 18 or older (or participating with parent/guardian
             supervision) and agree to anonymously participate. I have read
             and accepted the{" "}
-            <a
-              href={POPIA_TERMS_URL}
-              className="clisten-link"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+              <a
+                  href={POPIA_TERMS_URL}
+                  className="clisten-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+              >
               POPIA Privacy Notice &amp; Consent Terms
             </a>
             .
           </span>
-        </label>
+          </label>
 
-        <button
-          type="button"
-          className="clisten-continue"
-          onClick={handleContinue}
-          disabled={!consented}
-          aria-disabled={!consented}
-          style={{
-            ...styles.cta,
-            opacity: consented ? 1 : 0.45,
-            cursor: consented ? "pointer" : "not-allowed",
-          }}
-        >
-          Continue
-        </button>
+          <button
+              type="button"
+              className="clisten-continue"
+              onClick={handleContinue}
+              disabled={!consented}
+              aria-disabled={!consented}
+              style={{
+                ...styles.cta,
+                opacity: consented ? 1 : 0.45,
+                cursor: consented ? "pointer" : "not-allowed",
+              }}
+          >
+            Continue
+          </button>
 
-        <p style={styles.footnote}>
-          Type it out, or just say it out loud.
-        </p>
-      </div>
-    </main>
+          <p style={styles.footnote}>
+            Type it out, or just say it out loud.
+          </p>
+
+          {/* Where The Chair Has Been — live status + map of every stop */}
+          <div style={styles.journeyDivider} />
+          <div style={styles.journeySection}>
+            <ChairJourneyMap />
+          </div>
+        </div>
+      </main>
   );
 }
 
@@ -238,9 +255,9 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     background:
-      "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+        "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
     fontFamily: "'IBM Plex Sans', sans-serif",
-    padding: "32px 20px",
+    padding: "32px 20px 56px",
     boxSizing: "border-box",
   },
   frame: {
@@ -334,5 +351,17 @@ const styles = {
     marginTop: "16px",
     fontSize: "13px",
     color: "#7E88AC",
+  },
+  journeyDivider: {
+    width: "100%",
+    maxWidth: "320px",
+    height: "1px",
+    backgroundColor: "rgba(174, 184, 214, 0.15)",
+    marginTop: "40px",
+    marginBottom: "32px",
+  },
+  journeySection: {
+    width: "100%",
+    textAlign: "left",
   },
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
 
 /**
  * The Chair Listens — Immediate Feedback Per Question
@@ -18,7 +19,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   // Derive active script key synchronously
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
 
-  // Prefer the location passed through from earlier pages, fall back to the prop
+  // Prefer location passed through router query, falling back to prop
   const displayLocation = router.query.location || locationName;
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,36 +29,52 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const [questions, setQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
 
-  // All answers collected across the session so far
+  // All answers collected across the session
   const [collectedAnswers, setCollectedAnswers] = useState([]);
 
   // Reflection & AI State
   const [reflection, setReflection] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Speech Recognition (Voice Input)
+  // Speech Recognition
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const recognitionRef = useRef(null);
+  const permissionDeniedRef = useRef(false);
 
-  // Text to Speech (Natural Voice Output)
+  // Use Ref to avoid stale closures in recognition event handlers
+  const isListeningRef = useRef(false);
+
+  // Text to Speech
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Ref to track if script key changed explicitly
+  // Script tracker
   const lastScriptKeyRef = useRef(null);
+
+  // Safety trigger checker that redirects if emergency words are found
+  const checkSafetyAndRedirect = (text) => {
+    if (checkForSafetyTrigger(text)) {
+      stopAudio();
+      stopListening();
+      alert("We are concerned for your safety. Redirecting you to immediate help and support resources.");
+      router.push("/emergency");
+      return true;
+    }
+    return false;
+  };
 
   // Check speech recognition capability on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+          window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         setIsSpeechSupported(false);
       }
     }
   }, []);
 
-  // Fetch questions for the active script from Supabase
+  // Fetch questions for active script
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -86,7 +103,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     fetchQuestions();
   }, [router.isReady, activeScriptKey]);
 
-  // Handle explicit Script or Index navigation changes ONLY
+  // Handle explicit Script changes
   useEffect(() => {
     if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== activeScriptKey) {
       setCurrentIndex(0);
@@ -97,10 +114,24 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     lastScriptKeyRef.current = activeScriptKey;
   }, [activeScriptKey]);
 
-  // Save the current answer, then either move to the next question or finish
+  function stopListening() {
+    isListeningRef.current = false;
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore if already stopped
+      }
+    }
+  }
+
+  // Save current answer and advance session
   const handleNextQuestion = () => {
     stopAudio();
+    stopListening();
 
+    const currentQuestion = questions[currentIndex];
     const updatedAnswers = [
       ...collectedAnswers,
       {
@@ -121,13 +152,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   };
 
-  // Save all answers to Supabase, then navigate to the summary page with the data
+  // Save answers to Supabase and navigate to summary page
   async function finishSession(answers) {
     try {
       await fetch("/api/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ answers, script: activeScriptKey, location: displayLocation }),
       });
     } catch (err) {
       console.error("Failed to save responses:", err);
@@ -135,17 +166,24 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
     const encodedData = encodeURIComponent(JSON.stringify(answers));
     router.push(
-      `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(
-        displayLocation
-      )}`
+        `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(
+            displayLocation
+        )}`
     );
   }
 
   const handleBack = () => {
     stopAudio();
+    stopListening();
+
     if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-      setCurrentText("");
+      const prevIndex = currentIndex - 1;
+      const prevSavedAnswer = collectedAnswers[prevIndex]?.answer || "";
+
+      // Remove last answer from collected array when stepping back
+      setCollectedAnswers((prev) => prev.slice(0, prevIndex));
+      setCurrentIndex(prevIndex);
+      setCurrentText(prevSavedAnswer);
       setReflection(null);
     } else {
       router.push({
@@ -164,7 +202,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
   function initSpeechRecognition() {
     const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+        window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) return null;
 
@@ -179,26 +217,36 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         fullTranscript += event.results[i][0].transcript;
       }
       setCurrentText(fullTranscript);
+      checkSafetyAndRedirect(fullTranscript);
     };
 
     recognition.onerror = (event) => {
       console.error("Speech error:", event.error);
-      setIsListening(false);
-      if (event.error === "not-allowed") {
-        alert("Microphone permission was denied. Please allow microphone access in your browser settings.");
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        permissionDeniedRef.current = true;
+        stopListening();
       }
     };
 
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      // Check ref directly to avoid stale state re-starting speech
+      if (isListeningRef.current && !permissionDeniedRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error("Failed to restart speech recognition:", e);
+        }
+      } else {
+        stopListening();
+      }
+    };
+
     return recognition;
   }
 
   function toggleListening() {
     if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsListening(false);
+      stopListening();
     } else {
       if (!recognitionRef.current) {
         recognitionRef.current = initSpeechRecognition();
@@ -206,10 +254,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
       if (recognitionRef.current) {
         try {
-          recognitionRef.current.start();
+          permissionDeniedRef.current = false;
+          isListeningRef.current = true;
           setIsListening(true);
+          recognitionRef.current.start();
         } catch (err) {
           console.error("Start speech failed:", err);
+          stopListening();
         }
       }
     }
@@ -218,13 +269,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   async function handleGetReflection() {
     if (!currentText.trim()) return;
 
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
+    if (checkSafetyAndRedirect(currentText)) return;
 
-    setLoading(true);
+    stopListening();
     stopAudio();
+    setLoading(true);
+
+    const currentQuestion = questions[currentIndex];
 
     try {
       const res = await fetch("/api/groq", {
@@ -232,7 +283,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           script: activeScriptKey,
-          question: currentQuestion.question,
+          question: currentQuestion?.question,
           answer: currentText,
         }),
       });
@@ -266,12 +317,12 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
     const voices = synth.getVoices();
     const naturalVoice = voices.find(
-      (v) =>
-        v.lang.startsWith("en") &&
-        (v.name.includes("Natural") ||
-          v.name.includes("Google") ||
-          v.name.includes("Enhanced") ||
-          v.name.includes("Premium"))
+        (v) =>
+            v.lang.startsWith("en") &&
+            (v.name.includes("Natural") ||
+                v.name.includes("Google") ||
+                v.name.includes("Enhanced") ||
+                v.name.includes("Premium"))
     ) || voices.find((v) => v.lang.startsWith("en"));
 
     if (naturalVoice) utterance.voice = naturalVoice;
@@ -283,12 +334,12 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     synth.speak(utterance);
   }
 
-  // Show a loading state until questions have arrived from Supabase
+  // Loading state
   if (questionsLoading || questions.length === 0) {
     return (
-      <main style={styles.page}>
-        <p style={{ color: "#AEB8D6" }}>Loading questions...</p>
-      </main>
+        <main style={styles.page}>
+          <p style={{ color: "#AEB8D6" }}>Loading questions...</p>
+        </main>
     );
   }
 
@@ -296,8 +347,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100);
 
   return (
-    <main style={styles.page}>
-      <style>{`
+      <main style={styles.page}>
+        <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
         .clisten-btn-nav {
@@ -333,130 +384,134 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         }
       `}</style>
 
-      <div style={styles.frame}>
-        {/* Top Header */}
-        <div style={styles.topRow}>
-          <button type="button" onClick={handleBack} style={styles.backButton}>
-            &larr; {currentIndex === 0 ? "Change Topic" : "Previous"}
-          </button>
-          <div style={styles.locationTag}>
-            <span style={styles.locationDot} aria-hidden="true" />
-            Sitting in {displayLocation}
+        <div style={styles.frame}>
+          {/* Top Header */}
+          <div style={styles.topRow}>
+            <button type="button" onClick={handleBack} style={styles.backButton}>
+              « {currentIndex === 0 ? "Change Topic" : "Previous"}
+            </button>
+            <div style={styles.locationTag}>
+              <span style={styles.locationDot} aria-hidden="true" />
+              Sitting in {displayLocation}
+            </div>
           </div>
-        </div>
 
-        {/* Progress Bar */}
-        <div style={styles.progressContainer}>
-          <div style={styles.progressHeader}>
-            <span style={styles.scriptBadge}>{SCRIPT_TITLES[activeScriptKey]}</span>
-            <span style={styles.progressText}>
+          {/* Progress Bar */}
+          <div style={styles.progressContainer}>
+            <div style={styles.progressHeader}>
+              <span style={styles.scriptBadge}>{SCRIPT_TITLES[activeScriptKey]}</span>
+              <span style={styles.progressText}>
               Question {currentIndex + 1} of {questions.length}
             </span>
-          </div>
-          <div style={styles.track}>
-            <div style={{ ...styles.fill, width: `${progressPercent}%` }} />
-          </div>
-        </div>
-
-        {/* Question Card */}
-        <div style={styles.card}>
-          <span style={styles.questionCategory}>{currentQuestion.title}</span>
-          <h1 style={styles.questionText}>{currentQuestion.question}</h1>
-
-          <textarea
-            value={currentText}
-            onChange={(e) => setCurrentText(e.target.value)}
-            placeholder={currentQuestion.placeholder}
-            rows={4}
-            disabled={reflection !== null || loading}
-            className="clisten-textarea"
-            style={{
-              ...styles.textarea,
-              opacity: reflection ? 0.7 : 1,
-            }}
-          />
-
-          {/* Voice Input Controls */}
-          {!reflection && isSpeechSupported && (
-            <div style={styles.micRow}>
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`clisten-mic-btn ${isListening ? "active" : ""}`}
-                style={styles.micBtn}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                </svg>
-                {isListening ? "Stop Recording..." : "Speak Answer"}
-              </button>
-              {isListening && <span style={styles.listeningIndicator}>Listening...</span>}
             </div>
-          )}
-
-          {/* Submit Answer Button */}
-          {!reflection && !loading && (
-            <button
-              type="button"
-              onClick={handleGetReflection}
-              disabled={!currentText.trim()}
-              className="clisten-btn-nav"
-              style={{
-                ...styles.cta,
-                marginTop: "16px",
-                opacity: currentText.trim() ? 1 : 0.5,
-                cursor: currentText.trim() ? "pointer" : "not-allowed",
-              }}
-            >
-              Share & Reflect
-            </button>
-          )}
-
-          {/* AI Loader */}
-          {loading && (
-            <div className="pulse-loader" style={styles.loadingBox}>
-              <div style={styles.spinnerDot} />
-              <p style={styles.loadingText}>The Chair is reflecting on your answer...</p>
+            <div style={styles.track}>
+              <div style={{ ...styles.fill, width: `${progressPercent}%` }} />
             </div>
-          )}
+          </div>
 
-          {/* AI Reflection Box */}
-          {reflection && (
-            <div style={styles.reflectionBox}>
-              <div style={styles.reflectionHeader}>
-                <span style={styles.reflectionTitle}>The Chair's Reflection</span>
+          {/* Question Card */}
+          <div style={styles.card}>
+            <span style={styles.questionCategory}>{currentQuestion.title}</span>
+            <h1 style={styles.questionText}>{currentQuestion.question}</h1>
+
+            <textarea
+                value={currentText}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setCurrentText(text);
+                  checkSafetyAndRedirect(text);
+                }}
+                placeholder={currentQuestion.placeholder}
+                rows={4}
+                disabled={reflection !== null || loading}
+                className="clisten-textarea"
+                style={{
+                  ...styles.textarea,
+                  opacity: reflection ? 0.7 : 1,
+                }}
+            />
+
+            {/* Voice Input Controls */}
+            {!reflection && isSpeechSupported && (
+                <div style={styles.micRow}>
+                  <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`clisten-mic-btn ${isListening ? "active" : ""}`}
+                      style={styles.micBtn}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                    </svg>
+                    {isListening ? "Stop Recording..." : "Speak Answer"}
+                  </button>
+                  {isListening && <span style={styles.listeningIndicator}>Listening...</span>}
+                </div>
+            )}
+
+            {/* Submit Answer Button */}
+            {!reflection && !loading && (
                 <button
-                  type="button"
-                  onClick={toggleSpeechSynthesis}
-                  style={styles.audioBtn}
+                    type="button"
+                    onClick={handleGetReflection}
+                    disabled={!currentText.trim()}
+                    className="clisten-btn-nav"
+                    style={{
+                      ...styles.cta,
+                      marginTop: "16px",
+                      opacity: currentText.trim() ? 1 : 0.5,
+                      cursor: currentText.trim() ? "pointer" : "not-allowed",
+                    }}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    {isPlaying ? (
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    ) : (
-                      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                    )}
-                  </svg>
-                  {isPlaying ? "Pause" : "Listen"}
+                  Share & Reflect
                 </button>
-              </div>
+            )}
 
-              <p style={styles.reflectionText}>{reflection}</p>
+            {/* AI Loader */}
+            {loading && (
+                <div className="pulse-loader" style={styles.loadingBox}>
+                  <div style={styles.spinnerDot} />
+                  <p style={styles.loadingText}>The Chair is reflecting on your answer...</p>
+                </div>
+            )}
 
-              <button
-                type="button"
-                onClick={handleNextQuestion}
-                className="clisten-btn-nav"
-                style={{ ...styles.cta, marginTop: "16px" }}
-              >
-                {currentIndex === questions.length - 1 ? "Complete Session" : "Next Question"}
-              </button>
-            </div>
-          )}
+            {/* AI Reflection Box */}
+            {reflection && (
+                <div style={styles.reflectionBox}>
+                  <div style={styles.reflectionHeader}>
+                    <span style={styles.reflectionTitle}>The Chair's Reflection</span>
+                    <button
+                        type="button"
+                        onClick={toggleSpeechSynthesis}
+                        style={styles.audioBtn}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                        {isPlaying ? (
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        ) : (
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                        )}
+                      </svg>
+                      {isPlaying ? "Pause" : "Listen"}
+                    </button>
+                  </div>
+
+                  <p style={styles.reflectionText}>{reflection}</p>
+
+                  <button
+                      type="button"
+                      onClick={handleNextQuestion}
+                      className="clisten-btn-nav"
+                      style={{ ...styles.cta, marginTop: "16px" }}
+                  >
+                    {currentIndex === questions.length - 1 ? "Complete Session" : "Next Question"}
+                  </button>
+                </div>
+            )}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
   );
 }
 
@@ -468,7 +523,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     background:
-      "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+        "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
     fontFamily: "'IBM Plex Sans', sans-serif",
     padding: "32px 20px",
     boxSizing: "border-box",
