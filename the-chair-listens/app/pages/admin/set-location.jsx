@@ -1,6 +1,7 @@
 // Destination: pages/admin/set-location.jsx
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { requireAdminSSR } from "@/lib/requireAdminSSR";
 
 export const getServerSideProps = requireAdminSSR();
@@ -80,6 +81,10 @@ export default function SetLocation() {
     return (
         <main style={styles.page}>
             <div style={styles.frame}>
+                <Link href="/admin/dashboard" style={styles.backLink}>
+                    « Back to Dashboard
+                </Link>
+
                 <h1 style={styles.title}>Pin the Chair's Location</h1>
                 <p style={styles.subtitle}>
                     Use this when the chair arrives at a new stop. This becomes the
@@ -165,15 +170,27 @@ export default function SetLocation() {
 const styles = {
     page: {
         minHeight: "100vh",
+        width: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         background: "#0A1735",
         fontFamily: "'IBM Plex Sans', sans-serif",
-        padding: "32px 20px",
+        padding: "32px 24px 56px",
         boxSizing: "border-box",
     },
-    frame: { width: "100%", maxWidth: "400px" },
+    frame: {
+        width: "100%",
+        maxWidth: "400px",
+        margin: "0 auto",
+    },
+    backLink: {
+        display: "inline-block",
+        color: "#7E88AC",
+        fontSize: "13px",
+        textDecoration: "none",
+        marginBottom: "24px",
+    },
     title: { color: "#F5F6FA", fontSize: "22px", marginBottom: "8px" },
     subtitle: { color: "#AEB8D6", fontSize: "13.5px", lineHeight: 1.5, marginBottom: "24px" },
     form: { display: "flex", flexDirection: "column", gap: "14px" },
@@ -223,5 +240,6 @@ const styles = {
         fontSize: "12.5px",
         textDecoration: "underline",
         cursor: "pointer",
+        textAlign: "center",
     },
 };

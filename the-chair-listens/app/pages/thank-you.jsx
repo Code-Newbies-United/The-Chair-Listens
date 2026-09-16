@@ -1,34 +1,24 @@
 // Destination: pages/thank-you.jsx
-import { useState } from "react";
 import { LINKS } from "@/lib/campaignLinks";
 
 // This is the final page in the flow: Reflection -> Take Action -> Stay Connected -> Thank You
 
+// Add logo files to /public/logos/ then reference them here.
+const PARTNERS = [
+    { name: "Partner 1", logo: "/logos/partner-1.png" },
+    { name: "Partner 2", logo: "/logos/partner-2.png" },
+    { name: "Partner 3", logo: "/logos/partner-3.png" },
+];
+
 export default function ThankYou() {
-    const [shareFeedback, setShareFeedback] = useState("");
-
-    async function handleShare() {
-        const shareData = {
-            title: "The Chair Listens",
-            text: "You took a seat. You checked in. Start the conversation. Pass it on.",
-            url: LINKS.shareUrl,
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                // User cancelled the share sheet — not an error worth surfacing
-            }
-        } else {
-            try {
-                await navigator.clipboard.writeText(LINKS.shareUrl);
-                setShareFeedback("Link copied to clipboard");
-                setTimeout(() => setShareFeedback(""), 2500);
-            } catch (err) {
-                setShareFeedback("Could not copy link");
-            }
-        }
+    function handleDone() {
+        // Best-effort close — browsers only allow script-initiated close()
+        // on tabs/windows that were themselves opened via script, so this
+        // will silently fail for a normal tab opened by scanning a QR code
+        // or tapping a link. If it's blocked, we fall back to sending the
+        // visitor back to the landing page instead of leaving them stuck.
+        window.close();
+        window.location.href = "/";
     }
 
     return (
@@ -47,6 +37,29 @@ export default function ThankYou() {
         }
         .clisten-cta-outline:hover {
           background-color: rgba(185, 155, 91, 0.12) !important;
+        }
+        .clisten-partner-tile {
+          transition: border-color 160ms ease, background-color 160ms ease;
+        }
+        .clisten-partner-tile:hover {
+          background-color: rgba(185, 155, 91, 0.06);
+          box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+        }
+        .clisten-marquee-track {
+          display: flex;
+          gap: 14px;
+          width: max-content;
+          animation: clistenMarquee 16s linear infinite;
+        }
+        .clisten-marquee-track:hover {
+          animation-play-state: paused;
+        }
+        @keyframes clistenMarquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .clisten-marquee-track { animation: none; }
         }
       `}</style>
 
@@ -83,17 +96,37 @@ export default function ThankYou() {
                         </a>
                         <button
                             type="button"
-                            onClick={handleShare}
-                            className="clisten-cta clisten-cta-outline"
-                            style={styles.outlineButton}
+                            onClick={handleDone}
+                            className="clisten-cta"
+                            style={styles.filledButton}
                         >
-                            Share
-                        </button>
-                        <a href="/" className="clisten-cta" style={styles.filledButton}>
                             Done
-                        </a>
+                        </button>
                     </div>
-                    {shareFeedback && <p style={styles.shareFeedback}>{shareFeedback}</p>}
+                </section>
+
+                {/* Partner logos, scrolling in an infinite loop. The list is
+                    rendered twice back-to-back so the marquee can loop
+                    seamlessly at -50% translateX. */}
+                <section style={styles.partnersSection}>
+                    <span style={styles.partnersKicker}>In Partnership With</span>
+                    <div style={styles.marqueeViewport}>
+                        <div className="clisten-marquee-track">
+                            {[...PARTNERS, ...PARTNERS].map((partner, i) => (
+                                <div
+                                    key={`${partner.name}-${i}`}
+                                    className="clisten-partner-tile"
+                                    style={styles.partnerTile}
+                                >
+                                    <img
+                                        src={partner.logo}
+                                        alt={partner.name}
+                                        style={styles.partnerLogo}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </section>
 
                 <footer style={styles.footer}>
@@ -168,7 +201,9 @@ const styles = {
     },
     outlineButton: {
         display: "inline-block",
-        padding: "11px 18px",
+        padding: "11px 20px",
+        minWidth: "128px",
+        textAlign: "center",
         borderRadius: "999px",
         border: "1.5px solid #B99B5B",
         color: "#D9C489",
@@ -181,6 +216,8 @@ const styles = {
     filledButton: {
         display: "inline-block",
         padding: "11px 20px",
+        minWidth: "128px",
+        textAlign: "center",
         borderRadius: "999px",
         border: "none",
         background: "#B99B5B",
@@ -190,14 +227,46 @@ const styles = {
         textDecoration: "none",
         cursor: "pointer",
     },
-    shareFeedback: {
-        marginTop: "10px",
-        fontSize: "12.5px",
-        color: "#8FD19E",
+    partnersSection: {
+        marginTop: "40px",
+        textAlign: "center",
+    },
+    partnersKicker: {
+        display: "block",
+        fontSize: "11.5px",
+        fontWeight: 600,
+        color: "#7E88AC",
+        textTransform: "uppercase",
+        letterSpacing: "0.1em",
+        marginBottom: "14px",
+    },
+    marqueeViewport: {
+        width: "100%",
+        overflow: "hidden",
+        maskImage:
+            "linear-gradient(90deg, transparent, black 12%, black 88%, transparent)",
+        WebkitMaskImage:
+            "linear-gradient(90deg, transparent, black 12%, black 88%, transparent)",
+    },
+    partnerTile: {
+        flexShrink: 0,
+        width: "110px",
+        aspectRatio: "3 / 2",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "10px",
+        backgroundColor: "rgba(255, 255, 255, 0.03)",
+        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.2)",
+    },
+    partnerLogo: {
+        maxWidth: "75%",
+        maxHeight: "75%",
+        objectFit: "contain",
     },
     footer: {
         textAlign: "center",
-        marginTop: "40px",
+        marginTop: "32px",
         paddingTop: "24px",
         borderTop: "1px solid rgba(174, 184, 214, 0.15)",
         display: "flex",

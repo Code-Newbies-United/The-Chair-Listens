@@ -22,7 +22,7 @@ export default function ChairJourneyMapInner({ locations = [] }) {
         <MapContainer
             center={center}
             zoom={locations.length ? 6 : 5}
-            style={{ width: "100%", height: "320px" }}
+            style={{ width: "100%", height: "440px" }}
             scrollWheelZoom={false}
         >
             <TileLayer

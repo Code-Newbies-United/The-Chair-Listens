@@ -1,203 +1,492 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
 
-/**
- * The Chair Listens — Script / Persona Selection
- *
- * Prompts the participant to select their pathway:
- * 1. Man (Men's Mental Health)
- * 2. Ally / Support (Mother, Sister, Partner, Wife, Friend)
- * 3. Specific Activation Days (Fast-tracked questions)
- * 4. Prostate Cancer Knowledge Check (Interactive Quiz)
- */
+const SCRIPT_TITLES = {
+  men_mental_health: "For Men",
+  ally_support: "Ally & Support System",
+  fast_track_activations: "Today's Event",
+};
 
-const PATHWAYS = [
-  {
-    id: "men_mental_health",
-    tag: "For Men",
-    title: "I'm Here for Me",
-    description:
-      "This is your seat. A few honest questions about how you're really doing, mentally, physically, and everything in between. No judgment, no names attached.",
-    isQuiz: false,
-  },
-  {
-    id: "ally_support",
-    tag: "Ally & Support System",
-    title: "I'm Here for Someone I Love",
-    description:
-      "Maybe it's your son, your partner, your brother, your dad. You're not the one carrying it, but you carry it with him. Tell us what you've noticed, what you wish he knew, or what you want him to hear.",
-    isQuiz: false,
-  },
-  {
-    id: "fast_track_activations",
-    tag: "Today",
-    title: "I'm Here for Today's Event",
-    description: "Answer a quick set of questions made just for today.",
-    isQuiz: false,
-  },
-  {
-    id: "prostate_quiz",
-    tag: "Awareness Check",
-    title: "Prostate Cancer Knowledge Check",
-    description:
-      "A short 3-question myth vs. fact check to test your awareness on prostate health, risks, and screening.",
-    isQuiz: true,
-    path: "/quiz",
-  },
-];
-
-export default function SelectScript({ locationName = "Pretoria" }) {
+export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
-  const [selectedScript, setSelectedScript] = useState(null);
+  const { script, location } = router.query;
 
-  // Prefer the location passed through from the consent page, fall back to the prop
-  const displayLocation = router.query.location || locationName;
+  // Fallbacks for initial render prior to router hydration
+  const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
+  const displayLocation = location || locationName;
 
-  function handleBack() {
-    router.push({
-      pathname: "/check-in",
-      query: { location: displayLocation },
-    });
-  }
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentText, setCurrentText] = useState("");
 
-  function handleContinue() {
-    if (!selectedScript) return;
+  // Questions fetched from Supabase via API route
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
 
-    const chosenPathway = PATHWAYS.find((p) => p.id === selectedScript);
+  // Collected answers across session
+  const [collectedAnswers, setCollectedAnswers] = useState([]);
 
-    if (chosenPathway?.isQuiz) {
-      router.push({
-        pathname: chosenPathway.path,
-        query: { location: displayLocation },
-      });
-    } else {
-      router.push({
-        pathname: "/questions",
-        query: { script: selectedScript, location: displayLocation },
-      });
+  // Reflection & AI State
+  const [reflection, setReflection] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Speech Recognition State
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const recognitionRef = useRef(null);
+  const permissionDeniedRef = useRef(false);
+  const isListeningRef = useRef(false);
+
+  // Text-to-Speech State
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Track script transitions
+  const lastScriptKeyRef = useRef(null);
+
+  // Safety trigger check
+  const checkSafetyAndRedirect = (text) => {
+    if (checkForSafetyTrigger(text)) {
+      stopAudio();
+      stopListening();
+      alert("We are concerned for your safety. Redirecting you to immediate help and support resources.");
+      router.push("/emergency");
+      return true;
+    }
+    return false;
+  };
+
+  // Check Web Speech API capability on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setIsSpeechSupported(false);
+      }
+    }
+  }, []);
+
+  // Fetch questions from Supabase API endpoint
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    async function fetchQuestions() {
+      setQuestionsLoading(true);
+      try {
+        const res = await fetch(`/api/questions?script=${encodeURIComponent(activeScriptKey)}`);
+        const result = await res.json();
+
+        const mapped = (result.questions || []).map((q) => ({
+          id: q.id,
+          title: q.title,
+          question: q.question_text || q.question,
+          placeholder: q.placeholder || "Type or speak your answer here...",
+        }));
+
+        setQuestions(mapped);
+      } catch (err) {
+        console.error("Failed to fetch questions:", err);
+        setQuestions([]);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    }
+
+    fetchQuestions();
+  }, [router.isReady, activeScriptKey]);
+
+  // Reset page state when activeScriptKey changes
+  useEffect(() => {
+    if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== activeScriptKey) {
+      setCurrentIndex(0);
+      setCurrentText("");
+      setReflection(null);
+      setCollectedAnswers([]);
+    }
+    lastScriptKeyRef.current = activeScriptKey;
+  }, [activeScriptKey]);
+
+  function stopListening() {
+    isListeningRef.current = false;
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore if already stopped
+      }
     }
   }
 
+  function stopAudio() {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+  }
+
+  const handleNextQuestion = () => {
+    stopAudio();
+    stopListening();
+
+    const currentQuestion = questions[currentIndex];
+    const updatedAnswers = [
+      ...collectedAnswers,
+      {
+        questionId: currentQuestion.id,
+        title: currentQuestion.title,
+        question: currentQuestion.question,
+        answer: currentText,
+      },
+    ];
+    setCollectedAnswers(updatedAnswers);
+
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+      setCurrentText("");
+      setReflection(null);
+    } else {
+      finishSession(updatedAnswers);
+    }
+  };
+
+  async function finishSession(answers) {
+    try {
+      await fetch("/api/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers, script: activeScriptKey, location: displayLocation }),
+      });
+    } catch (err) {
+      console.error("Failed to save responses:", err);
+    }
+
+    const encodedData = encodeURIComponent(JSON.stringify(answers));
+    router.push(
+        `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(displayLocation)}`
+    );
+  }
+
+  const handleBack = () => {
+    stopAudio();
+    stopListening();
+
+    if (currentIndex > 0) {
+      const prevIndex = currentIndex - 1;
+      const prevSavedAnswer = collectedAnswers[prevIndex]?.answer || "";
+
+      setCollectedAnswers((prev) => prev.slice(0, prevIndex));
+      setCurrentIndex(prevIndex);
+      setCurrentText(prevSavedAnswer);
+      setReflection(null);
+    } else {
+      router.push({
+        pathname: "/select-script",
+        query: { location: displayLocation },
+      });
+    }
+  };
+
+  function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-ZA";
+
+    recognition.onresult = (event) => {
+      let fullTranscript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        fullTranscript += event.results[i][0].transcript;
+      }
+      setCurrentText(fullTranscript);
+      checkSafetyAndRedirect(fullTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech error:", event.error);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        permissionDeniedRef.current = true;
+        stopListening();
+      }
+    };
+
+    recognition.onend = () => {
+      if (isListeningRef.current && !permissionDeniedRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error("Failed to restart speech recognition:", e);
+        }
+      } else {
+        stopListening();
+      }
+    };
+
+    return recognition;
+  }
+
+  function toggleListening() {
+    if (isListening) {
+      stopListening();
+    } else {
+      if (!recognitionRef.current) {
+        recognitionRef.current = initSpeechRecognition();
+      }
+
+      if (recognitionRef.current) {
+        try {
+          permissionDeniedRef.current = false;
+          isListeningRef.current = true;
+          setIsListening(true);
+          recognitionRef.current.start();
+        } catch (err) {
+          console.error("Start speech failed:", err);
+          stopListening();
+        }
+      }
+    }
+  }
+
+  async function handleGetReflection() {
+    if (!currentText.trim()) return;
+    if (checkSafetyAndRedirect(currentText)) return;
+
+    stopListening();
+    stopAudio();
+    setLoading(true);
+
+    const currentQuestion = questions[currentIndex];
+
+    try {
+      const res = await fetch("/api/groq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script: activeScriptKey,
+          question: currentQuestion?.question,
+          answer: currentText,
+        }),
+      });
+
+      if (!res.ok) throw new Error("API call failed");
+
+      const data = await res.json();
+      setReflection(data.text);
+    } catch (err) {
+      console.error("Reflection error:", err);
+      setReflection("Thank you for sharing your thoughts today. Your voice matters.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggleSpeechSynthesis() {
+    if (!reflection || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    const synth = window.speechSynthesis;
+
+    if (isPlaying) {
+      synth.cancel();
+      setIsPlaying(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(reflection);
+    utterance.rate = 0.92;
+    utterance.pitch = 0.95;
+
+    const voices = synth.getVoices();
+    const naturalVoice =
+        voices.find(
+            (v) =>
+                v.lang.startsWith("en") &&
+                (v.name.includes("Natural") ||
+                    v.name.includes("Google") ||
+                    v.name.includes("Enhanced") ||
+                    v.name.includes("Premium"))
+        ) || voices.find((v) => v.lang.startsWith("en"));
+
+    if (naturalVoice) utterance.voice = naturalVoice;
+
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+
+    setIsPlaying(true);
+    synth.speak(utterance);
+  }
+
+  if (questionsLoading || questions.length === 0) {
+    return (
+        <main style={styles.page}>
+          <p style={{ color: "#AEB8D6" }}>Loading questions...</p>
+        </main>
+    );
+  }
+
+  const currentQuestion = questions[currentIndex];
+  const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100);
+
   return (
-    <main style={styles.page}>
-      <style>{`
+      <main style={styles.page}>
+        <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
-        .clisten-card {
-          transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+        .clisten-btn-nav {
+          transition: transform 160ms ease, box-shadow 160ms ease;
         }
-        .clisten-card:hover {
-          transform: translateY(-2px);
-        }
-        .clisten-continue {
-          transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
-        }
-        .clisten-continue:not(:disabled):hover {
+        .clisten-btn-nav:hover {
           transform: translateY(-1px);
           box-shadow: 0 10px 24px rgba(185, 155, 91, 0.28);
         }
-        .clisten-continue:not(:disabled):active {
+        .clisten-btn-nav:active {
           transform: translateY(0px) scale(0.98);
         }
-        .clisten-back-btn {
-          transition: color 160ms ease;
+        .clisten-mic-btn.active {
+          background-color: #D9534F !important;
+          border-color: #FF6B6B !important;
+          animation: micPulse 1.2s infinite ease-in-out;
         }
-        .clisten-back-btn:hover {
-          color: #F5F6FA !important;
+        @keyframes micPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.5); }
+          50% { box-shadow: 0 0 0 8px rgba(217, 83, 79, 0); }
+        }
+        .clisten-textarea:focus {
+          outline: none;
+          border-color: #B99B5B !important;
+          box-shadow: 0 0 0 2px rgba(185, 155, 91, 0.25);
+        }
+        .pulse-loader {
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
         }
       `}</style>
 
-      <div style={styles.frame}>
-        <div style={styles.topRow}>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="clisten-back-btn"
-            style={styles.backButton}
-          >
-            « Back
-          </button>
-          <div style={styles.locationTag}>
-            <span style={styles.locationDot} aria-hidden="true" />
-            Sitting in {displayLocation}
+        <div style={styles.frame}>
+          <div style={styles.topRow}>
+            <button type="button" onClick={handleBack} style={styles.backButton}>
+              « {currentIndex === 0 ? "Change Topic" : "Previous"}
+            </button>
+            <div style={styles.locationTag}>
+              <span style={styles.locationDot} aria-hidden="true" />
+              Sitting in {displayLocation}
+            </div>
+          </div>
+
+          <div style={styles.progressContainer}>
+            <div style={styles.progressHeader}>
+              <span style={styles.scriptBadge}>{SCRIPT_TITLES[activeScriptKey]}</span>
+              <span style={styles.progressText}>
+              Question {currentIndex + 1} of {questions.length}
+            </span>
+            </div>
+            <div style={styles.track}>
+              <div style={{ ...styles.fill, width: `${progressPercent}%` }} />
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <span style={styles.questionCategory}>{currentQuestion.title}</span>
+            <h1 style={styles.questionText}>{currentQuestion.question}</h1>
+
+            <textarea
+                value={currentText}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setCurrentText(text);
+                  checkSafetyAndRedirect(text);
+                }}
+                placeholder={currentQuestion.placeholder}
+                rows={4}
+                disabled={reflection !== null || loading}
+                className="clisten-textarea"
+                style={{
+                  ...styles.textarea,
+                  opacity: reflection ? 0.7 : 1,
+                }}
+            />
+
+            {!reflection && isSpeechSupported && (
+                <div style={styles.micRow}>
+                  <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`clisten-mic-btn ${isListening ? "active" : ""}`}
+                      style={styles.micBtn}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: "8px" }}>
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                    </svg>
+                    {isListening ? "Stop Recording..." : "Speak Answer"}
+                  </button>
+                  {isListening && <span style={styles.listeningIndicator}>Listening...</span>}
+                </div>
+            )}
+
+            {!reflection && !loading && (
+                <button
+                    type="button"
+                    onClick={handleGetReflection}
+                    disabled={!currentText.trim()}
+                    className="clisten-btn-nav"
+                    style={{
+                      ...styles.cta,
+                      marginTop: "16px",
+                      opacity: currentText.trim() ? 1 : 0.5,
+                      cursor: currentText.trim() ? "pointer" : "not-allowed",
+                    }}
+                >
+                  Share & Reflect
+                </button>
+            )}
+
+            {loading && (
+                <div className="pulse-loader" style={styles.loadingBox}>
+                  <div style={styles.spinnerDot} />
+                  <p style={styles.loadingText}>The Chair is reflecting on your answer...</p>
+                </div>
+            )}
+
+            {reflection && (
+                <div style={styles.reflectionBox}>
+                  <div style={styles.reflectionHeader}>
+                    <span style={styles.reflectionTitle}>The Chair's Reflection</span>
+                    <button
+                        type="button"
+                        onClick={toggleSpeechSynthesis}
+                        style={styles.audioBtn}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                        {isPlaying ? (
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        ) : (
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                        )}
+                      </svg>
+                      {isPlaying ? "Pause" : "Listen"}
+                    </button>
+                  </div>
+
+                  <p style={styles.reflectionText}>{reflection}</p>
+
+                  <button
+                      type="button"
+                      onClick={handleNextQuestion}
+                      className="clisten-btn-nav"
+                      style={{ ...styles.cta, marginTop: "16px" }}
+                  >
+                    {currentIndex === questions.length - 1 ? "Complete Session" : "Next Question"}
+                  </button>
+                </div>
+            )}
           </div>
         </div>
-
-        <div style={styles.textBlock}>
-          <h1 style={styles.headline}>Settle in and pick your lens</h1>
-          <p style={styles.body}>
-            Select how you'd like to participate in today's listening session or take a short knowledge check.
-          </p>
-        </div>
-
-        <div
-          style={styles.cardsContainer}
-          role="radiogroup"
-          aria-label="Select participant pathway"
-        >
-          {PATHWAYS.map((pathway) => {
-            const isSelected = selectedScript === pathway.id;
-            return (
-              <div
-                key={pathway.id}
-                tabIndex={0}
-                role="radio"
-                aria-checked={isSelected}
-                onClick={() => setSelectedScript(pathway.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelectedScript(pathway.id);
-                  }
-                }}
-                className="clisten-card"
-                style={{
-                  ...styles.card,
-                  borderColor: isSelected ? "#B99B5B" : "rgba(174, 184, 214, 0.2)",
-                  backgroundColor: isSelected ? "rgba(185, 155, 91, 0.12)" : "rgba(15, 30, 74, 0.6)",
-                }}
-              >
-                <div style={styles.badge}>{pathway.tag}</div>
-                <div style={styles.cardHeader}>
-                  <span style={styles.cardTitle}>{pathway.title}</span>
-                  <div
-                    style={{
-                      ...styles.radioCircle,
-                      borderColor: isSelected ? "#B99B5B" : "#7E88AC",
-                      backgroundColor: isSelected ? "#B99B5B" : "transparent",
-                    }}
-                  >
-                    {isSelected && <div style={styles.radioInnerDot} />}
-                  </div>
-                </div>
-                <p style={styles.cardDescription}>{pathway.description}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          className="clisten-continue"
-          onClick={handleContinue}
-          disabled={!selectedScript}
-          aria-disabled={!selectedScript}
-          style={{
-            ...styles.cta,
-            opacity: selectedScript ? 1 : 0.45,
-            cursor: selectedScript ? "pointer" : "not-allowed",
-          }}
-        >
-          {PATHWAYS.find((p) => p.id === selectedScript)?.isQuiz
-            ? "Start Quiz"
-            : "Continue"}
-        </button>
-
-        <p style={styles.footnote}>
-          Your answers remain completely anonymous regardless of your choice.
-        </p>
-      </div>
-    </main>
+      </main>
   );
 }
 
@@ -208,19 +497,17 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background:
-      "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+    background: "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
     fontFamily: "'IBM Plex Sans', sans-serif",
     padding: "32px 20px",
     boxSizing: "border-box",
   },
   frame: {
     width: "100%",
-    maxWidth: "420px",
+    maxWidth: "440px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    textAlign: "center",
   },
   topRow: {
     width: "100%",
@@ -245,7 +532,6 @@ const styles = {
     gap: "7px",
     color: "#D9C489",
     fontSize: "13px",
-    letterSpacing: "0.01em",
     fontWeight: 500,
   },
   locationDot: {
@@ -255,82 +541,100 @@ const styles = {
     background: "#B99B5B",
     display: "inline-block",
   },
-  textBlock: {
-    marginBottom: "24px",
-  },
-  headline: {
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    fontWeight: 700,
-    fontSize: "28px",
-    lineHeight: 1.2,
-    color: "#F5F6FA",
-    margin: "0 0 8px 0",
-    letterSpacing: "-0.01em",
-  },
-  body: {
-    fontSize: "15px",
-    lineHeight: 1.5,
-    color: "#AEB8D6",
-    margin: 0,
-  },
-  cardsContainer: {
+  progressContainer: {
     width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-    marginBottom: "28px",
+    marginBottom: "20px",
   },
-  card: {
-    width: "100%",
-    padding: "16px",
-    borderRadius: "12px",
-    border: "1.5px solid",
-    boxSizing: "border-box",
-    textAlign: "left",
-    cursor: "pointer",
-    outline: "none",
-  },
-  badge: {
-    display: "inline-block",
-    fontSize: "11px",
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    color: "#D9C489",
-    marginBottom: "6px",
-  },
-  cardHeader: {
+  progressHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "6px",
+    marginBottom: "8px",
   },
-  cardTitle: {
-    color: "#F5F6FA",
-    fontSize: "16px",
+  scriptBadge: {
+    fontSize: "12px",
     fontWeight: 600,
+    color: "#D9C489",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
   },
-  radioCircle: {
-    width: "18px",
-    height: "18px",
-    borderRadius: "50%",
-    border: "2px solid",
+  progressText: {
+    fontSize: "12px",
+    color: "#7E88AC",
+  },
+  track: {
+    width: "100%",
+    height: "4px",
+    backgroundColor: "rgba(174, 184, 214, 0.15)",
+    borderRadius: "2px",
+    overflow: "hidden",
+  },
+  fill: {
+    height: "100%",
+    backgroundColor: "#B99B5B",
+    transition: "width 200ms ease-in-out",
+  },
+  card: {
+    width: "100%",
+    backgroundColor: "rgba(15, 30, 74, 0.6)",
+    border: "1.5px solid rgba(174, 184, 214, 0.2)",
+    borderRadius: "16px",
+    padding: "24px 20px",
+    boxSizing: "border-box",
+    marginBottom: "24px",
+  },
+  questionCategory: {
+    fontSize: "12px",
+    color: "#B99B5B",
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    display: "block",
+    marginBottom: "8px",
+  },
+  questionText: {
+    fontWeight: 600,
+    fontSize: "19px",
+    lineHeight: 1.35,
+    color: "#F5F6FA",
+    margin: "0 0 16px 0",
+  },
+  textarea: {
+    width: "100%",
+    backgroundColor: "rgba(10, 23, 53, 0.7)",
+    border: "1px solid rgba(174, 184, 214, 0.25)",
+    borderRadius: "10px",
+    padding: "12px 14px",
+    color: "#F5F6FA",
+    fontFamily: "'IBM Plex Sans', sans-serif",
+    fontSize: "15px",
+    lineHeight: 1.5,
+    resize: "none",
+    boxSizing: "border-box",
+  },
+  micRow: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
+    gap: "12px",
+    marginTop: "10px",
   },
-  radioInnerDot: {
-    width: "6px",
-    height: "6px",
-    borderRadius: "50%",
-    backgroundColor: "#0A1735",
-  },
-  cardDescription: {
-    color: "#AEB8D6",
+  micBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    backgroundColor: "rgba(185, 155, 91, 0.15)",
+    border: "1px solid #B99B5B",
+    color: "#D9C489",
+    borderRadius: "8px",
+    padding: "6px 12px",
     fontSize: "13px",
-    lineHeight: 1.45,
-    margin: 0,
+    fontWeight: 500,
+    cursor: "pointer",
+    fontFamily: "'IBM Plex Sans', sans-serif",
+  },
+  listeningIndicator: {
+    fontSize: "12px",
+    color: "#FF6B6B",
+    fontWeight: 500,
   },
   cta: {
     appearance: "none",
@@ -339,16 +643,65 @@ const styles = {
     color: "#0A1735",
     fontFamily: "'IBM Plex Sans', sans-serif",
     fontWeight: 600,
-    fontSize: "16px",
-    padding: "15px 56px",
+    fontSize: "15px",
+    padding: "13px 20px",
     borderRadius: "999px",
-    letterSpacing: "0.01em",
     width: "100%",
-    maxWidth: "280px",
   },
-  footnote: {
-    marginTop: "16px",
+  loadingBox: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    padding: "20px 0 10px 0",
+  },
+  spinnerDot: {
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    backgroundColor: "#B99B5B",
+  },
+  loadingText: {
     fontSize: "13px",
-    color: "#7E88AC",
+    color: "#AEB8D6",
+    margin: 0,
+  },
+  reflectionBox: {
+    marginTop: "20px",
+    paddingTop: "16px",
+    borderTop: "1px dashed rgba(174, 184, 214, 0.25)",
+  },
+  reflectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "10px",
+  },
+  reflectionTitle: {
+    fontSize: "12px",
+    fontWeight: 600,
+    color: "#B99B5B",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  },
+  reflectionText: {
+    fontSize: "14px",
+    lineHeight: 1.55,
+    color: "#F5F6FA",
+    margin: 0,
+  },
+  audioBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    backgroundColor: "rgba(185, 155, 91, 0.15)",
+    border: "1px solid #B99B5B",
+    color: "#D9C489",
+    borderRadius: "16px",
+    padding: "4px 10px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "'IBM Plex Sans', sans-serif",
   },
 };

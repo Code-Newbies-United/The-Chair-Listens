@@ -30,11 +30,6 @@ export default function ChairJourneyMap() {
     return (
         <section style={styles.section}>
             <span style={styles.kicker}>Where The Chair Has Been</span>
-            <h2 style={styles.title}>Follow the journey</h2>
-            <p style={styles.body}>
-                Every conversation is tagged to the place it happened. Here's
-                everywhere The Chair has sat so far, and where it is right now.
-            </p>
 
             {/* Live status badge */}
             <div style={styles.statusRow}>
@@ -91,19 +86,7 @@ const styles = {
         color: "#B99B5B",
         textTransform: "uppercase",
         letterSpacing: "0.08em",
-        marginBottom: "8px",
-    },
-    title: {
-        fontFamily: "'IBM Plex Sans', sans-serif",
-        fontSize: "20px",
-        color: "#F5F6FA",
-        margin: "0 0 10px 0",
-    },
-    body: {
-        fontSize: "13.5px",
-        lineHeight: 1.6,
-        color: "#AEB8D6",
-        margin: "0 0 18px 0",
+        marginBottom: "16px",
     },
     statusRow: {
         display: "flex",

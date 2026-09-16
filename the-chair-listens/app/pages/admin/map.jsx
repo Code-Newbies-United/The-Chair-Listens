@@ -16,7 +16,7 @@ export default function AdminMap() {
             <div style={styles.frame}>
                 <div style={styles.topRow}>
                     <Link href="/admin/dashboard" style={styles.back}>
-                        &larr; Back to Dashboard
+                        « Back to Dashboard
                     </Link>
                     <button type="button" onClick={handleLogout} style={styles.logoutButton}>
                         Log out

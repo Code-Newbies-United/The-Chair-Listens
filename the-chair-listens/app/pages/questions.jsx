@@ -2,10 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
 
-/**
- * The Chair Listens — Immediate Feedback Per Question
- */
-
 const SCRIPT_TITLES = {
   men_mental_health: "For Men",
   ally_support: "Ally & Support System",
@@ -14,44 +10,40 @@ const SCRIPT_TITLES = {
 
 export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
-  const { script } = router.query;
+  const { script, location } = router.query;
 
-  // Derive active script key synchronously
+  // Fallbacks for initial render prior to router hydration
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
-
-  // Prefer location passed through router query, falling back to prop
-  const displayLocation = router.query.location || locationName;
+  const displayLocation = location || locationName;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
 
-  // Questions fetched from Supabase
+  // Questions fetched from Supabase via API route
   const [questions, setQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
 
-  // All answers collected across the session
+  // Collected answers across session
   const [collectedAnswers, setCollectedAnswers] = useState([]);
 
   // Reflection & AI State
   const [reflection, setReflection] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Speech Recognition
+  // Speech Recognition State
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const recognitionRef = useRef(null);
   const permissionDeniedRef = useRef(false);
-
-  // Use Ref to avoid stale closures in recognition event handlers
   const isListeningRef = useRef(false);
 
-  // Text to Speech
+  // Text-to-Speech State
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Script tracker
+  // Track script transitions
   const lastScriptKeyRef = useRef(null);
 
-  // Safety trigger checker that redirects if emergency words are found
+  // Safety trigger check
   const checkSafetyAndRedirect = (text) => {
     if (checkForSafetyTrigger(text)) {
       stopAudio();
@@ -63,32 +55,31 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     return false;
   };
 
-  // Check speech recognition capability on mount
+  // Check Web Speech API capability on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const SpeechRecognition =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         setIsSpeechSupported(false);
       }
     }
   }, []);
 
-  // Fetch questions for active script
+  // Fetch questions from Supabase API endpoint
   useEffect(() => {
     if (!router.isReady) return;
 
     async function fetchQuestions() {
       setQuestionsLoading(true);
       try {
-        const res = await fetch(`/api/questions?script=${activeScriptKey}`);
+        const res = await fetch(`/api/questions?script=${encodeURIComponent(activeScriptKey)}`);
         const result = await res.json();
 
         const mapped = (result.questions || []).map((q) => ({
           id: q.id,
           title: q.title,
-          question: q.question_text,
-          placeholder: q.placeholder,
+          question: q.question_text || q.question,
+          placeholder: q.placeholder || "Type or speak your answer here...",
         }));
 
         setQuestions(mapped);
@@ -103,7 +94,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     fetchQuestions();
   }, [router.isReady, activeScriptKey]);
 
-  // Handle explicit Script changes
+  // Reset page state when activeScriptKey changes
   useEffect(() => {
     if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== activeScriptKey) {
       setCurrentIndex(0);
@@ -126,7 +117,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   }
 
-  // Save current answer and advance session
+  function stopAudio() {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+  }
+
   const handleNextQuestion = () => {
     stopAudio();
     stopListening();
@@ -152,7 +149,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   };
 
-  // Save answers to Supabase and navigate to summary page
   async function finishSession(answers) {
     try {
       await fetch("/api/responses", {
@@ -166,9 +162,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
     const encodedData = encodeURIComponent(JSON.stringify(answers));
     router.push(
-        `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(
-            displayLocation
-        )}`
+        `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(displayLocation)}`
     );
   }
 
@@ -180,7 +174,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       const prevIndex = currentIndex - 1;
       const prevSavedAnswer = collectedAnswers[prevIndex]?.answer || "";
 
-      // Remove last answer from collected array when stepping back
       setCollectedAnswers((prev) => prev.slice(0, prevIndex));
       setCurrentIndex(prevIndex);
       setCurrentText(prevSavedAnswer);
@@ -193,17 +186,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   };
 
-  function stopAudio() {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    setIsPlaying(false);
-  }
-
   function initSpeechRecognition() {
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
@@ -229,7 +213,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     };
 
     recognition.onend = () => {
-      // Check ref directly to avoid stale state re-starting speech
       if (isListeningRef.current && !permissionDeniedRef.current) {
         try {
           recognition.start();
@@ -268,7 +251,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
   async function handleGetReflection() {
     if (!currentText.trim()) return;
-
     if (checkSafetyAndRedirect(currentText)) return;
 
     stopListening();
@@ -316,14 +298,15 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     utterance.pitch = 0.95;
 
     const voices = synth.getVoices();
-    const naturalVoice = voices.find(
-        (v) =>
-            v.lang.startsWith("en") &&
-            (v.name.includes("Natural") ||
-                v.name.includes("Google") ||
-                v.name.includes("Enhanced") ||
-                v.name.includes("Premium"))
-    ) || voices.find((v) => v.lang.startsWith("en"));
+    const naturalVoice =
+        voices.find(
+            (v) =>
+                v.lang.startsWith("en") &&
+                (v.name.includes("Natural") ||
+                    v.name.includes("Google") ||
+                    v.name.includes("Enhanced") ||
+                    v.name.includes("Premium"))
+        ) || voices.find((v) => v.lang.startsWith("en"));
 
     if (naturalVoice) utterance.voice = naturalVoice;
 
@@ -334,7 +317,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     synth.speak(utterance);
   }
 
-  // Loading state
   if (questionsLoading || questions.length === 0) {
     return (
         <main style={styles.page}>
@@ -385,7 +367,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       `}</style>
 
         <div style={styles.frame}>
-          {/* Top Header */}
           <div style={styles.topRow}>
             <button type="button" onClick={handleBack} style={styles.backButton}>
               « {currentIndex === 0 ? "Change Topic" : "Previous"}
@@ -396,7 +377,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
             </div>
           </div>
 
-          {/* Progress Bar */}
           <div style={styles.progressContainer}>
             <div style={styles.progressHeader}>
               <span style={styles.scriptBadge}>{SCRIPT_TITLES[activeScriptKey]}</span>
@@ -409,7 +389,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
             </div>
           </div>
 
-          {/* Question Card */}
           <div style={styles.card}>
             <span style={styles.questionCategory}>{currentQuestion.title}</span>
             <h1 style={styles.questionText}>{currentQuestion.question}</h1>
@@ -431,7 +410,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                 }}
             />
 
-            {/* Voice Input Controls */}
             {!reflection && isSpeechSupported && (
                 <div style={styles.micRow}>
                   <button
@@ -450,7 +428,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                 </div>
             )}
 
-            {/* Submit Answer Button */}
             {!reflection && !loading && (
                 <button
                     type="button"
@@ -468,7 +445,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                 </button>
             )}
 
-            {/* AI Loader */}
             {loading && (
                 <div className="pulse-loader" style={styles.loadingBox}>
                   <div style={styles.spinnerDot} />
@@ -476,7 +452,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                 </div>
             )}
 
-            {/* AI Reflection Box */}
             {reflection && (
                 <div style={styles.reflectionBox}>
                   <div style={styles.reflectionHeader}>
@@ -522,8 +497,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background:
-        "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+    background: "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
     fontFamily: "'IBM Plex Sans', sans-serif",
     padding: "32px 20px",
     boxSizing: "border-box",

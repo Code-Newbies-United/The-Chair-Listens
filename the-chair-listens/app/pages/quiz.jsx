@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 
 /**
- * The Chair Listens — Prostate Cancer Knowledge Check Quiz
+ * The Chair Listens — Prostate & Mental Health Knowledge Check Quiz
  */
 
 const QUIZ_QUESTIONS = [
@@ -14,7 +14,7 @@ const QUIZ_QUESTIONS = [
       { text: "False", isCorrect: true },
     ],
     explanation:
-      "False. Early-stage prostate cancer often shows no symptoms at all. Regular check-ups and discussions with a doctor are key for early detection.",
+        "False. Early-stage prostate cancer often shows no symptoms at all. Regular check-ups and discussions with a doctor are key for early detection.",
   },
   {
     id: 2,
@@ -25,7 +25,7 @@ const QUIZ_QUESTIONS = [
       { text: "Age 65", isCorrect: false },
     ],
     explanation:
-      "Men at average risk are generally advised to start screening discussions around age 50 (or 40–45 for higher risk groups, including those with a family history).",
+        "Men at average risk are generally advised to start screening discussions around age 50 (or 40–45 for higher risk groups, including those with a family history).",
   },
   {
     id: 3,
@@ -36,7 +36,29 @@ const QUIZ_QUESTIONS = [
       { text: "HbA1c Test", isCorrect: false },
     ],
     explanation:
-      "A PSA test checks the levels of prostate-specific antigen in the blood. Elevated levels can indicate prostate conditions, including cancer or benign enlargement.",
+        "A PSA test checks the levels of prostate-specific antigen in the blood. Elevated levels can indicate prostate conditions, including cancer or benign enlargement.",
+  },
+  {
+    id: 4,
+    question: "How do men often express depression differently compared to women?",
+    options: [
+      { text: "Increased irritability, anger, or risk-taking behaviors", isCorrect: true },
+      { text: "Men almost always express feelings of overt sadness", isCorrect: false },
+      { text: "Men experience no physical symptoms when depressed", isCorrect: false },
+    ],
+    explanation:
+        "Depression in men often manifests as irritability, sudden anger, risk-taking, or physical symptoms like headaches or fatigue rather than typical expressions of sadness.",
+  },
+  {
+    id: 5,
+    question: "What percentage of global suicide deaths occur among men?",
+    options: [
+      { text: "Approximately 30%", isCorrect: false },
+      { text: "Approximately 50%", isCorrect: false },
+      { text: "Approximately 70–80%", isCorrect: true },
+    ],
+    explanation:
+        "Globally, men account for roughly 75% of all suicide deaths. Encouraging open conversations and breaking the stigma around reaching out for help is critical.",
   },
 ];
 
@@ -75,8 +97,8 @@ export default function QuizPage({ locationName = "Pretoria" }) {
   }
 
   return (
-    <main style={styles.page}>
-      <style>{`
+      <main style={styles.page}>
+        <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
         .clisten-option-btn {
@@ -104,106 +126,106 @@ export default function QuizPage({ locationName = "Pretoria" }) {
         }
       `}</style>
 
-      <div style={styles.frame}>
-        <div style={styles.topRow}>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="clisten-back-btn"
-            style={styles.backButton}
-          >
-            &larr; Exit Quiz
-          </button>
-          <div style={styles.locationTag}>
-            <span style={styles.locationDot} aria-hidden="true" />
-            Sitting in {locationName}
+        <div style={styles.frame}>
+          <div style={styles.topRow}>
+            <button
+                type="button"
+                onClick={handleBack}
+                className="clisten-back-btn"
+                style={styles.backButton}
+            >
+              « Exit Quiz
+            </button>
+            <div style={styles.locationTag}>
+              <span style={styles.locationDot} aria-hidden="true" />
+              Sitting in {locationName}
+            </div>
           </div>
-        </div>
 
-        {!isFinished ? (
-          <div style={styles.card}>
+          {!isFinished ? (
+              <div style={styles.card}>
             <span style={styles.badge}>
               Question {currentIndex + 1} of {QUIZ_QUESTIONS.length}
             </span>
 
-            <h2 style={styles.questionText}>{currentQ.question}</h2>
+                <h2 style={styles.questionText}>{currentQ.question}</h2>
 
-            <div style={styles.optionsGrid}>
-              {currentQ.options.map((option, idx) => {
-                let btnBorderColor = "rgba(174, 184, 214, 0.2)";
-                let btnBgColor = "rgba(15, 30, 74, 0.6)";
+                <div style={styles.optionsGrid}>
+                  {currentQ.options.map((option, idx) => {
+                    let btnBorderColor = "rgba(174, 184, 214, 0.2)";
+                    let btnBgColor = "rgba(15, 30, 74, 0.6)";
 
-                if (showExplanation) {
-                  if (option.isCorrect) {
-                    btnBorderColor = "#4E9F3D";
-                    btnBgColor = "rgba(78, 159, 61, 0.2)";
-                  } else if (option === selectedOption) {
-                    btnBorderColor = "#D9534F";
-                    btnBgColor = "rgba(217, 83, 79, 0.2)";
-                  }
-                }
+                    if (showExplanation) {
+                      if (option.isCorrect) {
+                        btnBorderColor = "#4E9F3D";
+                        btnBgColor = "rgba(78, 159, 61, 0.2)";
+                      } else if (option === selectedOption) {
+                        btnBorderColor = "#D9534F";
+                        btnBgColor = "rgba(217, 83, 79, 0.2)";
+                      }
+                    }
 
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleSelectOption(option)}
-                    disabled={showExplanation}
-                    className="clisten-option-btn"
-                    style={{
-                      ...styles.optionBtn,
-                      borderColor: btnBorderColor,
-                      backgroundColor: btnBgColor,
-                    }}
-                  >
-                    <span>{option.text}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSelectOption(option)}
+                            disabled={showExplanation}
+                            className="clisten-option-btn"
+                            style={{
+                              ...styles.optionBtn,
+                              borderColor: btnBorderColor,
+                              backgroundColor: btnBgColor,
+                            }}
+                        >
+                          <span>{option.text}</span>
+                        </button>
+                    );
+                  })}
+                </div>
 
-            {showExplanation && (
-              <div style={styles.explanationBox}>
-                <p style={styles.explanationText}>{currentQ.explanation}</p>
+                {showExplanation && (
+                    <div style={styles.explanationBox}>
+                      <p style={styles.explanationText}>{currentQ.explanation}</p>
+                      <button
+                          type="button"
+                          onClick={handleNext}
+                          className="clisten-cta-btn"
+                          style={styles.cta}
+                      >
+                        {currentIndex + 1 === QUIZ_QUESTIONS.length
+                            ? "See Results"
+                            : "Next Question"}
+                      </button>
+                    </div>
+                )}
+              </div>
+          ) : (
+              <div style={styles.card}>
+                <span style={styles.badge}>Knowledge Check Complete</span>
+                <h2 style={styles.questionText}>Quiz Results</h2>
+                <div style={styles.scoreBadge}>
+                  {score} / {QUIZ_QUESTIONS.length} Correct
+                </div>
+                <p style={styles.subtext}>
+                  Understanding prostate and mental health is a critical first step. Share what you learn with brothers, fathers, and friends.
+                </p>
                 <button
-                  type="button"
-                  onClick={handleNext}
-                  className="clisten-cta-btn"
-                  style={styles.cta}
+                    type="button"
+                    onClick={handleBack}
+                    className="clisten-cta-btn"
+                    style={styles.cta}
                 >
-                  {currentIndex + 1 === QUIZ_QUESTIONS.length
-                    ? "See Results →"
-                    : "Next Question →"}
+                  Return to Pathways
                 </button>
               </div>
-            )}
-          </div>
-        ) : (
-          <div style={styles.card}>
-            <span style={styles.badge}>Knowledge Check Complete</span>
-            <h2 style={styles.questionText}>Quiz Results</h2>
-            <div style={styles.scoreBadge}>
-              {score} / {QUIZ_QUESTIONS.length} Correct
-            </div>
-            <p style={styles.subtext}>
-              Understanding prostate health is a critical first step. Share what you learn with brothers, fathers, and friends.
-            </p>
-            <button
-              type="button"
-              onClick={handleBack}
-              className="clisten-cta-btn"
-              style={styles.cta}
-            >
-              Return to Pathways
-            </button>
-          </div>
-        )}
+          )}
 
-        <p style={styles.footnote}>
-          Your quiz interactions remain completely anonymous.
-        </p>
-      </div>
-    </main>
+          <p style={styles.footnote}>
+            Your quiz interactions remain completely anonymous.
+          </p>
+        </div>
+      </main>
   );
 }
 
@@ -215,7 +237,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     background:
-      "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+        "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
     fontFamily: "'IBM Plex Sans', sans-serif",
     padding: "32px 20px",
     boxSizing: "border-box",
