@@ -1,76 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
 /**
  * The Chair Listens — Prostate & Mental Health Knowledge Check Quiz
+ * Now fetches questions from /api/quiz-questions instead of a hardcoded array.
  */
-
-const QUIZ_QUESTIONS = [
-  {
-    id: 1,
-    question: "True or False: Early-stage prostate cancer usually presents noticeable symptoms.",
-    options: [
-      { text: "True", isCorrect: false },
-      { text: "False", isCorrect: true },
-    ],
-    explanation:
-        "False. Early-stage prostate cancer often shows no symptoms at all. Regular check-ups and discussions with a doctor are key for early detection.",
-  },
-  {
-    id: 2,
-    question: "At what age should men at average risk start discussing prostate screening with a doctor?",
-    options: [
-      { text: "Age 35", isCorrect: false },
-      { text: "Age 50", isCorrect: true },
-      { text: "Age 65", isCorrect: false },
-    ],
-    explanation:
-        "Men at average risk are generally advised to start screening discussions around age 50 (or 40–45 for higher risk groups, including those with a family history).",
-  },
-  {
-    id: 3,
-    question: "Which common blood test measures a protein produced by the prostate to help detect potential issues?",
-    options: [
-      { text: "CBC (Complete Blood Count)", isCorrect: false },
-      { text: "PSA (Prostate-Specific Antigen)", isCorrect: true },
-      { text: "HbA1c Test", isCorrect: false },
-    ],
-    explanation:
-        "A PSA test checks the levels of prostate-specific antigen in the blood. Elevated levels can indicate prostate conditions, including cancer or benign enlargement.",
-  },
-  {
-    id: 4,
-    question: "How do men often express depression differently compared to women?",
-    options: [
-      { text: "Increased irritability, anger, or risk-taking behaviors", isCorrect: true },
-      { text: "Men almost always express feelings of overt sadness", isCorrect: false },
-      { text: "Men experience no physical symptoms when depressed", isCorrect: false },
-    ],
-    explanation:
-        "Depression in men often manifests as irritability, sudden anger, risk-taking, or physical symptoms like headaches or fatigue rather than typical expressions of sadness.",
-  },
-  {
-    id: 5,
-    question: "What percentage of global suicide deaths occur among men?",
-    options: [
-      { text: "Approximately 30%", isCorrect: false },
-      { text: "Approximately 50%", isCorrect: false },
-      { text: "Approximately 70–80%", isCorrect: true },
-    ],
-    explanation:
-        "Globally, men account for roughly 75% of all suicide deaths. Encouraging open conversations and breaking the stigma around reaching out for help is critical.",
-  },
-];
 
 export default function QuizPage({ locationName = "Pretoria" }) {
   const router = useRouter();
+
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [score, setScore] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
 
-  const currentQ = QUIZ_QUESTIONS[currentIndex];
+  useEffect(() => {
+    async function fetchQuestions() {
+      setQuestionsLoading(true);
+      try {
+        const res = await fetch("/api/quiz-questions");
+        const result = await res.json();
+        setQuestions(result.questions || []);
+      } catch (err) {
+        console.error("Failed to fetch quiz questions:", err);
+        setQuestions([]);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    }
+    fetchQuestions();
+  }, []);
 
   function handleBack() {
     router.push("/select-script");
@@ -80,7 +43,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
     if (showExplanation) return;
     setSelectedOption(option);
     setShowExplanation(true);
-    if (option.isCorrect) {
+    if (option.is_correct) {
       setScore((prev) => prev + 1);
     }
   }
@@ -89,12 +52,41 @@ export default function QuizPage({ locationName = "Pretoria" }) {
     setSelectedOption(null);
     setShowExplanation(false);
 
-    if (currentIndex + 1 < QUIZ_QUESTIONS.length) {
+    if (currentIndex + 1 < questions.length) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       setIsFinished(true);
     }
   }
+
+  if (questionsLoading) {
+    return (
+        <main style={styles.page}>
+          <p style={{ color: "#AEB8D6" }}>Loading quiz...</p>
+        </main>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+        <main style={styles.page}>
+          <div style={styles.frame}>
+            <p style={{ color: "#AEB8D6", textAlign: "center" }}>
+              The quiz isn't set up yet. Please check back soon.
+            </p>
+            <button
+                type="button"
+                onClick={handleBack}
+                style={{ ...styles.backButton, marginTop: "16px" }}
+            >
+              « Back
+            </button>
+          </div>
+        </main>
+    );
+  }
+
+  const currentQ = questions[currentIndex];
 
   return (
       <main style={styles.page}>
@@ -145,18 +137,18 @@ export default function QuizPage({ locationName = "Pretoria" }) {
           {!isFinished ? (
               <div style={styles.card}>
             <span style={styles.badge}>
-              Question {currentIndex + 1} of {QUIZ_QUESTIONS.length}
+              Question {currentIndex + 1} of {questions.length}
             </span>
 
-                <h2 style={styles.questionText}>{currentQ.question}</h2>
+                <h2 style={styles.questionText}>{currentQ.question_text}</h2>
 
                 <div style={styles.optionsGrid}>
-                  {currentQ.options.map((option, idx) => {
+                  {(currentQ.options || []).map((option, idx) => {
                     let btnBorderColor = "rgba(174, 184, 214, 0.2)";
                     let btnBgColor = "rgba(15, 30, 74, 0.6)";
 
                     if (showExplanation) {
-                      if (option.isCorrect) {
+                      if (option.is_correct) {
                         btnBorderColor = "#4E9F3D";
                         btnBgColor = "rgba(78, 159, 61, 0.2)";
                       } else if (option === selectedOption) {
@@ -193,7 +185,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
                           className="clisten-cta-btn"
                           style={styles.cta}
                       >
-                        {currentIndex + 1 === QUIZ_QUESTIONS.length
+                        {currentIndex + 1 === questions.length
                             ? "See Results"
                             : "Next Question"}
                       </button>
@@ -205,7 +197,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
                 <span style={styles.badge}>Knowledge Check Complete</span>
                 <h2 style={styles.questionText}>Quiz Results</h2>
                 <div style={styles.scoreBadge}>
-                  {score} / {QUIZ_QUESTIONS.length} Correct
+                  {score} / {questions.length} Correct
                 </div>
                 <p style={styles.subtext}>
                   Understanding prostate and mental health is a critical first step. Share what you learn with brothers, fathers, and friends.

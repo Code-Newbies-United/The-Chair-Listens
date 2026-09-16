@@ -1,5 +1,4 @@
-// Destination: pages/api/admin/quiz-questions.js
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { verifyAdminSession } from "@/lib/adminsession";
 
 export default async function handler(req, res) {
@@ -21,17 +20,39 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-        const { statement, is_myth, explanation, sort_order } = req.body;
+        const { question_text, options, explanation, sort_order } = req.body || {};
 
-        if (!statement || typeof is_myth !== "boolean" || !explanation) {
-            return res.status(400).json({
-                message: "statement, is_myth (boolean), and explanation are required",
-            });
+        if (!question_text || !question_text.trim()) {
+            return res.status(400).json({ message: "question_text is required" });
+        }
+        if (!explanation || !explanation.trim()) {
+            return res.status(400).json({ message: "explanation is required" });
+        }
+        if (!Array.isArray(options) || options.length < 2) {
+            return res.status(400).json({ message: "At least 2 options are required" });
+        }
+        const cleanedOptions = options
+            .map((o) => ({
+                text: (o.text || "").trim(),
+                is_correct: Boolean(o.is_correct),
+            }))
+            .filter((o) => o.text.length > 0);
+
+        if (cleanedOptions.length < 2) {
+            return res.status(400).json({ message: "At least 2 non-empty options are required" });
+        }
+        if (!cleanedOptions.some((o) => o.is_correct)) {
+            return res.status(400).json({ message: "Mark at least one option as correct" });
         }
 
         const { data, error } = await supabase
             .from("quiz_questions")
-            .insert({ statement, is_myth, explanation, sort_order: sort_order ?? 0 })
+            .insert({
+                question_text: question_text.trim(),
+                options: cleanedOptions,
+                explanation: explanation.trim(),
+                sort_order: sort_order ?? 0,
+            })
             .select()
             .single();
 

@@ -11,7 +11,7 @@ const SCRIPTS = [
     { key: "fast_track_activations", label: "Today's Event" },
 ];
 
-export default function AdminQuestions() {
+export default function Questions() {
     const [tab, setTab] = useState("reflection"); // "reflection" | "quiz"
     const [activeScript, setActiveScript] = useState(SCRIPTS[0].key);
 
@@ -25,7 +25,7 @@ export default function AdminQuestions() {
             <div style={styles.frame}>
                 <div style={styles.topRow}>
                     <Link href="/admin/dashboard" style={styles.back}>
-                        &larr; Back to Dashboard
+                        « Back to Dashboard
                     </Link>
                     <button type="button" onClick={handleLogout} style={styles.logoutButton}>
                         Log out
@@ -203,13 +203,15 @@ function ReflectionQuestions({ scriptKey }) {
     );
 }
 
+const emptyOption = () => ({ text: "", is_correct: false });
+
 function QuizQuestions() {
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    const [statement, setStatement] = useState("");
-    const [isMyth, setIsMyth] = useState(true);
+    const [questionText, setQuestionText] = useState("");
+    const [options, setOptions] = useState([emptyOption(), emptyOption()]);
     const [explanation, setExplanation] = useState("");
     const [saving, setSaving] = useState(false);
 
@@ -227,11 +229,51 @@ function QuizQuestions() {
 
     useEffect(load, []);
 
+    function updateOptionText(index, text) {
+        setOptions((prev) => prev.map((o, i) => (i === index ? { ...o, text } : o)));
+    }
+
+    function setCorrectOption(index) {
+        // Single-correct-answer model, matching the existing quiz UI
+        setOptions((prev) => prev.map((o, i) => ({ ...o, is_correct: i === index })));
+    }
+
+    function addOption() {
+        if (options.length >= 6) return; // sane upper bound
+        setOptions((prev) => [...prev, emptyOption()]);
+    }
+
+    function removeOption(index) {
+        if (options.length <= 2) return; // never go below 2
+        setOptions((prev) => prev.filter((_, i) => i !== index));
+    }
+
+    function resetForm() {
+        setQuestionText("");
+        setOptions([emptyOption(), emptyOption()]);
+        setExplanation("");
+    }
+
     async function handleAdd(e) {
         e.preventDefault();
         setError("");
-        if (!statement.trim() || !explanation.trim()) {
-            setError("Statement and explanation are both required.");
+
+        const cleaned = options.map((o) => ({ ...o, text: o.text.trim() })).filter((o) => o.text);
+
+        if (!questionText.trim()) {
+            setError("Question text is required.");
+            return;
+        }
+        if (cleaned.length < 2) {
+            setError("At least 2 non-empty options are required.");
+            return;
+        }
+        if (!cleaned.some((o) => o.is_correct)) {
+            setError("Mark one option as the correct answer.");
+            return;
+        }
+        if (!explanation.trim()) {
+            setError("Explanation is required.");
             return;
         }
 
@@ -241,20 +283,21 @@ function QuizQuestions() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    statement,
-                    is_myth: isMyth,
+                    question_text: questionText,
+                    options: cleaned,
                     explanation,
                     sort_order: questions.length,
                 }),
             });
-            if (!res.ok) throw new Error("Failed to add");
-            setStatement("");
-            setExplanation("");
-            setIsMyth(true);
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || "Failed to add");
+            }
+            resetForm();
             load();
         } catch (err) {
             console.error(err);
-            setError("Failed to add quiz question.");
+            setError(err.message || "Failed to add quiz question.");
         } finally {
             setSaving(false);
         }
@@ -283,10 +326,21 @@ function QuizQuestions() {
                     {questions.map((q) => (
                         <li key={q.id} style={styles.listItem}>
                             <div>
-                                <div style={styles.listItemTitle}>
-                                    {q.is_myth ? "MYTH" : "FACT"}
-                                </div>
-                                <div style={styles.listItemText}>{q.statement}</div>
+                                <div style={styles.listItemText}>{q.question_text}</div>
+                                <ul style={styles.optionPreviewList}>
+                                    {(q.options || []).map((o, i) => (
+                                        <li
+                                            key={i}
+                                            style={{
+                                                ...styles.optionPreviewItem,
+                                                color: o.is_correct ? "#8FD19E" : "#AEB8D6",
+                                            }}
+                                        >
+                                            {o.is_correct ? "✓ " : "– "}
+                                            {o.text}
+                                        </li>
+                                    ))}
+                                </ul>
                                 <div style={styles.listItemExplanation}>{q.explanation}</div>
                             </div>
                             <button
@@ -304,30 +358,53 @@ function QuizQuestions() {
             <form onSubmit={handleAdd} style={styles.form}>
                 <h3 style={styles.formTitle}>Add a Quiz Question</h3>
                 <textarea
-                    placeholder="Statement (e.g. 'Only older men get prostate cancer')"
-                    value={statement}
-                    onChange={(e) => setStatement(e.target.value)}
+                    placeholder="Question (e.g. 'At what age should screening discussions start?')"
+                    value={questionText}
+                    onChange={(e) => setQuestionText(e.target.value)}
                     rows={2}
                     style={styles.textarea}
                 />
-                <div style={styles.radioRow}>
-                    <label style={styles.radioLabel}>
-                        <input
-                            type="radio"
-                            checked={isMyth === true}
-                            onChange={() => setIsMyth(true)}
-                        />
-                        Myth
-                    </label>
-                    <label style={styles.radioLabel}>
-                        <input
-                            type="radio"
-                            checked={isMyth === false}
-                            onChange={() => setIsMyth(false)}
-                        />
-                        Fact
-                    </label>
+
+                <div style={styles.optionsEditList}>
+                    {options.map((opt, i) => (
+                        <div key={i} style={styles.optionEditRow}>
+                            <label style={styles.radioLabel}>
+                                <input
+                                    type="radio"
+                                    name="correct-option"
+                                    checked={opt.is_correct}
+                                    onChange={() => setCorrectOption(i)}
+                                />
+                            </label>
+                            <input
+                                type="text"
+                                placeholder={`Option ${i + 1}`}
+                                value={opt.text}
+                                onChange={(e) => updateOptionText(i, e.target.value)}
+                                style={{ ...styles.input, flex: 1 }}
+                            />
+                            {options.length > 2 && (
+                                <button
+                                    type="button"
+                                    onClick={() => removeOption(i)}
+                                    style={styles.removeOptionButton}
+                                    aria-label={`Remove option ${i + 1}`}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    ))}
                 </div>
+
+                {options.length < 6 && (
+                    <button type="button" onClick={addOption} style={styles.addOptionButton}>
+                        + Add another option
+                    </button>
+                )}
+
+                <p style={styles.hint}>Select the radio button next to the correct answer.</p>
+
                 <textarea
                     placeholder="Explanation shown after answering"
                     value={explanation}
@@ -433,6 +510,8 @@ const styles = {
     },
     listItemText: { color: "#F5F6FA", fontSize: "14px", lineHeight: 1.4 },
     listItemExplanation: { color: "#AEB8D6", fontSize: "12.5px", marginTop: "6px", lineHeight: 1.4 },
+    optionPreviewList: { listStyle: "none", margin: "8px 0 0 0", padding: 0, display: "flex", flexDirection: "column", gap: "3px" },
+    optionPreviewItem: { fontSize: "12.5px" },
     deleteButton: {
         background: "none",
         border: "1px solid rgba(255, 107, 107, 0.4)",
@@ -473,6 +552,31 @@ const styles = {
         boxSizing: "border-box",
         fontFamily: "'IBM Plex Sans', sans-serif",
     },
+    optionsEditList: { display: "flex", flexDirection: "column", gap: "8px" },
+    optionEditRow: { display: "flex", alignItems: "center", gap: "8px" },
+    removeOptionButton: {
+        background: "none",
+        border: "1px solid rgba(255, 107, 107, 0.4)",
+        color: "#FF6B6B",
+        borderRadius: "6px",
+        width: "28px",
+        height: "34px",
+        fontSize: "16px",
+        lineHeight: 1,
+        cursor: "pointer",
+        flexShrink: 0,
+    },
+    addOptionButton: {
+        alignSelf: "flex-start",
+        background: "none",
+        border: "1px dashed rgba(185, 155, 91, 0.5)",
+        color: "#D9C489",
+        borderRadius: "8px",
+        padding: "6px 12px",
+        fontSize: "12.5px",
+        cursor: "pointer",
+    },
+    hint: { color: "#7E88AC", fontSize: "11.5px", margin: 0 },
     radioRow: { display: "flex", gap: "16px" },
     radioLabel: { display: "flex", alignItems: "center", gap: "6px", color: "#AEB8D6", fontSize: "13px" },
     error: { color: "#FF6B6B", fontSize: "12.5px", margin: 0 },

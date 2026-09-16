@@ -317,10 +317,20 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     synth.speak(utterance);
   }
 
-  if (questionsLoading || questions.length === 0) {
+  if (questionsLoading) {
     return (
         <main style={styles.page}>
           <p style={{ color: "#AEB8D6" }}>Loading questions...</p>
+        </main>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+        <main style={styles.page}>
+          <p style={{ color: "#AEB8D6" }}>
+            No questions are set up for this category yet. Please try a different option or check back soon.
+          </p>
         </main>
     );
   }
