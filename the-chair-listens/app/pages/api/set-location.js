@@ -1,6 +1,6 @@
 // Destination: pages/api/admin/set-location.js
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
-import { verifyAdminSession } from "@/lib/adminSession";
+import { verifyAdminSession } from "@/lib/adminsession";
 
 export default async function handler(req, res) {
     if (req.method !== "POST") {
