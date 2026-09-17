@@ -1,4 +1,3 @@
-// Destination: pages/api/admin-logout.js
 import { clearAdminSessionCookie } from "@/lib/adminsession";
 
 export default async function handler(req, res) {

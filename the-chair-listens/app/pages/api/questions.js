@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -12,10 +12,10 @@ export default async function handler(req, res) {
   }
 
   const { data, error } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('script_key', script)
-    .order('sort_order', { ascending: true });
+      .from('questions')
+      .select('*')
+      .eq('script_key', script)
+      .order('sort_order', { ascending: true });
 
   if (error) {
     return res.status(500).json({

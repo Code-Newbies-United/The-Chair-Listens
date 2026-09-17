@@ -72,7 +72,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     async function fetchQuestions() {
       setQuestionsLoading(true);
       try {
-        const res = await fetch(`/api/questions?script=${encodeURIComponent(activeScriptKey)}`);
+        const res = await fetch(`/api/questions?script=${encodeURIComponent(activeScriptKey)}`, {
+          cache: "no-store",
+        });
         const result = await res.json();
 
         const mapped = (result.questions || []).map((q) => ({

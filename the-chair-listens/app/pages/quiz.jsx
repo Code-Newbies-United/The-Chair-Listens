@@ -22,7 +22,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
     async function fetchQuestions() {
       setQuestionsLoading(true);
       try {
-        const res = await fetch("/api/quiz-questions");
+        const res = await fetch("/api/quiz-questions", { cache: "no-store" });
         const result = await res.json();
         setQuestions(result.questions || []);
       } catch (err) {
