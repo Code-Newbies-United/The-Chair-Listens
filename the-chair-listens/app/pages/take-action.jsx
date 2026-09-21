@@ -1,7 +1,19 @@
 // Destination: pages/take-action.jsx
+import { useState, useEffect } from "react";
 import { LINKS } from "@/lib/campaignLinks";
+import DidYouKnowModal from "@/components/DidYouKnowModal";
 
 export default function TakeAction() {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Automatically show the pop-up at the bottom after 1.5s delay
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsModalOpen(true);
+        }, 1500);
+        return () => clearTimeout(timer);
+    }, []);
+
     return (
         <main style={styles.page}>
             <style>{`
@@ -60,10 +72,28 @@ export default function TakeAction() {
                     </p>
                 </section>
 
+                {/* Trigger to manually view "Did You Know?" banner again */}
+                <div style={styles.dykWrapper}>
+                    <button
+                        type="button"
+                        onClick={() => setIsModalOpen(true)}
+                        style={styles.dykTriggerBtn}
+                    >
+                        💡 Did You Know?
+                    </button>
+                </div>
+
                 <a href="/stay-connected" style={styles.continueLink}>
                     Continue
                 </a>
             </div>
+
+            {/* Bottom Pop-Up Banner */}
+            <DidYouKnowModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                variant="bottom-sheet"
+            />
         </main>
     );
 }
@@ -78,7 +108,7 @@ const styles = {
         background:
             "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
         fontFamily: "'IBM Plex Sans', sans-serif",
-        padding: "32px 20px 56px",
+        padding: "32px 20px 80px",
         boxSizing: "border-box",
     },
     frame: {
@@ -149,6 +179,20 @@ const styles = {
         color: "#8FA6D9",
         fontSize: "12.5px",
         textDecoration: "underline",
+    },
+    dykWrapper: {
+        textAlign: "center",
+        marginBottom: "20px",
+    },
+    dykTriggerBtn: {
+        background: "rgba(185, 155, 91, 0.12)",
+        border: "1px solid #B99B5B",
+        borderRadius: "999px",
+        padding: "8px 18px",
+        color: "#D9C489",
+        fontSize: "13px",
+        fontWeight: 600,
+        cursor: "pointer",
     },
     continueLink: {
         display: "block",
