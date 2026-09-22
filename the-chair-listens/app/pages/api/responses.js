@@ -8,7 +8,7 @@ export default async function manage_responses(req, res) {
         });
     }
 
-    const answers = req.body.answers;
+    const { answers, script, location } = req.body;
 
     if (!Array.isArray(answers) || answers.length === 0) {
         return res.status(400).json({
@@ -17,7 +17,7 @@ export default async function manage_responses(req, res) {
         });
     }
 
-    const { error } = await supabase.from('responses').insert({ answers });
+    const { error } = await supabase.from('responses').insert({ answers , script, location});
     if (error) {
         return res.status(500).json({
             error: "Connection failed",
