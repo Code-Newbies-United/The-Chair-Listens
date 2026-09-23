@@ -52,7 +52,7 @@ export default function Home({ locationName = "Pretoria" }) {
             setDetectedLocation(place);
 
             // Record this visit for lifetime totals
-            fetch("/api/track-visit", {
+            fetch("/api/visitor-pins", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ city: place, lat: latitude, lng: longitude }),

@@ -27,7 +27,7 @@ export default function ChairJourneyMap() {
     }, []);
 
     useEffect(() => {
-        fetch("/api/recent-visitors")
+        fetch("/api/visitor-pins")
             .then((res) => res.json())
             .then((data) => setVisitors(data.visitors || []))
             .catch((err) => {
