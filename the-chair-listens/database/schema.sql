@@ -11,3 +11,30 @@ CREATE TABLE IF NOT EXISTS responses (
     answers JSONB
 );
 
+CREATE TABLE IF NOT EXISTS city_visit_totals (
+  city text primary key,
+  lat numeric,
+  lng numeric,
+  total_visits integer not null default 0,
+  first_seen timestamptz not null default now(),
+  last_seen timestamptz not null default now()
+);
+
+-- Atomic increment function: safe under concurrent visits because the
+-- INSERT ... ON CONFLICT ... DO UPDATE happens as a single database
+-- operation, not a separate read-then-write from application code.
+create or replace function increment_city_visit(
+  p_city text,
+  p_lat numeric,
+  p_lng numeric
+)
+returns void as $$
+begin
+  insert into city_visit_totals (city, lat, lng, total_visits, first_seen, last_seen)
+  values (p_city, p_lat, p_lng, 1, now(), now())
+  on conflict (city)
+  do update set
+    total_visits = city_visit_totals.total_visits + 1,
+    last_seen = now();
+end;
+$$ language plpgsql;
