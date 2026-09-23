@@ -6,8 +6,9 @@ export default async function handler(req, res) {
   }
 
   const { data, error } = await supabase
-    .from("consent")
-    .select("location_id");
+    .from("city_visit_totals")
+    .select("city, total_visits, first_seen, last_seen")
+    .order("total_visits", { ascending: false });
 
   if (error) {
     return res.status(500).json({
@@ -16,17 +17,5 @@ export default async function handler(req, res) {
     });
   }
 
-  // Tally how many times each location appears
-  const counts = {};
-  for (const row of data) {
-    const location = row.location_id || "Unknown";
-    counts[location] = (counts[location] || 0) + 1;
-  }
-
-  // Convert to an array and sort by total_visits descending
-  const totals = Object.entries(counts)
-    .map(([location_id, total_visits]) => ({ location_id, total_visits }))
-    .sort((a, b) => b.total_visits - a.total_visits);
-
-  res.status(200).json({ totals });
+  res.status(200).json({ totals: data });
 }

@@ -11,10 +11,13 @@ import { useRouter } from "next/router";
  * Continue is disabled until the POPIA consent checkbox is checked.
  * Swap POPIA_TERMS_URL below for the real link to the full notice.
  *
- * Location is now detected automatically via the browser's Geolocation
- * API, then reverse-geocoded to a place name using OpenStreetMap's
- * Nominatim service (free, no API key required). If the visitor denies
- * permission or geolocation fails, we fall back to the locationName prop.
+ * Location is detected automatically via the browser's Geolocation API,
+ * then reverse-geocoded to a place name using OpenStreetMap's Nominatim
+ * service (free, no API key required). If the visitor denies permission
+ * or geolocation fails, we fall back to the locationName prop.
+ *
+ * Each successful detection also records a visit against that city in
+ * city_visit_totals, via /api/track-visit, for lifetime reach reporting.
  */
 
 const POPIA_TERMS_URL = "/consent-terms";
@@ -45,7 +48,16 @@ export default function Home({ locationName = "Pretoria" }) {
             data?.address?.suburb ||
             null;
 
-          if (place) setDetectedLocation(place);
+          if (place) {
+            setDetectedLocation(place);
+
+            // Record this visit for lifetime totals
+            fetch("/api/track-visit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ city: place, lat: latitude, lng: longitude }),
+            }).catch((err) => console.error("Failed to track visit:", err));
+          }
         } catch (err) {
           console.error("Reverse geocoding failed:", err);
         }

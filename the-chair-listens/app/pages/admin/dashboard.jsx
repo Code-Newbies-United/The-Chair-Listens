@@ -176,9 +176,9 @@ export default function AdminDashboard() {
                     const max = Math.max(...visitTotals.map((r) => r.total_visits), 1);
                     const widthPct = Math.round((row.total_visits / max) * 100);
                     return (
-                        <div key={row.location_id} style={styles.breakdownRow}>
+                        <div key={row.city} style={styles.breakdownRow}>
                           <div style={styles.breakdownHeader}>
-                            <span style={styles.breakdownLabel}>{row.location_id}</span>
+                            <span style={styles.breakdownLabel}>{row.city}</span>
                             <span style={styles.breakdownCount}>{row.total_visits}</span>
                           </div>
                           <div style={styles.breakdownTrack}>
