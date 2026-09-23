@@ -16,6 +16,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const [visitTotals, setVisitTotals] = useState([]);
+  const [visitTotalsLoading, setVisitTotalsLoading] = useState(true);
+
   useEffect(() => {
     fetch("/api/stats")
         .then(async (res) => {
@@ -30,6 +33,22 @@ export default function AdminDashboard() {
           console.error("Failed to load dashboard stats:", err.message);
           setError(err.message);
         });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/visit-totals")
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.message || `HTTP ${res.status} Error`);
+          }
+          return data;
+        })
+        .then((data) => setVisitTotals(data.totals || []))
+        .catch((err) => {
+          console.error("Failed to load visit totals:", err.message);
+        })
+        .finally(() => setVisitTotalsLoading(false));
   }, []);
 
   async function handleLogout() {
@@ -143,6 +162,36 @@ export default function AdminDashboard() {
                 </section>
               </>
           )}
+
+          {/* Lifetime Totals by Location */}
+          <section style={styles.section}>
+            <h2 style={styles.sectionTitle}>Lifetime Totals by Location</h2>
+            {visitTotalsLoading ? (
+                <p style={styles.muted}>Loading totals...</p>
+            ) : visitTotals.length === 0 ? (
+                <p style={styles.muted}>No visits recorded yet.</p>
+            ) : (
+                <div style={styles.breakdownList}>
+                  {visitTotals.map((row) => {
+                    const max = Math.max(...visitTotals.map((r) => r.total_visits), 1);
+                    const widthPct = Math.round((row.total_visits / max) * 100);
+                    return (
+                        <div key={row.location_id} style={styles.breakdownRow}>
+                          <div style={styles.breakdownHeader}>
+                            <span style={styles.breakdownLabel}>{row.location_id}</span>
+                            <span style={styles.breakdownCount}>{row.total_visits}</span>
+                          </div>
+                          <div style={styles.breakdownTrack}>
+                            <div
+                                style={{ ...styles.breakdownFill, width: `${widthPct}%` }}
+                            />
+                          </div>
+                        </div>
+                    );
+                  })}
+                </div>
+            )}
+          </section>
 
           {/* Quick Links */}
           <section style={styles.section}>
