@@ -1,5 +1,29 @@
 // Destination: pages/api/admin-login.js
 import { createAdminSessionCookie } from "@/lib/adminsession";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
+
+export default async function handler(req, res) {
+    if (req.method !== "POST") {
+        return res.status(405).json({
+            error: "Method not allowed"
+        });
+    }
+}
+
+const ip = getClientIp(req);
+
+const limitResult = await rateLimit(
+    "admin-login",
+    ip,
+    3,
+    15 * 60
+);
+
+if (!limitResult.allowed) {
+    return res.status(429).json({
+        error: "Too many attempts. Please try again after 15 minutes"
+    });
+}
 
 export default async function handler(req, res) {
     if (req.method !== "POST") {

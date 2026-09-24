@@ -1,5 +1,22 @@
 // pages/api/session-reflection.js
 import Groq from "groq-sdk";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
+
+const ip = getClientIp(req);
+
+const limitedResult = await rateLimit(
+  "session-reflection",
+  ip,
+  5,
+  60
+);
+
+if (!limitedResult.allowed) {
+  return res.status(429).json({
+    error: "Too many requests. Please try again later"
+  });
+}
+
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,

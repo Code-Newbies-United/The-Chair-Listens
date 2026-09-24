@@ -2,6 +2,22 @@
 import formidable from "formidable";
 import fs from "fs";
 import Groq from "groq-sdk";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
+
+const ip = getClientIp(req);
+
+const limitResult = await rateLimit(
+  "transcribe",
+  ip,
+  5,
+  60
+);
+
+if (!limitResult.allowed) {
+  return res.status(429).json({
+    error: "Too many transcription requests. Please try again later."
+  });
+}
 
 export const config = {
   api: {

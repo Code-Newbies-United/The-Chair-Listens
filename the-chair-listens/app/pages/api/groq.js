@@ -1,4 +1,23 @@
 // Destination: pages/api/groq.js
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
+  }
+
+  const ip = getClientIp(req);
+
+  const limitResult = await rateLimit("grog", ip, 10, 60);
+
+  if (!limitResult.allowed){
+    return res.status(429).json({
+      error : "Too many requests. Please try again later"
+    });
+  }
+}
 
 const SYSTEM_PROMPTS = {
   men_mental_health:
