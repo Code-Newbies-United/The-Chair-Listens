@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS questions (
 
 CREATE TABLE IF NOT EXISTS responses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    question_id BIGINT REFERENCES questions(id),
+    question_id UUID REFERENCES questions(id),
     answers JSONB NOT NULL,
     script TEXT,
     location TEXT,
