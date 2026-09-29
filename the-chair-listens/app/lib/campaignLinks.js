@@ -10,4 +10,5 @@ export const LINKS = {
     linkedin: "https://www.linkedin.com/company/factorof10/about/", // Factor of Ten's LinkedIn page URL
     facebook: "https://www.facebook.com/profile.php?id=61580101481054", // Factor of Ten's Facebook page URL
     shareUrl: "https://the-chair-listens.vercel.app", // the public URL being shared
+    whatsapp: "https://wa.me/27630282393", // Factor of Ten's WhatsApp channel 
 };
