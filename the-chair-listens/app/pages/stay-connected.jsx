@@ -28,6 +28,14 @@ function FacebookIcon() {
     );
 }
 
+function WhatsAppIcon(){
+    return (
+         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.27-1.38a9.9 9.9 0 0 0 4.77 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm5.77 14.04c-.24.68-1.4 1.3-1.93 1.38-.5.08-1.12.11-1.81-.11-.42-.13-.95-.31-1.64-.6-2.88-1.24-4.76-4.13-4.9-4.32-.14-.19-1.17-1.56-1.17-2.97s.73-2.11 1-2.4c.26-.29.57-.36.76-.36.19 0 .38 0 .55.01.18.01.41-.07.64.49.24.57.81 1.98.88 2.12.07.15.12.32.02.51-.1.19-.15.31-.29.48-.14.17-.3.37-.43.5-.14.14-.29.3-.13.58.17.29.75 1.24 1.61 2 1.11.99 2.04 1.3 2.33 1.44.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.64-.14.26.1 1.65.78 1.93.92.29.14.48.22.55.34.07.13.07.72-.17 1.4z"/>
+        </svg>
+    );
+}
+
 export default function StayConnected() {
     const [shareFeedback, setShareFeedback] = useState("");
 
@@ -122,6 +130,16 @@ export default function StayConnected() {
                         >
                             <LinkedInIcon />
                         </a>
+
+                        <a
+                            href={LINKS.whatsapp}
+                            aria-label="Factor of Ten on WhatsApp"
+                            className="clisten-social-icon"
+                            style={styles.iconCircle}
+                        >
+                            <WhatsAppIcon />
+                        </a>
+
                     </div>
 
                     <button
