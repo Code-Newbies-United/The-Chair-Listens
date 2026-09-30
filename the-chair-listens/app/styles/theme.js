@@ -17,6 +17,7 @@ export const theme = {
         gold: "#B99B5B", //main CTAs/buttons
         goldLight: "#D9C489", //links, kicker, badges
         lime: "#8DCF94", //tags, highlights, location dots
+        goldBorder: "rgba(185, 155, 91, 0.3)", // soft gold bolrder for highlight moments (thank-you card, icon ring)
     },
 
     status: {

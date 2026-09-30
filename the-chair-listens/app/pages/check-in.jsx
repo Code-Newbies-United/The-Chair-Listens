@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { theme } from "@/styles/theme";
 
 const MOOD_OPTIONS = [
   {
@@ -145,7 +146,8 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     background:
-      "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+      // "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
+      'radial-gradient(120% 60% at 50% 0%, ${theme.background.gradientStart} 0%, ${theme.background.gradientMid1} 40%, ${theme.background.gradientMid2} 75%, ${theme.background.gradientEnd} 100%',
     fontFamily: "'IBM Plex Sans', sans-serif",
     padding: "32px 20px",
     boxSizing: "border-box",
@@ -167,7 +169,8 @@ const styles = {
   stepBadge: {
     fontSize: "12px",
     fontWeight: 600,
-    color: "#B99B5B",
+    // color: "#B99B5B",
+    color: theme.accent.gold,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
     marginBottom: "8px",
@@ -175,13 +178,15 @@ const styles = {
   headline: {
     fontSize: "26px",
     fontWeight: 700,
-    color: "#F5F6FA",
+    // color: "#F5F6FA",
+    color: theme.text.primary,
     margin: "0 0 10px 0",
     lineHeight: 1.25,
   },
   subheadline: {
     fontSize: "14px",
-    color: "#AEB8D6",
+    // color: "#AEB8D6",
+    color: theme.text.secondary,
     margin: "0 0 24px 0",
     lineHeight: 1.5,
   },
@@ -193,8 +198,8 @@ const styles = {
   },
   moodCard: {
     appearance: "none",
-    backgroundColor: "rgba(15, 30, 74, 0.65)",
-    border: "1.5px solid rgba(174, 184, 214, 0.2)",
+    backgroundColor: theme.surface.card,
+    border: "1.5px solid ${theme.border.subtle}",
     borderRadius: "14px",
     padding: "16px 20px",
     display: "flex",
@@ -215,17 +220,19 @@ const styles = {
   moodLabel: {
     fontSize: "16px",
     fontWeight: 600,
-    color: "#F5F6FA",
+    // color: "#F5F6FA",
+    color: theme.text.primary,
     marginBottom: "2px",
   },
   moodSubtext: {
     fontSize: "13px",
-    color: "#AEB8D6",
+    // color: "#AEB8D6",
+    color: theme.text.secondary,
   },
   thankYouBlock: {
     width: "100%",
-    backgroundColor: "rgba(15, 30, 74, 0.6)",
-    border: "1.5px solid rgba(185, 155, 91, 0.3)",
+    backgroundColor: theme.surface.card,
+    border: "1.5px solid ${theme.accent.goldBorder}",
     borderRadius: "20px",
     padding: "32px 24px",
     display: "flex",
@@ -246,14 +253,14 @@ const styles = {
   },
   thankYouBody: {
     fontSize: "15px",
-    color: "#AEB8D6",
+    color: theme.text.secondary,
     lineHeight: 1.6,
     margin: "8px 0 24px 0",
   },
   divider: {
     width: "60px",
     height: "1px",
-    backgroundColor: "rgba(174, 184, 214, 0.2)",
+    backgroundColor: theme.border.subtle,
     marginBottom: "24px",
   },
   cta: {
