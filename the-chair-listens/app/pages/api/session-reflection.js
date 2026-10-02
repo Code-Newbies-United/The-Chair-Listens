@@ -2,22 +2,6 @@
 import Groq from "groq-sdk";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 
-const ip = getClientIp(req);
-
-const limitedResult = await rateLimit(
-  "session-reflection",
-  ip,
-  5,
-  60
-);
-
-if (!limitedResult.allowed) {
-  return res.status(429).json({
-    error: "Too many requests. Please try again later"
-  });
-}
-
-
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
@@ -25,6 +9,13 @@ const groq = new Groq({
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
+  }
+
+  // Rate limit INSIDE the handler
+  const ip = getClientIp(req);
+  const limit = await rateLimit("session-reflection", ip, 5, 60);
+  if (!limit.allowed) {
+    return res.status(429).json({ message: "Too many requests. Please try again later." });
   }
 
   const { script, answers } = req.body;

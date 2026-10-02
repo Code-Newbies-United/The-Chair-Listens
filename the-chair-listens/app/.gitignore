@@ -1,2 +1,9 @@
-.vercel
+# Environment files: ignore every variant (env.local, .env, .env.local, .env.production ...)
 .env*
+env.local
+.env.local
+env.*.local
+!.env.example
+
+# Vercel CLI folder (holds project tokens)
+.vercel

@@ -1,24 +1,10 @@
-// Destination: pages/api/transcribe.js
+// pages/api/transcribe.js
 import formidable from "formidable";
 import fs from "fs";
 import Groq from "groq-sdk";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 
-const ip = getClientIp(req);
-
-const limitResult = await rateLimit(
-  "transcribe",
-  ip,
-  5,
-  60
-);
-
-if (!limitResult.allowed) {
-  return res.status(429).json({
-    error: "Too many transcription requests. Please try again later."
-  });
-}
-
+// Tell Next.js not to parse the body: formidable needs the raw upload.
 export const config = {
   api: {
     bodyParser: false,
@@ -34,11 +20,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
+  // Rate limit INSIDE the handler
+  const ip = getClientIp(req);
+  const limit = await rateLimit("transcribe", ip, 5, 60);
+  if (!limit.allowed) {
+    return res.status(429).json({ message: "Too many transcription requests. Please try again later." });
+  }
+
   const form = formidable({});
+  let audioFile;
 
   try {
     const [fields, files] = await form.parse(req);
-    const audioFile = files.audio?.[0];
+    audioFile = files.audio?.[0];
 
     if (!audioFile) {
       return res.status(400).json({ message: "No audio file uploaded" });
@@ -49,13 +43,18 @@ export default async function handler(req, res) {
     const transcription = await groq.audio.transcriptions.create({
       file: fileStream,
       model: "whisper-large-v3",
-      // language: "en", // removed — auto-detect is more accurate for a multilingual audience.
-      // Re-add this line with a specific language code ONLY if English-only is a deliberate scope decision.
+      // language: "en", // removed: auto-detect is more accurate for a multilingual audience.
+      // Re-add with a specific language code ONLY if English-only is a deliberate scope decision.
     });
 
     return res.status(200).json({ text: transcription.text });
   } catch (error) {
     console.error("Transcription Handler Error:", error);
     return res.status(500).json({ message: "Failed to transcribe audio." });
+  } finally {
+    // Delete the temporary upload (formidable leaves it on disk)
+    if (audioFile?.filepath) {
+      fs.unlink(audioFile.filepath, () => {});
+    }
   }
 }

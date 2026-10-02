@@ -1,23 +1,5 @@
-// Destination: pages/api/groq.js
+// pages/api/groq.js
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
-
-  const ip = getClientIp(req);
-
-  const limitResult = await rateLimit("grog", ip, 10, 60);
-
-  if (!limitResult.allowed){
-    return res.status(429).json({
-      error : "Too many requests. Please try again later"
-    });
-  }
-}
 
 const SYSTEM_PROMPTS = {
   men_mental_health:
@@ -29,18 +11,27 @@ const SYSTEM_PROMPTS = {
 };
 
 export default async function handler(req, res) {
+  // 1. Method check
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { script, question, answer } = req.body;
+  // 2. Rate limit (INSIDE the handler, so req/res exist)
+  const ip = getClientIp(req);
+  const limit = await rateLimit("groq", ip, 10, 60); // was misspelled "grog"
+  if (!limit.allowed) {
+    return res.status(429).json({ message: "Too many requests. Please try again later." });
+  }
 
+  // 3. Validate input
+  const { script, question, answer } = req.body;
   if (typeof answer !== "string" || !answer.trim()) {
     return res.status(400).json({ message: "answer must be a non-empty string" });
   }
 
   const systemPrompt = SYSTEM_PROMPTS[script] || SYSTEM_PROMPTS.men_mental_health;
 
+  // 4. Call Groq
   try {
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -64,12 +55,11 @@ export default async function handler(req, res) {
     if (!groqRes.ok) {
       const errorBody = await groqRes.text();
       console.error("Groq API error:", groqRes.status, errorBody);
-      return res.status(502).json({ message: "Groq API request failed", detail: errorBody });
+      return res.status(502).json({ message: "Groq API request failed" });
     }
 
     const data = await groqRes.json();
     const text = data.choices?.[0]?.message?.content ?? "";
-
     return res.status(200).json({ text });
   } catch (err) {
     console.error("Unexpected error calling Groq:", err);
