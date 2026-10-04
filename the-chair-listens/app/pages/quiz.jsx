@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { useRequireSession } from "@/lib/session";
 
 /**
  * The Chair Listens — Prostate & Mental Health Knowledge Check Quiz
@@ -8,6 +9,7 @@ import { useRouter } from "next/router";
 
 export default function QuizPage({ locationName = "Pretoria" }) {
   const router = useRouter();
+  const sessionReady = useRequireSession(); // redirects to / if no consent session
 
   const [questions, setQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
@@ -58,6 +60,8 @@ export default function QuizPage({ locationName = "Pretoria" }) {
       setIsFinished(true);
     }
   }
+
+  if (!sessionReady) return null;
 
   if (questionsLoading) {
     return (

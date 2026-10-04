@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
+import { useRequireSession, getSessionId, clearSessionId } from "@/lib/session";
 
 const SCRIPT_TITLES = {
   men_mental_health: "For Men",
@@ -10,6 +11,7 @@ const SCRIPT_TITLES = {
 
 export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
+  const sessionReady = useRequireSession(); // redirects to / if no consent session
   const { script, location } = router.query;
 
   // Fallbacks for initial render prior to router hydration
@@ -153,11 +155,24 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
   async function finishSession(answers) {
     try {
-      await fetch("/api/responses", {
+      const res = await fetch("/api/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, script: activeScriptKey, location: displayLocation }),
+        body: JSON.stringify({
+          answers,
+          script: activeScriptKey,
+          location: displayLocation,
+          session_id: getSessionId(),
+        }),
       });
+
+      // 403 = the server has no valid consent for this session (missing or expired).
+      // Send the person back to give consent again. (FIX-10 will add proper retry.)
+      if (res.status === 403) {
+        clearSessionId();
+        router.replace("/?consent=required");
+        return;
+      }
     } catch (err) {
       console.error("Failed to save responses:", err);
     }
@@ -318,6 +333,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     setIsPlaying(true);
     synth.speak(utterance);
   }
+
+  if (!sessionReady) return null;
 
   if (questionsLoading) {
     return (

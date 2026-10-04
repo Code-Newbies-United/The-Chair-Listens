@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { useRequireSession } from "@/lib/session";
 
 /**
  * The Chair Listens — Select Your Path
@@ -36,6 +37,7 @@ const PATHS = [
 
 export default function SelectScript({ locationName = "Pretoria" }) {
   const router = useRouter();
+  const sessionReady = useRequireSession(); // redirects to / if no consent session
   const { location } = router.query;
   const displayLocation = location || locationName;
 
@@ -52,6 +54,8 @@ export default function SelectScript({ locationName = "Pretoria" }) {
       });
     }
   }
+
+  if (!sessionReady) return null;
 
   return (
       <main style={styles.page}>

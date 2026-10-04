@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
+import { CONSENT_VERSION } from "@/lib/consentVersion";
+import { setSessionId } from "@/lib/session";
 
 /**
  * The Chair Listens — Home / landing + consent
@@ -26,6 +28,8 @@ const POPIA_TERMS_URL = "/consent-terms";
 export default function Home({ locationName = "Pretoria" }) {
   const router = useRouter();
   const [consented, setConsented] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [consentError, setConsentError] = useState(null);
   const [detectedLocation, setDetectedLocation] = useState(null);
 
   // Detect the visitor's location on page load
@@ -64,14 +68,40 @@ export default function Home({ locationName = "Pretoria" }) {
   const displayLocation = detectedLocation || locationName;
 
   async function handleContinue() {
-    if (!consented) return;
+    if (!consented || submitting) return;
+
+    setSubmitting(true);
+    setConsentError(null);
 
     try {
-      await fetch("/api/consent", {
+      // The server records the consent and gives back a session ID.
+      const res = await fetch("/api/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location_id: displayLocation }),
+        body: JSON.stringify({
+          location_id: displayLocation,
+          consent_version: CONSENT_VERSION,
+        }),
       });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.sessionId) {
+        setConsentError(
+          res.status === 409
+            ? "The privacy terms have been updated. Please refresh this page and read them again."
+            : "We couldn't record your consent. Please check your connection and try again."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      if (!setSessionId(data.sessionId)) {
+        setConsentError(
+          "Your browser is blocking the storage this page needs. If you're in private browsing, please switch to a normal tab and try again."
+        );
+        setSubmitting(false);
+        return;
+      }
 
       router.push({
         pathname: "/check-in",
@@ -79,10 +109,8 @@ export default function Home({ locationName = "Pretoria" }) {
       });
     } catch (error) {
       console.error(error);
-      router.push({
-        pathname: "/check-in",
-        query: { location: displayLocation },
-      });
+      setConsentError("We couldn't record your consent. Please check your connection and try again.");
+      setSubmitting(false);
     }
   }
 
@@ -221,16 +249,27 @@ export default function Home({ locationName = "Pretoria" }) {
               type="button"
               className="clisten-continue"
               onClick={handleContinue}
-              disabled={!consented}
-              aria-disabled={!consented}
+              disabled={!consented || submitting}
+              aria-disabled={!consented || submitting}
               style={{
                 ...styles.cta,
                 opacity: consented ? 1 : 0.45,
                 cursor: consented ? "pointer" : "not-allowed",
               }}
           >
-            Continue
+            {submitting ? "Please wait..." : "Continue"}
           </button>
+
+          {consentError && (
+            <p role="alert" style={styles.consentError}>
+              {consentError}
+            </p>
+          )}
+          {!consentError && router.query.consent === "required" && (
+            <p role="status" style={styles.consentNotice}>
+              Please confirm your consent to continue.
+            </p>
+          )}
 
           <p style={styles.footnote}>
             Type it out, or just say it out loud.
@@ -248,6 +287,20 @@ export default function Home({ locationName = "Pretoria" }) {
 
 
 const styles = {
+  consentError: {
+    color: "#FFB4B4",
+    fontSize: "0.9rem",
+    lineHeight: 1.5,
+    margin: "12px 0 0",
+    textAlign: "center",
+  },
+  consentNotice: {
+    color: "#C9D2EC",
+    fontSize: "0.9rem",
+    lineHeight: 1.5,
+    margin: "12px 0 0",
+    textAlign: "center",
+  },
   page: {
     minHeight: "100vh",
     width: "100%",

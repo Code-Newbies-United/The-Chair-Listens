@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { useRequireSession } from "@/lib/session";
 
 const MOOD_OPTIONS = [
   {
@@ -34,6 +35,7 @@ const MOOD_OPTIONS = [
 
 export default function CheckInPage() {
   const router = useRouter();
+  const sessionReady = useRequireSession(); // redirects to / if no consent session
   const [selectedMood, setSelectedMood] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -53,6 +55,8 @@ export default function CheckInPage() {
       query: { location: router.query.location },
     });
   }
+
+  if (!sessionReady) return null;
 
   return (
     <main style={styles.page}>
