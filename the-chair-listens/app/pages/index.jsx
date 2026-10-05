@@ -63,7 +63,7 @@ export default function Home({ locationName = "Pretoria" }) {
         }
       },
       (err) => {
-        console.error("Geolocation permission denied or unavailable:", err);
+        console.error("Geolocation error code:", err.code, "message:", err.message);
       }
     );
   }, []);
