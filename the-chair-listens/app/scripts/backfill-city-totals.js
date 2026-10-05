@@ -1,45 +1,13 @@
-// scripts/backfill-city-totals.js
-//
-// Run once with: node scripts/backfill-city-totals.js
-// Safe to re-run: totals only ever go up, never down (see backfill_city_visit
-// in the database), so running this again after further name-cleanup is fine.
-//
-// Requires SUPABASE_SERVICE_ROLE_KEY in your environment (loaded from
-// .env.local by Next.js normally, but a standalone script needs it loaded
-// manually — see the dotenv import below).
-
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { createClient } from "@supabase/supabase-js";
+import { normalizeCity } from "../lib/normalizeCity.js";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
-
-// Known free-text variants seen in consent.location_id, mapped to a single
-// canonical city name. Expand this as more variants turn up during review.
-const CITY_ALIASES = {
-  "joburg": "Johannesburg",
-  "jhb": "Johannesburg",
-  "johannesburg": "Johannesburg",
-  "pta": "Pretoria",
-  "pretoria": "Pretoria",
-  "cpt": "Cape Town",
-  "cape town": "Cape Town",
-  "dbn": "Durban",
-  "durban": "Durban",
-};
-
-function normalizeCity(raw) {
-  if (!raw) return null;
-  const cleaned = raw.trim().toLowerCase();
-  if (!cleaned) return null;
-  if (CITY_ALIASES[cleaned]) return CITY_ALIASES[cleaned];
-  // Not a known alias — title-case it as a best-effort fallback
-  return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 async function geocodeCity(city) {
   const res = await fetch(
