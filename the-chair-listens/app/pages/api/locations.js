@@ -1,30 +1,23 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /**
  * GET /api/locations
  * Returns every chair location (active and past) for ChairJourneyMap.
  *
  * Reads from the same Supabase "locations" table that
- * pages/api/admin/set-location.js writes to — this is what wires the
- * admin's "set location" action through to the public journey map.
+ * pages/api/set-location.js writes to.
  *
- * Requires a public SELECT policy in Supabase, since this uses the
- * anon-key client (safe here — it's read-only, non-sensitive data):
- *
- *   alter table locations enable row level security;
- *   create policy "Public can read locations"
- *     on locations for select
- *     using (true);
- *
- * (Your existing "no anonymous insert" restriction stays as-is — this
- * only adds read access, not write access.)
+ * Uses the server-side (service role) client. The database is locked so the
+ * public key can't read ANY table directly (see 003_enable_rls.sql); all data
+ * reaches the browser through routes like this one, which choose exactly which
+ * columns to return. Only explicit, non-sensitive columns are selected below.
  */
 export default async function handler(req, res) {
     if (req.method !== "GET") {
         return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
         .from("locations")
         .select("id, name, lat, lng, active, visited_at")
         .order("visited_at", { ascending: false });

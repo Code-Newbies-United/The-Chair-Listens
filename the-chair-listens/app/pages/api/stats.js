@@ -1,5 +1,5 @@
 // Destination: pages/api/stats.js
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin"; // server-side key: reads responses, which the public key must never be able to read
 import { verifyAdminSession } from "@/lib/adminsession";
 
 const SCRIPT_COLUMN = "script";
