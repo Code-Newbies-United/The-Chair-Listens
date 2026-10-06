@@ -1,4 +1,4 @@
-import { normalizeCity } from "./normalizeCity";
+import { normalizeCity } from "../../../lib/normalizeCity";
 
 describe("normalizeCity", () => {
   test("returns null for empty or missing input", () => {
