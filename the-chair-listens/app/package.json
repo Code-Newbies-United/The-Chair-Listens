@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -28,8 +29,14 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.6",
+    "@babel/preset-env": "^8.0.6",
     "@tailwindcss/postcss": "^4.3.3",
     "autoprefixer": "^10.5.5",
+    "babel-jest": "^30.5.2",
+    "dotenv": "^18.0.3",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3"
   }
