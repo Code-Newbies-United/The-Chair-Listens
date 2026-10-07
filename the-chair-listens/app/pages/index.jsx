@@ -347,4 +347,16 @@ const styles = {
     fontSize: "13px",
     color: "#7E88AC",
   },
+  journeyDivider: {
+    width: "100%",
+    maxWidth: "320px",
+    height: "1px",
+    backgroundColor: "rgba(174, 184, 214, 0.15)",
+    marginTop: "40px",
+    marginBottom: "32px",
+  },
+  journeySection: {
+    width: "100%",
+    textAlign: "left",
+  },
 };

@@ -112,9 +112,9 @@ export default function SetLocation() {
                         {locating ? "Getting your location..." : "📍 Use My Current Location"}
                     </button>
 
-                    {coords && (
+                    {coords && coords.lat != null && coords.lng != null && (
                         <p style={styles.coordsPreview}>
-                            Coordinates set: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                            Coordinates set: {Number(coords.lat).toFixed(5)}, {Number(coords.lng).toFixed(5)}
                         </p>
                     )}
 

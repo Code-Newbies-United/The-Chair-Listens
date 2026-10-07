@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { requireAdminSSR } from "@/lib/requireAdminSSR";
+import DidYouKnowModal from "@/components/DidYouKnowModal";
 
 export const getServerSideProps = requireAdminSSR();
 
@@ -15,6 +16,11 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Tab State for Analytics & Query Helper
+  const [activeTab, setActiveTab] = useState("overview");
+  const [copiedKey, setCopiedKey] = useState(null);
 
   const [visitTotals, setVisitTotals] = useState([]);
   const [visitTotalsLoading, setVisitTotalsLoading] = useState(true);
@@ -32,7 +38,8 @@ export default function AdminDashboard() {
         .catch((err) => {
           console.error("Failed to load dashboard stats:", err.message);
           setError(err.message);
-        });
+        })
+        .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -56,6 +63,41 @@ export default function AdminDashboard() {
     window.location.href = "/admin/login";
   }
 
+  function copyToClipboard(text, key) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
+  }
+
+  const activeLoc = stats?.activeLocationName || "Active Location";
+
+  // Dynamic Queries tailored to current active location
+  const queries = {
+    supabaseJs: `// Fetch all responses for active location
+const { data, error } = await supabase
+  .from('responses')
+  .select('id, script_type, response_type, text_content, audio_url, created_at')
+  .eq('location_name', '${activeLoc}')
+  .order('created_at', { ascending: false });`,
+
+    sqlAggregate: `-- Group responses by script category
+SELECT 
+  location_name,
+  script_type,
+  COUNT(*) AS total_responses
+FROM responses
+WHERE location_name = '${activeLoc}'
+GROUP BY location_name, script_type;`,
+
+    sqlToday: `-- Responses logged today across all sites
+SELECT * 
+FROM responses
+WHERE created_at >= CURRENT_DATE
+ORDER BY created_at DESC;`,
+  };
+
   return (
       <main style={styles.page}>
         <style>{`
@@ -66,6 +108,18 @@ export default function AdminDashboard() {
         .clisten-link-card:hover {
           transform: translateY(-2px);
           border-color: #B99B5B !important;
+        }
+        .analytics-tab {
+          transition: all 150ms ease;
+        }
+        .analytics-tab:hover {
+          color: #F5F6FA !important;
+        }
+        .copy-btn {
+          transition: background 150ms ease;
+        }
+        .copy-btn:hover {
+          background: #D9C489 !important;
         }
       `}</style>
 
@@ -110,43 +164,150 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Breakdown by Category */}
+                {/* ANALYTICS DISPLAY SECTION */}
                 <section style={styles.section}>
-                  <h2 style={styles.sectionTitle}>Responses by Category</h2>
-                  <div style={styles.breakdownList}>
-                    {Object.entries(stats.breakdown).map(([key, count]) => {
-                      const max = Math.max(...Object.values(stats.breakdown), 1);
-                      const widthPct = Math.round((count / max) * 100);
-                      return (
-                          <div key={key} style={styles.breakdownRow}>
-                            <div style={styles.breakdownHeader}>
-                        <span style={styles.breakdownLabel}>
-                          {SCRIPT_LABELS[key] || key}
-                        </span>
-                              <span style={styles.breakdownCount}>{count}</span>
-                            </div>
-                            <div style={styles.breakdownTrack}>
-                              <div
-                                  style={{ ...styles.breakdownFill, width: `${widthPct}%` }}
-                              />
-                            </div>
-                          </div>
-                      );
-                    })}
+                  <div style={styles.analyticsHeader}>
+                    <h2 style={styles.sectionTitle}>Campaign Analytics</h2>
+
+                    {/* Sub-Tabs */}
+                    <div style={styles.tabBar}>
+                      <button
+                          type="button"
+                          className="analytics-tab"
+                          onClick={() => setActiveTab("overview")}
+                          style={{
+                            ...styles.tab,
+                            ...(activeTab === "overview" ? styles.activeTab : {}),
+                          }}
+                      >
+                        Overview
+                      </button>
+                      <button
+                          type="button"
+                          className="analytics-tab"
+                          onClick={() => setActiveTab("scripts")}
+                          style={{
+                            ...styles.tab,
+                            ...(activeTab === "scripts" ? styles.activeTab : {}),
+                          }}
+                      >
+                        Select Scripts
+                      </button>
+                    </div>
                   </div>
+
+                  {activeTab === "overview" ? (
+                      <>
+                        {/* Category Breakdown */}
+                        {stats.breakdown && Object.keys(stats.breakdown).length > 0 && (
+                            <div style={styles.cardBox}>
+                              <h3 style={styles.cardSubtitle}>Responses by Category</h3>
+                              <div style={styles.breakdownList}>
+                                {Object.entries(stats.breakdown).map(([key, count]) => {
+                                  const max = Math.max(
+                                      ...Object.values(stats.breakdown),
+                                      1
+                                  );
+                                  const widthPct = Math.round((count / max) * 100);
+                                  return (
+                                      <div key={key} style={styles.breakdownRow}>
+                                        <div style={styles.breakdownHeader}>
+                                <span style={styles.breakdownLabel}>
+                                  {SCRIPT_LABELS[key] || key}
+                                </span>
+                                          <span style={styles.breakdownCount}>
+                                  {count}
+                                </span>
+                                        </div>
+                                        <div style={styles.breakdownTrack}>
+                                          <div
+                                              style={{
+                                                ...styles.breakdownFill,
+                                                width: `${widthPct}%`,
+                                              }}
+                                          />
+                                        </div>
+                                      </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                        )}
+                      </>
+                  ) : (
+                      /* Select Queries Tab */
+                      <div style={styles.cardBox}>
+                        <h3 style={styles.cardSubtitle}>Database Select Queries</h3>
+                        <p style={styles.mutedSub}>
+                          Copy queries directly to run in your Supabase SQL Editor or Next.js backend API routes.
+                        </p>
+
+                        <div style={styles.scriptGroup}>
+                          {/* Supabase JS Query */}
+                          <div style={styles.scriptBox}>
+                            <div style={styles.scriptBoxHeader}>
+                              <span style={styles.scriptLabel}>Supabase Client Query (JS)</span>
+                              <button
+                                  type="button"
+                                  className="copy-btn"
+                                  onClick={() => copyToClipboard(queries.supabaseJs, "js")}
+                                  style={styles.copyButton}
+                              >
+                                {copiedKey === "js" ? "Copied!" : "Copy JS"}
+                              </button>
+                            </div>
+                            <pre style={styles.codeBlock}><code>{queries.supabaseJs}</code></pre>
+                          </div>
+
+                          {/* SQL Aggregates */}
+                          <div style={styles.scriptBox}>
+                            <div style={styles.scriptBoxHeader}>
+                              <span style={styles.scriptLabel}>SQL Category Aggregates</span>
+                              <button
+                                  type="button"
+                                  className="copy-btn"
+                                  onClick={() => copyToClipboard(queries.sqlAggregate, "sqlAgg")}
+                                  style={styles.copyButton}
+                              >
+                                {copiedKey === "sqlAgg" ? "Copied!" : "Copy SQL"}
+                              </button>
+                            </div>
+                            <pre style={styles.codeBlock}><code>{queries.sqlAggregate}</code></pre>
+                          </div>
+
+                          {/* SQL Today Query */}
+                          <div style={styles.scriptBox}>
+                            <div style={styles.scriptBoxHeader}>
+                              <span style={styles.scriptLabel}>SQL Today's Submissions</span>
+                              <button
+                                  type="button"
+                                  className="copy-btn"
+                                  onClick={() => copyToClipboard(queries.sqlToday, "sqlToday")}
+                                  style={styles.copyButton}
+                              >
+                                {copiedKey === "sqlToday" ? "Copied!" : "Copy SQL"}
+                              </button>
+                            </div>
+                            <pre style={styles.codeBlock}><code>{queries.sqlToday}</code></pre>
+                          </div>
+                        </div>
+                      </div>
+                  )}
                 </section>
 
                 {/* Recent Locations */}
                 <section style={styles.section}>
                   <h2 style={styles.sectionTitle}>Recent Locations</h2>
-                  {stats.recentLocations.length === 0 ? (
+                  {!stats.recentLocations || stats.recentLocations.length === 0 ? (
                       <p style={styles.muted}>No locations pinned yet.</p>
                   ) : (
                       <ul style={styles.locationList}>
                         {stats.recentLocations.map((loc, i) => (
                             <li key={i} style={styles.locationItem}>
                       <span style={styles.locationName}>
-                        {loc.active && <span style={styles.liveDotSmall} aria-hidden="true" />}
+                        {loc.active && (
+                            <span style={styles.liveDotSmall} aria-hidden="true" />
+                        )}
                         {loc.name}
                       </span>
                               <span style={styles.locationDate}>
@@ -194,17 +355,21 @@ export default function AdminDashboard() {
           </section>
 
           {/* Quick Links */}
+          {/* Quick Links / Manage Section */}
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Manage</h2>
             <div style={styles.linkGrid}>
               <Link href="/admin/set-location" className="clisten-link-card" style={styles.linkCard}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pinned"><path d="M18 8c0 3.613-3.869 7.429-5.393 8.795a1 1 0 0 1-1.214 0C9.87 15.429 6 11.613 6 8a6 6 0 0 1 12 0"/><circle cx="12" cy="8" r="2"/><path d="M8.714 14h-3.71a1 1 0 0 0-.948.683l-2.004 6A1 1 0 0 0 3 22h18a1 1 0 0 0 .948-1.316l-2-6a1 1 0 0 0-.949-.684h-3.712"/></svg> Pin New Location
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: "middle" }}><path d="M18 8c0 3.613-3.869 7.429-5.393 8.795a1 1 0 0 1-1.214 0C9.87 15.429 6 11.613 6 8a6 6 0 0 1 12 0"/><circle cx="12" cy="8" r="2"/><path d="M8.714 14h-3.71a1 1 0 0 0-.948.683l-2.004 6A1 1 0 0 0 3 22h18a1 1 0 0 0 .948-1.316l-2-6a1 1 0 0 0-.949-.684h-3.712"/></svg>
+                Pin New Location
               </Link>
               <Link href="/admin/map" className="clisten-link-card" style={styles.linkCard}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg> View Full Map
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: "middle" }}><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>
+                View Full Map
               </Link>
               <Link href="/admin/questions" className="clisten-link-card" style={styles.linkCard}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg> Manage Questions
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: "middle" }}><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+                Manage Questions
               </Link>
             </div>
           </section>
@@ -279,12 +444,13 @@ const styles = {
     cursor: "pointer",
   },
   muted: { color: "#7E88AC", fontSize: "13.5px" },
+  mutedSub: { color: "#7E88AC", fontSize: "12px", margin: "0 0 16px 0" },
   errorText: { color: "#FF6B6B", fontSize: "13.5px" },
   metricGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "12px",
-    marginBottom: "32px",
+    marginBottom: "28px",
   },
   metricCard: {
     backgroundColor: "rgba(15, 30, 74, 0.6)",
@@ -306,13 +472,53 @@ const styles = {
     color: "#AEB8D6",
   },
   section: { marginBottom: "32px" },
+  analyticsHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "14px",
+  },
   sectionTitle: {
     fontSize: "14px",
     fontWeight: 700,
     color: "#D9C489",
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-    marginBottom: "14px",
+    margin: 0,
+  },
+  tabBar: {
+    display: "flex",
+    background: "rgba(10, 23, 53, 0.8)",
+    padding: "3px",
+    borderRadius: "999px",
+    border: "1px solid rgba(174, 184, 214, 0.2)",
+  },
+  tab: {
+    background: "transparent",
+    border: "none",
+    color: "#AEB8D6",
+    padding: "4px 12px",
+    fontSize: "12px",
+    fontWeight: "500",
+    borderRadius: "999px",
+    cursor: "pointer",
+  },
+  activeTab: {
+    background: "#B99B5B",
+    color: "#081128",
+    fontWeight: "700",
+  },
+  cardBox: {
+    backgroundColor: "rgba(15, 30, 74, 0.4)",
+    border: "1px solid rgba(174, 184, 214, 0.15)",
+    borderRadius: "16px",
+    padding: "20px",
+  },
+  cardSubtitle: {
+    fontSize: "15px",
+    fontWeight: 600,
+    color: "#F5F6FA",
+    margin: "0 0 12px 0",
   },
   breakdownList: { display: "flex", flexDirection: "column", gap: "14px" },
   breakdownRow: {},
@@ -338,6 +544,48 @@ const styles = {
     borderRadius: "3px",
     transition: "width 300ms ease",
   },
+  scriptGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "14px",
+  },
+  scriptBox: {
+    background: "rgba(8, 17, 40, 0.6)",
+    border: "1px solid rgba(174, 184, 214, 0.15)",
+    borderRadius: "10px",
+    padding: "12px",
+  },
+  scriptBoxHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "8px",
+  },
+  scriptLabel: {
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#D9C489",
+  },
+  copyButton: {
+    background: "#B99B5B",
+    color: "#081128",
+    border: "none",
+    padding: "3px 10px",
+    borderRadius: "6px",
+    fontSize: "11px",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
+  codeBlock: {
+    margin: 0,
+    padding: "10px",
+    background: "rgba(10, 23, 53, 0.9)",
+    borderRadius: "6px",
+    fontSize: "12px",
+    color: "#AEB8D6",
+    overflowX: "auto",
+    fontFamily: "monospace",
+  },
   locationList: { listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" },
   locationItem: {
     display: "flex",
@@ -357,7 +605,8 @@ const styles = {
     gap: "10px",
   },
   linkCard: {
-    display: "block",
+    display: "flex",
+    alignItems: "center",
     padding: "16px 18px",
     borderRadius: "12px",
     border: "1.5px solid rgba(174, 184, 214, 0.2)",
