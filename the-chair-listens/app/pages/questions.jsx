@@ -16,7 +16,7 @@ const CHAIR_BACKGROUND_STYLE = {
   backgroundColor: "#2D5046",
 };
 
-export default function QuestionsPage() {
+export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
 
   const [questions, setQuestions] = useState([]);
@@ -27,31 +27,27 @@ export default function QuestionsPage() {
   const [loading, setLoading] = useState(true);
   const [savingSession, setSavingSession] = useState(false);
   const [reflectionLoading, setReflectionLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
 
-  const recognitionRef = useRef(null);
-  const restartRecognitionRef = useRef(false);
+  const lastScriptKeyRef = useRef(null);
 
   const script =
-      typeof router.query.script === "string"
+      typeof router.query.script === "string" && SCRIPT_TITLES[router.query.script]
           ? router.query.script
           : "men_mental_health";
 
   const location =
       typeof router.query.location === "string"
           ? router.query.location
-          : "Pretoria";
+          : locationName;
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
 
   const progress =
-      totalQuestions > 0
-          ? ((currentIndex + 1) / totalQuestions) * 100
-          : 0;
+      totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
+  // 1. Fetch Questions from API
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -93,131 +89,28 @@ export default function QuestionsPage() {
     fetchQuestions();
   }, [router.isReady, script]);
 
+  // Reset state when switching scripts
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setIsSpeechSupported(false);
-      return;
+    if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== script) {
+      setCurrentIndex(0);
+      setCurrentText("");
+      setReflection("");
+      setAnswers([]);
     }
+    lastScriptKeyRef.current = script;
+  }, [script]);
 
-    setIsSpeechSupported(true);
-
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = "en-ZA";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event) => {
-      let transcript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-      }
-
-      if (transcript.trim()) {
-        setCurrentText((previous) => {
-          const separator = previous.trim() ? " " : "";
-          return `${previous}${separator}${transcript.trim()}`;
-        });
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
-      setIsListening(false);
-
-      if (
-          event.error === "not-allowed" ||
-          event.error === "service-not-allowed"
-      ) {
-        restartRecognitionRef.current = false;
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-
-      if (restartRecognitionRef.current) {
-        try {
-          recognition.start();
-        } catch (error) {
-          console.error("Unable to restart speech recognition:", error);
-        }
-      }
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      restartRecognitionRef.current = false;
-
-      try {
-        recognition.stop();
-      } catch (error) {}
-
-      recognitionRef.current = null;
-    };
-  }, []);
-
-  const stopListening = () => {
-    restartRecognitionRef.current = false;
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {}
-    }
-
-    setIsListening(false);
-  };
-
-  const startListening = () => {
-    if (!recognitionRef.current) {
-      alert(
-          "Voice input is not supported in this browser. You can type your answer instead."
-      );
-      return;
-    }
-
-    try {
-      restartRecognitionRef.current = true;
-      recognitionRef.current.start();
-    } catch (error) {
-      if (error?.name !== "InvalidStateError") {
-        console.error("Unable to start speech recognition:", error);
-      }
-    }
-  };
-
-  const toggleListening = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
-  };
-
+  // Speech Synthesis Controls for AI Reflection
   const speakText = (text) => {
     if (typeof window === "undefined" || !text) return;
 
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-
     utterance.rate = 0.92;
     utterance.pitch = 0.95;
 
     const voices = window.speechSynthesis.getVoices();
-
     const preferredVoice =
         voices.find(
             (voice) =>
@@ -231,24 +124,15 @@ export default function QuestionsPage() {
       utterance.voice = preferredVoice;
     }
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-    };
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-    };
-
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-    };
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utterance);
   };
 
   const stopSpeaking = () => {
     if (typeof window === "undefined") return;
-
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
   };
@@ -257,10 +141,8 @@ export default function QuestionsPage() {
     if (!text?.trim()) return false;
 
     const safetyResult = checkForSafetyTrigger(text);
-
     if (!safetyResult) return false;
 
-    stopListening();
     stopSpeaking();
 
     alert(
@@ -269,10 +151,10 @@ export default function QuestionsPage() {
     );
 
     router.push("/emergency");
-
     return true;
   };
 
+  // 2. Fetch Single Question AI Reflection via /api/groq
   const handleGetReflection = async () => {
     if (!currentText.trim() || !currentQuestion) return;
 
@@ -300,6 +182,7 @@ export default function QuestionsPage() {
       const data = await response.json();
 
       setReflection(
+          data.text ||
           data.reflection ||
           data.message ||
           "Thank you for sharing that. Take a moment to sit with what you have said."
@@ -315,13 +198,15 @@ export default function QuestionsPage() {
     }
   };
 
+  // 3. Complete Session: Save to /api/responses & Fetch /api/session-reflection
   const finishSession = async (finalAnswers) => {
     if (savingSession) return;
 
     try {
       setSavingSession(true);
 
-      const response = await fetch("/api/responses", {
+      // Save raw responses to database
+      await fetch("/api/responses", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -333,31 +218,42 @@ export default function QuestionsPage() {
         }),
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
+      // Generate overall AI session summary
+      let summaryData = null;
+      try {
+        const summaryRes = await fetch("/api/session-reflection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ script, answers: finalAnswers }),
+        });
 
-        throw new Error(
-            data?.message || "Failed to save your responses"
-        );
+        if (summaryRes.ok) {
+          summaryData = await summaryRes.json();
+        }
+      } catch (sumErr) {
+        console.error("Session summary generation error:", sumErr);
       }
 
       const encodedData = encodeURIComponent(
           JSON.stringify(finalAnswers)
       );
 
-      await router.push(
-          `/responses?script=${encodeURIComponent(
-              script
-          )}&data=${encodedData}&location=${encodeURIComponent(location)}`
-      );
+      const queryParams = {
+        script: encodeURIComponent(script),
+        data: encodedData,
+        location: encodeURIComponent(location),
+      };
+
+      if (summaryData) {
+        queryParams.summary = encodeURIComponent(JSON.stringify(summaryData));
+      }
+
+      const queryString = new URLSearchParams(queryParams).toString();
+      await router.push(`/responses?${queryString}`);
     } catch (error) {
       console.error("Unable to save responses:", error);
-
       setSavingSession(false);
-
-      alert(
-          "We couldn't save your responses just yet. Please try again."
-      );
+      alert("We couldn't save your responses just yet. Please try again.");
     }
   };
 
@@ -365,7 +261,6 @@ export default function QuestionsPage() {
     if (!currentQuestion || savingSession) return;
 
     const trimmedAnswer = currentText.trim();
-
     if (!trimmedAnswer) return;
 
     if (checkSafetyAndRedirect(trimmedAnswer)) return;
@@ -380,8 +275,6 @@ export default function QuestionsPage() {
 
     setAnswers(updatedAnswers);
     setReflection("");
-
-    stopListening();
     stopSpeaking();
 
     if (currentIndex < totalQuestions - 1) {
@@ -396,17 +289,15 @@ export default function QuestionsPage() {
   const handleBack = () => {
     if (savingSession) return;
 
-    stopListening();
     stopSpeaking();
 
     if (currentIndex > 0) {
-      setCurrentIndex((previous) => previous - 1);
+      const prevIndex = currentIndex - 1;
+      const previousAnswer = answers[prevIndex];
 
-      const previousAnswer = answers[currentIndex - 1];
-
+      setCurrentIndex(prevIndex);
       setCurrentText(previousAnswer?.answer || "");
       setReflection("");
-
       return;
     }
 
@@ -648,8 +539,8 @@ export default function QuestionsPage() {
               </span>
 
                 <h1>
-                  Take a moment
-                  {/*<span>the Chair.</span>*/}
+                  Take a moment.
+                  <span className="chair-script">Tell the Chair.</span>
                 </h1>
 
                 <p>
@@ -685,9 +576,6 @@ export default function QuestionsPage() {
                     onChange={setCurrentText}
                     placeholder={currentQuestion.placeholder}
                     disabled={savingSession}
-                    isListening={isListening}
-                    onToggleListening={toggleListening}
-                    isSpeechSupported={isSpeechSupported}
                 />
 
                 <div className="action-row">
@@ -900,11 +788,11 @@ export default function QuestionsPage() {
           letter-spacing: -0.035em;
         }
 
-        .intro h1 span {
+        .intro h1 .chair-script {
           display: block;
           margin-top: 5px;
           color: #2d5046;
-          // font-family: "Pinyon Script", cursive;
+          font-family: "Pinyon Script", cursive;
           font-size: 1.18em;
           font-weight: 400;
           letter-spacing: 0;
