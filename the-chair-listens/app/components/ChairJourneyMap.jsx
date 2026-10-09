@@ -13,6 +13,8 @@ export default function ChairJourneyMap() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
+    const [visitors, setVisitors] = useState([]);
+
     useEffect(() => {
         fetch("/api/locations")
             .then((res) => res.json())
@@ -22,6 +24,15 @@ export default function ChairJourneyMap() {
                 setError(true);
             })
             .finally(() => setLoading(false));
+    }, []);
+
+    useEffect(() => {
+        fetch("/api/visitor-pins")
+            .then((res) => res.json())
+            .then((data) => setVisitors(data.visitors || []))
+            .catch((err) => {
+                console.error("Failed to load recent visitors:", err);
+            });
     }, []);
 
     const activeLocation = locations.find((loc) => loc.active);
@@ -65,7 +76,7 @@ export default function ChairJourneyMap() {
                 </div>
             ) : (
                 <div style={styles.mapWrapper}>
-                    <Map locations={locations} />
+                    <Map locations={locations} visitors={visitors} />
                 </div>
             )}
         </section>
