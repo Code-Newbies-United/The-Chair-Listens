@@ -653,7 +653,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
               </div>
 
               <footer className="page-footer">
-                <strong>The Chair Listens</strong>
                 <span>A quiet place in a noisy world.</span>
               </footer>
             </div>

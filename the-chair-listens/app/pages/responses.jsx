@@ -9,14 +9,6 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const SCRIPT_LABELS = {
-    men_mental_health: "Men's Mental Health",
-    ally_support: "Ally & Support System",
-    fast_track_activations: "Community Event",
-  };
-
-  const topicLabel = SCRIPT_LABELS[script] || "Community Reflection";
-
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -85,13 +77,15 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
                   <span>A moment to reflect</span>
                   <span className="eyebrow-line" aria-hidden="true" />
                 </div>
-                <span className="topic-badge">{topicLabel}</span>
               </div>
 
               <div className="intro">
                 <div className="completion-icon" aria-hidden="true">✓</div>
-                <p className="overline">Session complete</p>
-                <h1>Your <span>Reflection</span></h1>
+                <div className="script-line">Session complete</div>
+                <h1 className="headline">
+                  Your
+                  <span className="headline-accent">Reflection</span>
+                </h1>
                 <p className="intro-copy">
                   Thank you for making space for your thoughts, your story, and your voice.
                 </p>
@@ -149,9 +143,18 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
             </div>
           </section>
 
+          <button
+              type="button"
+              onClick={() => router.push("/take-action")}
+              className="take-action-button"
+          >
+            <span aria-hidden="true">✦</span>
+            <span>Take Action</span>
+            <span className="button-arrow" aria-hidden="true"></span>
+          </button>
           <button type="button" onClick={() => router.push("/")} className="home-button">
             <span>Return to Start</span>
-            <span className="button-arrow" aria-hidden="true">→</span>
+            <span className="button-arrow" aria-hidden="true"></span>
           </button>
           <p className="page-note">A quiet place in a noisy world.</p>
         </div>
@@ -270,10 +273,8 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
 
         .session-meta {
           display: flex;
-          justify-content: space-between;
+          justify-content: center;
           align-items: center;
-          flex-wrap: wrap;
-          gap: 10px;
           margin-bottom: 28px;
         }
 
@@ -298,19 +299,6 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           background: #bc9553;
         }
 
-        .topic-badge {
-          display: inline-flex;
-          align-items: center;
-          padding: 7px 11px;
-          border: 1px solid rgba(45, 80, 70, 0.12);
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.45);
-          color: #52645e;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.07em;
-          text-transform: uppercase;
-        }
 
         .intro { max-width: 500px; margin: 0 auto; text-align: center; }
 
@@ -330,28 +318,27 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           box-shadow: 0 5px 14px rgba(45, 80, 70, 0.08);
         }
 
-        .overline {
-          margin: 0 0 7px;
+        .script-line {
+          margin: 5px 0 19px;
           color: #bc9553;
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.13em;
-          text-transform: uppercase;
+          font-family: "Pinyon Script", cursive;
+          font-size: 40px;
+          line-height: 1;
         }
 
-        h1 {
+        .headline {
+          max-width: 760px;
           margin: 0;
           color: #203f36;
-          font-size: clamp(34px, 7vw, 48px);
-          line-height: 1;
-          letter-spacing: -0.04em;
+          font-size: clamp(41px, 10vw, 72px);
+          line-height: 0.88;
+          letter-spacing: -0.06em;
+          font-weight: 900;
         }
 
-        h1 span {
-          color: #203f36;
-          font-size: clamp(34px, 7vw, 48px);
-          line-height: 1;
-          letter-spacing: -0.04em;
+        .headline-accent {
+          display: block;
+          color: #8dcf94;
         }
 
         .intro-copy {
@@ -443,6 +430,36 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
 
         .footer-rule { width: 27px; height: 1px; background: #bc9553; opacity: 0.7; }
 
+        .take-action-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          width: 100%;
+          margin-top: 23px;
+          padding: 15px 22px;
+          border: 1px solid rgba(245, 242, 232, 0.28);
+          border-radius: 999px;
+          background: rgba(245, 242, 232, 0.08);
+          color: #fbfaf5;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+        }
+
+        .take-action-button:hover {
+          transform: translateY(-2px);
+          background: rgba(141, 207, 148, 0.16);
+          border-color: #8dcf94;
+        }
+
+        .take-action-button:focus-visible {
+          outline: 3px solid #d4e9ed;
+          outline-offset: 4px;
+        }
+
         .home-button {
           display: flex;
           align-items: center;
@@ -480,7 +497,9 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           .location-pill { max-width: 55%; padding: 8px 10px; font-size: 11px; }
           .card-content { padding: 27px 20px 24px; }
           .session-meta { margin-bottom: 25px; }
-          .eyebrow { font-size: 25px; }
+          .eyebrow { font-size: 9px; }
+          .headline { font-size: 41px; }
+          .script-line { font-size: 36px; }
           .summary-content { padding: 20px 17px; }
           .summary-text { font-size: 14px; }
           .card-footer { gap: 8px; }
@@ -490,7 +509,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
 
         @media (prefers-reduced-motion: reduce) {
           .loading-track span { animation: none; }
-          .home-button { transition: none; }
+          .home-button, .take-action-button { transition: none; }
         }
       `}</style>
       </main>
