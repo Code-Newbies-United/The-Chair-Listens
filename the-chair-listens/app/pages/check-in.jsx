@@ -49,11 +49,9 @@ export default function CheckInPage() {
     }
   }
 
+  
   function handleProceedToScripts() {
-    router.push({
-      pathname: "/select-script",
-      query: { location: router.query.location },
-    });
+    router.push("/select-script");
   }
 
   if (!sessionReady) return null;

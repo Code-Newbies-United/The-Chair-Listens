@@ -7,7 +7,7 @@ import { useRequireSession } from "@/lib/session";
  * Now fetches questions from /api/quiz-questions instead of a hardcoded array.
  */
 
-export default function QuizPage({ locationName = "Pretoria" }) {
+export default function QuizPage() {
   const router = useRouter();
   const sessionReady = useRequireSession(); // redirects to / if no consent session
 
@@ -134,7 +134,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
             </button>
             <div style={styles.locationTag}>
               <span style={styles.locationDot} aria-hidden="true" />
-              Sitting in {locationName}
+              The chair's location is managed by the campaign team
             </div>
           </div>
 

@@ -153,6 +153,9 @@ Suggested labels are in brackets. Each ticket can be pasted straight into GitHub
 
 ---
 
+## FIX-7.1 Asking the user for a permision to use their location
+**It was part of the flow on fix 7
+
 ## FIX-09 · P1 · Rebuild crisis/safety detection
 **Labels:** `safety` `bug` `high-impact`
 
@@ -338,6 +341,14 @@ Suggested labels are in brackets. Each ticket can be pasted straight into GitHub
 - Self-host IBM Plex fonts via `next/font` instead of `@import`ing Google Fonts on every page (privacy and slow-network gains).
 - Lazy-load Leaflet and the logos. Compress `partner-3.png` (about 1.4 MB).
 
+---
+## FIX-22 Step 2: Check two potential issues IN session-reflection.js
+
+Input validation: The handler currently passes script and answers into the AI prompt without validating their types or size. You can add validation to reduce malformed or excessively large requests.
+
+API key configuration: GROQ_API_KEY must be configured in your environment. If it is missing, the Groq client may fail when the API is used. Your catch block already returns a fallback reflection.
+
+These are separate from the main location fix, so you can leave them for now.
 ---
 
 # PART 2: NEW FEATURES

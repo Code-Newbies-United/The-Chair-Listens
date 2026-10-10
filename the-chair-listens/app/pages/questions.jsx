@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
+import { checkForSafetyTrigger } from "@/lib/safety.js";
 import { useRequireSession, getSessionId, clearSessionId } from "@/lib/session";
 
 const SCRIPT_TITLES = {
@@ -9,14 +9,13 @@ const SCRIPT_TITLES = {
   fast_track_activations: "Today's Event",
 };
 
-export default function QuestionsPage({ locationName = "Pretoria" }) {
+export default function QuestionsPage() {
   const router = useRouter();
   const sessionReady = useRequireSession(); // redirects to / if no consent session
-  const { script, location } = router.query;
+  const { script } = router.query;
 
-  // Fallbacks for initial render prior to router hydration
+  // Fallback for initial render prior to router hydration
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
-  const displayLocation = location || locationName;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -159,11 +158,10 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          answers,
-          script: activeScriptKey,
-          location: displayLocation,
-          session_id: getSessionId(),
-        }),
+        answers,
+        script: activeScriptKey,
+        session_id: getSessionId(),
+      }),
       });
 
       // 403 = the server has no valid consent for this session (missing or expired).
@@ -179,7 +177,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
     const encodedData = encodeURIComponent(JSON.stringify(answers));
     router.push(
-        `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(displayLocation)}`
+      `/responses?script=${activeScriptKey}&data=${encodedData}`
     );
   }
 
@@ -196,10 +194,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       setCurrentText(prevSavedAnswer);
       setReflection(null);
     } else {
-      router.push({
-        pathname: "/select-script",
-        query: { location: displayLocation },
-      });
+      router.push("/select-script");
     }
   };
 
@@ -402,7 +397,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
             </button>
             <div style={styles.locationTag}>
               <span style={styles.locationDot} aria-hidden="true" />
-              Sitting in {displayLocation}
+              The chair's location is managed by the campaign team
             </div>
           </div>
 

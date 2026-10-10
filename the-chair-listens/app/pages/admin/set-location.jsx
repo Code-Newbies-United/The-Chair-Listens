@@ -49,8 +49,17 @@ export default function SetLocation() {
             setError("Please enter a name for this location.");
             return;
         }
-        if (!coords) {
-            setError("Please set coordinates first, either via 'Use My Location' or manually.");
+        
+        if (
+            !coords ||
+            !Number.isFinite(coords.lat) ||
+            coords.lat < -90 ||
+            coords.lat > 90 ||
+            !Number.isFinite(coords.lng) ||
+            coords.lng < -180 ||
+            coords.lng > 180
+        ) {
+            setError("Please enter valid latitude and longitude coordinates.");
             return;
         }
 
@@ -125,9 +134,12 @@ export default function SetLocation() {
                                 type="number"
                                 step="any"
                                 placeholder="Latitude"
-                                value={coords?.lat ?? ""}
+                                value={coords?.lat ?? ""}                            
                                 onChange={(e) =>
-                                    setCoords((prev) => ({ ...prev, lat: parseFloat(e.target.value) }))
+                                    setCoords((prev) => ({
+                                        ...(prev || {}),
+                                        lng: e.target.value === "" ? undefined : parseFloat(e.target.value),
+                                    }))
                                 }
                                 style={styles.input}
                             />

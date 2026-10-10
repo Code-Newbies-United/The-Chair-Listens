@@ -1,4 +1,4 @@
-// Destination: pages/api/admin/set-location.js
+// Destination: pages/api/set-location.js
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { verifyAdminSession } from "@/lib/adminsession";
 
@@ -13,37 +13,40 @@ export default async function handler(req, res) {
 
     const { name, lat, lng } = req.body;
 
-    if (!name || typeof lat !== "number" || typeof lng !== "number") {
-        return res.status(400).json({ message: "name, lat, and lng are required" });
+    if (
+        typeof name !== "string" ||
+        !name.trim() ||
+        typeof lat !== "number" ||
+        !Number.isFinite(lat) ||
+        lat < -90 ||
+        lat > 90 ||
+        typeof lng !== "number" ||
+        !Number.isFinite(lng) ||
+        lng < -180 ||
+        lng > 180
+    ) {
+        return res.status(400).json({
+            message: "A valid name, latitude, and longitude are required",
+        });
     }
 
     // Only one location should be "active" (the chair's current spot) at a time
-    const { error: deactivateError } = await supabase
-        .from("locations")
-        .update({ active: false })
-        .eq("active", true);
+    
+    const { data, error } = await supabase.rpc(
+        "set_active_chair_location",
+        {
+            p_name: name.trim(),
+            p_lat: lat,
+            p_lng: lng,
+        }
+    );
 
-    if (deactivateError) {
-        console.error("Failed to deactivate previous location:", deactivateError);
-        return res.status(500).json({ message: "Failed to update previous location" });
+    if (error || !data || data.length === 0) {
+        console.error("Failed to set active chair location:", error);
+        return res.status(500).json({
+            message: "Failed to save the new chair location",
+        });
     }
 
-    const { data, error: insertError } = await supabase
-        .from("locations")
-        .insert({
-            name,
-            lat,
-            lng,
-            active: true,
-            visited_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-    if (insertError) {
-        console.error("Failed to insert new location:", insertError);
-        return res.status(500).json({ message: "Failed to save new location" });
-    }
-
-    return res.status(200).json({ location: data });
+    return res.status(200).json({ location: data[0] });
 }

@@ -35,22 +35,18 @@ const PATHS = [
   },
 ];
 
-export default function SelectScript({ locationName = "Pretoria" }) {
+export default function SelectScript() {
   const router = useRouter();
   const sessionReady = useRequireSession(); // redirects to / if no consent session
-  const { location } = router.query;
-  const displayLocation = location || locationName;
 
+  
   function handleSelect(path) {
     if (path.type === "quiz") {
-      router.push({
-        pathname: "/quiz",
-        query: { location: displayLocation },
-      });
+      router.push("/quiz");
     } else {
       router.push({
         pathname: "/questions",
-        query: { script: path.key, location: displayLocation },
+        query: { script: path.key },
       });
     }
   }
@@ -78,7 +74,7 @@ export default function SelectScript({ locationName = "Pretoria" }) {
         <div style={styles.frame}>
           <div style={styles.locationTag}>
             <span style={styles.locationDot} aria-hidden="true" />
-            Sitting in {displayLocation}
+            The chair's location is managed by the campaign team
           </div>
 
           <h1 style={styles.headline}>Choose your path</h1>
