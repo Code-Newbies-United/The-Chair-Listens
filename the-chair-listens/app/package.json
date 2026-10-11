@@ -30,7 +30,8 @@
   },
   "devDependencies": {
     "@babel/core": "^8.0.6",
-    "@babel/preset-env": "^8.0.7",
+    "@babel/preset-env": "^8.0.6",
+    "@babel/preset-react": "^8.0.1",
     "@tailwindcss/postcss": "^4.3.3",
     "autoprefixer": "^10.5.5",
     "babel-jest": "^30.5.2",

@@ -7,6 +7,7 @@ export default function EmergencyPage() {
         { name: 'Suicide Crisis Helpline', number: '0800 567 567', hours: '24/7' },
         { name: 'LifeLine South Africa', number: '0861 322 322', hours: '24/7' },
         { name: 'Cipla Mental Health Helpline', number: '0800 456 789', hours: '24/7' },
+        { name: 'Emergency', number: '112', hours: '24/7' },
     ];
 
     return (
