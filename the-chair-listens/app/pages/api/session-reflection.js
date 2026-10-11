@@ -1,4 +1,3 @@
-// pages/api/session-reflection.js
 import Groq from "groq-sdk";
 
 const groq = new Groq({

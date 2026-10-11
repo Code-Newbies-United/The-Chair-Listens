@@ -9,6 +9,12 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null);
+
+  const currentScript = script || "men_mental_health";
+
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -27,7 +33,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            script: script || "men_mental_health",
+            script: currentScript,
             answers: parsedAnswers,
           }),
         });
@@ -38,7 +44,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         console.error("Error fetching summary:", err);
         setSummary({
           overallReflection:
-              "Thank you for taking the time to share your perspective today.",
+            "Thank you for taking the time to share your perspective today.",
           takeaways: [
             "Acknowledging your journey is an important step forward.",
             "Your voice contributes meaningfully to our collective healing.",
@@ -52,125 +58,196 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
     fetchSessionSummary();
   }, [router.isReady, script, data]);
 
+  const handleMessageSubmit = async (e) => {
+    e.preventDefault();
+    if (!message.trim() || message.length > 1000) return;
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: message.trim() }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to send message");
+      }
+
+      setSubmitStatus("success");
+      setMessage("");
+    } catch (err) {
+      console.error("Error submitting message:", err);
+      setSubmitStatus("error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-      <main className="responses-page">
-        <div className="responses-shell">
-          <header className="topbar">
-            <div className="brand" aria-label="The Chair Listens">
-              <img
-                  className="brand-logo"
-                  src="/logos/factor-of-ten-logo.jpg"
-                  alt="Factor of Ten Foundation logo"
-              />
-              <span className="brand-mark" aria-hidden="true" />
-              <span>The Chair Listens</span>
-            </div>
-            <div className="location-pill">
-              <span className="location-dot" />
-              {displayLocation}
-            </div>
-          </header>
+    <main className="responses-page">
+      <div className="responses-shell">
+        <header className="topbar">
+          <div className="brand" aria-label="The Chair Listens">
+            <img
+              className="brand-logo"
+              src="/logos/factor-of-ten-logo.jpg"
+              alt="Factor of Ten Foundation logo"
+            />
+            <span className="brand-mark" aria-hidden="true" />
+            <span>The Chair Listens</span>
+          </div>
+          <div className="location-pill">
+            <span className="location-dot" />
+            {displayLocation}
+          </div>
+        </header>
 
-          <section className="reflection-card">
-            <div className="decor-circle decor-circle-blue" aria-hidden="true" />
-            <div className="decor-circle decor-circle-mint" aria-hidden="true" />
+        <section className="reflection-card">
+          <div className="decor-circle decor-circle-blue" aria-hidden="true" />
+          <div className="decor-circle decor-circle-mint" aria-hidden="true" />
 
-            <div className="card-content">
-              <div className="session-meta">
-                <div className="eyebrow">
-                  <span className="eyebrow-line" aria-hidden="true" />
-                  <span>A moment to reflect</span>
-                  <span className="eyebrow-line" aria-hidden="true" />
-                </div>
+          <div className="card-content">
+            <div className="session-meta">
+              <div className="eyebrow">
+                <span className="eyebrow-line" aria-hidden="true" />
+                <span>A moment to reflect</span>
+                <span className="eyebrow-line" aria-hidden="true" />
               </div>
+            </div>
 
-              <div className="intro">
-                <div className="completion-icon" aria-hidden="true">
-                  <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
-                    <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div className="script-line">Session complete</div>
-                <h1 className="headline">
-                  Your
-                  <span className="headline-accent">Reflection</span>
-                </h1>
-                <p className="intro-copy">
-                  Thank you for making space for your thoughts, your story, and your voice.
-                </p>
+            <div className="intro">
+              <div className="completion-icon" aria-hidden="true">
+                <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
+                  <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
+              <div className="script-line">Session complete</div>
+              <h1 className="headline">
+                Your
+                <span className="headline-accent">Reflection</span>
+              </h1>
+              <p className="intro-copy">
+                Thank you for making space for your thoughts, your story, and your voice.
+              </p>
+            </div>
 
-              {loading ? (
-                  <div className="loading-panel" role="status" aria-live="polite">
-                    <div className="chair-icon" aria-hidden="true">🪑</div>
-                    <div className="loading-track"><span /></div>
-                    <p>The Chair is bringing your reflection together...</p>
+            {loading ? (
+              <div className="loading-panel" role="status" aria-live="polite">
+                <div className="chair-icon" aria-hidden="true">🪑</div>
+                <div className="loading-track"><span /></div>
+                <p>The Chair is bringing your reflection together...</p>
+              </div>
+            ) : (
+              <div className="summary-content">
+                <section className="summary-section">
+                  <div className="section-heading">
+                    <span className="section-icon" aria-hidden="true">✧</span>
+                    <h2>Summary</h2>
                   </div>
-              ) : (
-                  <div className="summary-content">
-                    <section className="summary-section">
-                      <div className="section-heading">
-                        <span className="section-icon" aria-hidden="true">✧</span>
-                        <h2>Summary</h2>
-                      </div>
-                      <p className="summary-text">
-                        {summary?.overallReflection ||
-                            "Thank you for taking the time to share your perspective today."}
-                      </p>
-                    </section>
+                  <p className="summary-text">
+                    {summary?.overallReflection ||
+                      "Thank you for taking the time to share your perspective today."}
+                  </p>
+                </section>
 
-                    <div className="section-divider" />
+                <div className="section-divider" />
 
-                    <section className="summary-section takeaways-section">
-                      <div className="section-heading">
-                        <span className="section-icon" aria-hidden="true">✦</span>
-                        <h2>Key Takeaways</h2>
+                <section className="summary-section takeaways-section">
+                  <div className="section-heading">
+                    <span className="section-icon" aria-hidden="true">✦</span>
+                    <h2>Key Takeaways</h2>
+                  </div>
+                  {summary?.takeaways?.length ? (
+                    <ul className="takeaway-list">
+                      {summary.takeaways.map((item, index) => (
+                        <li key={index} className="takeaway-item">
+                          <span className="takeaway-bullet" aria-hidden="true">✦</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="summary-text">
+                      Your reflections are part of the conversation and can help create understanding.
+                    </p>
+                  )}
+                </section>
+
+                <div className="section-divider" />
+
+                <section className="summary-section message-section">
+                  <div className="section-heading">
+                    <span className="section-icon" aria-hidden="true">✎</span>
+                    <h2>Leave a Message for the Community</h2>
+                  </div>
+
+                  {submitStatus === "success" ? (
+                    <div className="success-message">
+                      <p>Thank you. Your message has been shared with the community.</p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleMessageSubmit} className="message-form">
+                      <textarea
+                        className="message-input"
+                        placeholder="Share a thought, a word of encouragement, or a piece of your story..."
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        maxLength={1000}
+                        rows={4}
+                        disabled={isSubmitting}
+                      />
+                      <div className="message-footer">
+                        <span className={`char-count ${message.length > 900 ? "warning" : ""}`}>
+                          {message.length} / 1000
+                        </span>
+                        <button
+                          type="submit"
+                          className="submit-message-button"
+                          disabled={isSubmitting || !message.trim() || message.length > 1000}
+                        >
+                          {isSubmitting ? "Sending..." : "Share Message"}
+                        </button>
                       </div>
-                      {summary?.takeaways?.length ? (
-                          <ul className="takeaway-list">
-                            {summary.takeaways.map((item, index) => (
-                                <li key={index} className="takeaway-item">
-                                  <span className="takeaway-bullet" aria-hidden="true">✦</span>
-                                  <span>{item}</span>
-                                </li>
-                            ))}
-                          </ul>
-                      ) : (
-                          <p className="summary-text">
-                            Your reflections are part of the conversation and can help create understanding.
-                          </p>
+                      {submitStatus === "error" && (
+                        <p className="error-text">Something went wrong. Please try again.</p>
                       )}
-                    </section>
-                  </div>
-              )}
+                    </form>
+                  )}
+                </section>
+              </div>
+            )}
 
-              <footer className="card-footer">
-                <p>You showed up. That matters.</p>
-              </footer>
-            </div>
-          </section>
+            <footer className="card-footer">
+              <p>You showed up. That matters.</p>
+            </footer>
+          </div>
+        </section>
 
-          <button
-              type="button"
-              onClick={() => router.push("/take-action")}
-              className="take-action-button"
-          >
-            <span aria-hidden="true">✦</span>
-            <span>Take Action</span>
-            <span className="button-arrow" aria-hidden="true"></span>
-          </button>
-          <button type="button" onClick={() => router.push("/")} className="home-button">
-            <span>Return to Start</span>
-            <span className="button-arrow" aria-hidden="true"></span>
-          </button>
+        <button
+          type="button"
+          onClick={() => router.push("/take-action")}
+          className="take-action-button"
+        >
+          <span aria-hidden="true">✦</span>
+          <span>Take Action</span>
+          <span className="button-arrow" aria-hidden="true"></span>
+        </button>
+        <button type="button" onClick={() => router.push("/")} className="home-button">
+          <span>Return to Start</span>
+          <span className="button-arrow" aria-hidden="true"></span>
+        </button>
 
-          <footer className="responses-footer">
-            <span className="responses-footer-brand">FACTOR OF TEN</span>
-            <span className="responses-footer-tagline">Know more. Ask more. Check sooner.</span>
-          </footer>
-        </div>
+        <footer className="responses-footer">
+          <span className="responses-footer-brand">FACTOR OF TEN</span>
+          <span className="responses-footer-tagline">Know more. Ask more. Check sooner.</span>
+        </footer>
+      </div>
 
-        <style jsx>{`
+      <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap');
 
         .responses-page {
@@ -428,6 +505,96 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         .takeaway-item { display: flex; align-items: flex-start; gap: 11px; color: #31504a; font-size: 14px; line-height: 1.65; }
         .takeaway-bullet { flex: 0 0 auto; margin-top: 2px; color: #bc9553; font-size: 13px; }
 
+        .message-section { margin-top: 5px; }
+
+        .message-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .message-input {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 12px 14px;
+          border: 1px solid rgba(45, 80, 70, 0.15);
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.6);
+          color: #203f36;
+          font-family: inherit;
+          font-size: 14px;
+          line-height: 1.5;
+          resize: vertical;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .message-input:focus {
+          outline: none;
+          border-color: #8dcf94;
+          box-shadow: 0 0 0 3px rgba(141, 207, 148, 0.2);
+          background: #fff;
+        }
+
+        .message-input::placeholder {
+          color: #8ba39a;
+        }
+
+        .message-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .char-count {
+          font-size: 11px;
+          color: #8ba39a;
+          font-weight: 600;
+        }
+
+        .char-count.warning {
+          color: #bc9553;
+        }
+
+        .submit-message-button {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 999px;
+          background: #2d5046;
+          color: #fbfaf5;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s ease, opacity 0.2s ease;
+        }
+
+        .submit-message-button:hover:not(:disabled) {
+          background: #203f36;
+        }
+
+        .submit-message-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .success-message {
+          padding: 15px;
+          border-radius: 12px;
+          background: #dce9df;
+          color: #2d5046;
+          font-size: 14px;
+          text-align: center;
+          font-weight: 500;
+        }
+
+        .success-message p { margin: 0; }
+
+        .error-text {
+          margin: 0;
+          color: #d9534f;
+          font-size: 12px;
+          text-align: right;
+        }
+
         .card-footer {
           display: flex;
           align-items: center;
@@ -498,16 +665,16 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         .home-button:hover { transform: translateY(-2px); background: #a5dfa9; box-shadow: 0 10px 24px rgba(17, 45, 37, 0.18); }
         .home-button:focus-visible { outline: 3px solid #d4e9ed; outline-offset: 4px; }
         .button-arrow { font-size: 19px; line-height: 1; }
-        
-        .responses-footer { 
-          margin: 24px 0 0; 
-          padding-top: 20px; 
-          border-top: 1px solid rgba(245,242,232,.16); 
-          display: flex; 
-          flex-direction: column; 
-          align-items: center; 
-          gap: 6px; 
-          text-align: center; 
+
+        .responses-footer {
+          margin: 24px 0 0;
+          padding-top: 20px;
+          border-top: 1px solid rgba(245,242,232,.16);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          text-align: center;
         }
         .responses-footer-brand { color: #a5dfa9; font-size: 11px; font-weight: 800; letter-spacing: .15em; }
         .responses-footer-tagline { color: rgba(245,242,232,.58); font-size: 11px; }
@@ -533,6 +700,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           .summary-content { padding: 20px 17px; }
           .summary-text { font-size: 14px; }
           .card-footer { gap: 8px; }
+          .message-footer { flex-direction: column; align-items: flex-end; gap: 8px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -540,6 +708,6 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           .home-button, .take-action-button { transition: none; }
         }
       `}</style>
-      </main>
+    </main>
   );
 }
