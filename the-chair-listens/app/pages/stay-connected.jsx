@@ -98,6 +98,9 @@ export default function StayConnected() {
         .stay-script { margin:15px 0 12px; color:var(--stay-ochre); font-family:'Pinyon Script', cursive; font-size:38px; line-height:1.08; }
         .stay-body { max-width:490px; margin:0 auto; color:#52645e; font-size:15px; line-height:1.7; }
         .stay-social-panel { padding:24px; border:1px solid rgba(45,80,70,.12); border-radius:22px; background:rgba(251,250,245,.84); box-shadow:0 12px 30px rgba(17,45,37,.06); }
+        .stay-whatsapp-pill { display:flex; align-items:center; justify-content:center; gap:10px; width:fit-content; max-width:100%; margin:0 auto 22px; padding:12px 22px; border:1px solid rgba(45,80,70,.12); border-radius:999px; background:var(--stay-mint); color:var(--stay-dark); font-size:13px; font-weight:800; line-height:1.3; text-align:center; text-decoration:none; box-shadow:0 7px 0 rgba(32,63,54,.08), 0 10px 22px rgba(45,80,70,.1); transition:transform 160ms ease, background 160ms ease, box-shadow 160ms ease; }
+        .stay-whatsapp-pill:hover { transform:translateY(-2px); background:var(--stay-bright); box-shadow:0 9px 0 rgba(32,63,54,.08), 0 15px 28px rgba(45,80,70,.13); }
+        .stay-whatsapp-pill svg { width:19px; height:19px; flex:0 0 19px; }
         .stay-follow-label { display:block; margin:0 0 15px; color:var(--stay-sage); font-size:10px; font-weight:800; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
         .stay-icon-row { display:flex; justify-content:center; gap:13px; margin:0 0 24px; }
         .stay-social-icon { display:flex; align-items:center; justify-content:center; width:49px; height:49px; border:1px solid rgba(45,80,70,.22); border-radius:50%; background:rgba(141,207,148,.18); color:var(--stay-forest); text-decoration:none; transition:transform 160ms ease, background 160ms ease, border-color 160ms ease; }
@@ -108,10 +111,10 @@ export default function StayConnected() {
         .stay-continue-wrap { display:flex; justify-content:center; padding-top:24px; }
         .stay-continue { display:inline-flex; align-items:center; gap:9px; color:var(--stay-bright); font-size:14px; font-weight:700; text-decoration:none; }
         .stay-continue:hover { text-decoration:underline; text-underline-offset:4px; }
-        .stay-back:focus-visible, .stay-social-icon:focus-visible, .stay-share:focus-visible, .stay-continue:focus-visible { outline:3px solid var(--stay-ochre); outline-offset:4px; }
+        .stay-back:focus-visible, .stay-whatsapp-pill:focus-visible, .stay-social-icon:focus-visible, .stay-share:focus-visible, .stay-continue:focus-visible { outline:3px solid var(--stay-ochre); outline-offset:4px; }
         .stay-footer { margin:22px 0 0; color:rgba(245,242,232,.58); font-size:10px; letter-spacing:.08em; text-align:center; }
         @media (max-width:600px) { .stay-content { padding:32px 20px 24px; } .stay-social-panel { padding:21px 17px; } .stay-title { font-size:clamp(38px, 10vw, 54px); } .stay-script { font-size:34px; } .stay-body { font-size:14px; } }
-        @media (prefers-reduced-motion:reduce) { .stay-back, .stay-social-icon, .stay-share { transition:none; } }
+        @media (prefers-reduced-motion:reduce) { .stay-back, .stay-whatsapp-pill, .stay-social-icon, .stay-share { transition:none; } }
       `}</style>
 
             <div className="stay-shell">
@@ -135,12 +138,24 @@ export default function StayConnected() {
                             <h1 className="stay-title">The conversation<br />doesn’t end here.</h1>
                             <div className="stay-script">Keep showing up. Keep listening.</div>
                             <p className="stay-body">
-                                Follow Factor of Ten and continue the conversation around men’s health, prostate cancer awareness, and early detection. Stay connected with the movement across all Factor of Ten social media platforms. Follow our WhatsApp Channel.
-                                Connect with us on our other social media platforms.
+                                Follow Factor of Ten and continue the conversation around men’s health, prostate cancer awareness, and early detection. Stay connected with the movement across all Factor of Ten social media platforms.
                             </p>
                         </div>
 
                         <section className="stay-social-panel" aria-labelledby="stay-follow-title">
+                            <a
+                                href="https://wa.me/27630282393"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="stay-whatsapp-pill"
+                                aria-label="Chat with Factor of Ten on WhatsApp"
+                            >
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M20.52 3.48A11.83 11.83 0 0 0 12.1 0C5.55 0 .22 5.33.22 11.88c0 2.1.55 4.15 1.6 5.96L.12 24l6.32-1.66a11.9 11.9 0 0 0 5.66 1.44h.01c6.55 0 11.88-5.33 11.88-11.88 0-3.17-1.24-6.15-3.47-8.42ZM12.1 21.77h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.75.98 1-3.66-.24-.38a9.84 9.84 0 0 1-1.51-5.24c0-5.45 4.44-9.89 9.9-9.89a9.82 9.82 0 0 1 7 2.9 9.82 9.82 0 0 1 2.89 7c0 5.45-4.44 9.88-9.89 9.88Zm5.43-7.4c-.3-.15-1.77-.87-2.05-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.47-2.4-1.49-.89-.79-1.49-1.77-1.67-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.08 4.49.71.31 1.27.5 1.7.64.72.23 1.37.2 1.88.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35Z" />
+                                </svg>
+                                Connect with us on WhatsApp
+                                <span aria-hidden="true"></span>
+                            </a>
                             <h2 id="stay-follow-title" className="stay-follow-label">Follow Factor of Ten</h2>
                             <div className="stay-icon-row">
                                 <a href={LINKS.instagram} aria-label="Factor of Ten on Instagram" className="stay-social-icon"><InstagramIcon /></a>
