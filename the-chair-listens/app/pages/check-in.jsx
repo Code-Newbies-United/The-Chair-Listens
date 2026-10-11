@@ -164,6 +164,15 @@ button {
   padding: 4px 3px 14px;
 }
 
+.factor-logo {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -760,6 +769,15 @@ button {
   text-align: center;
 }
 
+.footer-brand {
+  color: var(--mint-bright);
+  font-weight: 800;
+}
+
+.footer-tagline {
+  color: rgba(255, 255, 255, 0.65);
+}
+
 /* ==================================================
    SMALL PHONES
 ================================================== */
@@ -947,10 +965,16 @@ button {
             HEADER
         ================================================== */}
 
+
           <header className="topbar">
             <div className="brand">
-              <span className="brand-mark" />
-              The Chair Listens
+              <img
+                  src="/logos/factor-of-ten-logo.jpg"
+                  alt="Factor of Ten Foundation"
+                  className="factor-logo"
+              />
+              <span className="brand-mark" aria-hidden="true" />
+              <span>The Chair Listens</span>
             </div>
 
             <div className="location-pill">
@@ -1065,7 +1089,7 @@ button {
                       className="cta"
                       onClick={handleProceedToScripts}
                   >
-                    Choose Reflection Journey →
+                    Choose Reflection Journey
                   </button>
                 </div>
             )}
@@ -1075,14 +1099,15 @@ button {
             FOOTER
         ================================================== */}
 
-          <footer className="footer">
-          <span>
-            The Chair Listens
-          </span>
 
-            <span>
-            A quiet place in a noisy world.
-          </span>
+          <footer className="footer">
+            <span className="footer-brand">
+              The Chair Listens
+            </span>
+
+            <span className="footer-tagline">
+              A quiet place in a noisy world.
+            </span>
           </footer>
         </div>
       </main>

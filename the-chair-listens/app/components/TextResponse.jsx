@@ -1,4 +1,32 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/router";
+
+export const EMERGENCY_KEYWORDS = [
+    'suicide',
+    'kill myself',
+    'end my life',
+    'want to die',
+    'self harm',
+    'cutting myself',
+    'overdose',
+    'hurt myself',
+    'no reason to live',
+    'kill someone',
+    'shoot myself',
+    'I want to die',
+    'gun',
+    'end my life'
+];
+
+export function checkForSafetyTrigger(text) {
+    if (!text || typeof text !== 'string') return false;
+
+    const normalizedText = text.toLowerCase().trim();
+
+    return EMERGENCY_KEYWORDS.some((keyword) =>
+        normalizedText.includes(keyword)
+    );
+}
 
 export default function TextResponse({
                                          value,
@@ -8,10 +36,22 @@ export default function TextResponse({
                                          isListening = false,
                                          onToggleListening,
                                          isSpeechSupported = false,
+                                         onSafetyTrigger,
                                      }) {
+    const router = useRouter();
     const [isTranscribing, setIsTranscribing] = useState(false);
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
+
+    // Monitor value changes for safety triggers and redirect to emergency page
+    useEffect(() => {
+        if (checkForSafetyTrigger(value)) {
+            if (onSafetyTrigger) {
+                onSafetyTrigger(value);
+            }
+            router.push("/emergency");
+        }
+    }, [value, router, onSafetyTrigger]);
 
     function handleFocus(e) {
         setTimeout(() => {
@@ -74,6 +114,14 @@ export default function TextResponse({
             if (data.text) {
                 const updatedText = value ? `${value} ${data.text}` : data.text;
                 onChange(updatedText);
+
+                // Check safety on transcribed text as well
+                if (checkForSafetyTrigger(updatedText)) {
+                    if (onSafetyTrigger) {
+                        onSafetyTrigger(updatedText);
+                    }
+                    router.push("/emergency");
+                }
             }
         } catch (error) {
             console.error("Audio transcription error:", error);
@@ -96,35 +144,35 @@ export default function TextResponse({
 
     return (
         <div className="w-full">
-      <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={handleFocus}
-          placeholder={placeholder}
-          disabled={disabled || isTranscribing}
-          rows={5}
-          aria-label="Your answer"
-          className="
-          w-full box-border
-          rounded-[17px]
-          border border-[#203F36]/12
-          bg-[#F5F2E8]
-          text-[#203F36]
-          text-base
-          leading-relaxed
-          placeholder-[#52645E]/65
-          p-4
-          resize-none
-          shadow-[inset_0_1px_2px_rgba(32,63,54,0.05)]
-          transition-all duration-200
-          focus:outline-none
-          focus:border-[#8DCF94]
-          focus:ring-2
-          focus:ring-[#8DCF94]/30
-          disabled:opacity-60
-          disabled:cursor-not-allowed
-        "
-      />
+            <textarea
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onFocus={handleFocus}
+                placeholder={placeholder}
+                disabled={disabled || isTranscribing}
+                rows={5}
+                aria-label="Your answer"
+                className="
+                    w-full box-border
+                    rounded-[17px]
+                    border border-[#203F36]/12
+                    bg-[#F5F2E8]
+                    text-[#203F36]
+                    text-base
+                    leading-relaxed
+                    placeholder-[#52645E]/65
+                    p-4
+                    resize-none
+                    shadow-[inset_0_1px_2px_rgba(32,63,54,0.05)]
+                    transition-all duration-200
+                    focus:outline-none
+                    focus:border-[#8DCF94]
+                    focus:ring-2
+                    focus:ring-[#8DCF94]/30
+                    disabled:opacity-60
+                    disabled:cursor-not-allowed
+                "
+            />
 
             <div className="mt-3 flex items-center gap-2">
                 <button
@@ -134,24 +182,24 @@ export default function TextResponse({
                     aria-pressed={isListening}
                     aria-label={isListening ? "Stop recording" : "Speak your answer"}
                     className={`
-            inline-flex items-center justify-center gap-2
-            min-h-[44px] min-w-[44px]
-            px-5
-            rounded-full
-            border
-            text-sm
-            font-semibold
-            w-full
-            transition-all duration-200
-            active:scale-[0.98]
-            disabled:opacity-50
-            disabled:cursor-not-allowed
-            ${
+                        inline-flex items-center justify-center gap-2
+                        min-h-[44px] min-w-[44px]
+                        px-5
+                        rounded-full
+                        border
+                        text-sm
+                        font-semibold
+                        w-full
+                        transition-all duration-200
+                        active:scale-[0.98]
+                        disabled:opacity-50
+                        disabled:cursor-not-allowed
+                        ${
                         isListening
                             ? "border-[#BC9553] bg-[#BC9553]/15 text-[#8A6935] animate-pulse"
                             : "border-[#526B61]/25 bg-[#D4E9ED]/55 text-[#2D5046] hover:bg-[#D4E9ED] hover:border-[#526B61]/40"
                     }
-          `}
+                    `}
                 >
                     <svg
                         width="17"

@@ -1,3 +1,4 @@
+// Destination: pages/index.jsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
@@ -9,6 +10,26 @@ export default function Home({ locationName = "Pretoria" }) {
 
   const [consented, setConsented] = useState(false);
   const [detectedLocation, setDetectedLocation] = useState(null);
+  const [activeMessageIndex, setActiveMessageIndex] = useState(0);
+  const [messagesPaused, setMessagesPaused] = useState(false);
+
+  // Display-only examples; connect this array to approved anonymous messages when available.
+  const participantMessages = [
+    "Some days, getting out of bed is already a brave thing.",
+    "You do not have to have all the answers today.",
+    "I am learning that asking for help is a kind of strength.",
+    "To anyone carrying a lot right now: you are not alone.",
+    "Small steps still count. Give yourself credit for them.",
+    "I hope you find one gentle moment for yourself today.",
+  ];
+
+  useEffect(() => {
+    if (messagesPaused) return;
+    const interval = setInterval(() => {
+      setActiveMessageIndex((current) => (current + 1) % participantMessages.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [messagesPaused]);
 
   // --------------------------------------------------
   // Detect visitor location
@@ -206,6 +227,15 @@ export default function Home({ locationName = "Pretoria" }) {
           text-transform: uppercase;
         }
 
+        .brand-logo {
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 1px solid rgba(245, 242, 232, 0.55);
+        }
+
         .brand-mark {
           width: 9px;
           height: 9px;
@@ -222,7 +252,7 @@ export default function Home({ locationName = "Pretoria" }) {
         }
 
         .location-pill {
-          display: flex;
+          display: inline-flex;
           align-items: center;
 
           gap: 6px;
@@ -373,11 +403,6 @@ export default function Home({ locationName = "Pretoria" }) {
           color: var(--mint);
         }
 
-        /*
-          IMPORTANT:
-          Straight — no rotation.
-        */
-
         .script-line {
           margin: 20px 0 10px;
 
@@ -506,8 +531,6 @@ export default function Home({ locationName = "Pretoria" }) {
             inset 9px 0 0 rgba(255, 255, 255, 0.08),
             inset -9px 0 0 rgba(0, 25, 70, 0.12);
         }
-
-        /* Chair tufting */
 
         .chair-back::before,
         .chair-back::after {
@@ -805,6 +828,152 @@ export default function Home({ locationName = "Pretoria" }) {
         }
 
         /* ==================================================
+           COMMUNITY VOICES
+        ================================================== */
+
+        .community-voices {
+          margin-top: 38px;
+          padding: 25px 18px 18px;
+          border: 1px solid rgba(245, 242, 232, 0.12);
+          border-radius: 23px;
+          background: rgba(25, 54, 47, 0.72);
+          box-shadow: 0 15px 34px rgba(17, 45, 37, 0.12);
+          overflow: hidden;
+        }
+        .voices-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .voices-kicker {
+          margin-bottom: 7px;
+          color: var(--mint);
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+        }
+        .voices-title {
+          margin: 0;
+          color: var(--white);
+          font-size: clamp(22px, 4vw, 30px);
+          line-height: 1.05;
+          letter-spacing: -0.045em;
+        }
+        .voices-symbol {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 38px;
+          height: 38px;
+          flex: 0 0 38px;
+          border-radius: 50%;
+          background: var(--ochre);
+          color: var(--forest-deep);
+          font-size: 17px;
+        }
+        .message-window {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          width: 100%;
+          min-height: 190px;
+          padding: 24px 21px 18px;
+          border: 1px solid rgba(45, 80, 70, 0.1);
+          border-radius: 18px;
+          background: var(--cream);
+          color: var(--forest);
+          text-align: left;
+          cursor: pointer;
+          overflow: hidden;
+          transition: transform 180ms ease, background 180ms ease;
+        }
+        .message-window:hover { transform: translateY(-2px); background: var(--white); }
+        .message-window:focus-visible { outline: 3px solid var(--ochre-light); outline-offset: 4px; }
+        .message-quote-mark {
+          height: 31px;
+          color: var(--ochre);
+          font-family: Georgia, serif;
+          font-size: 54px;
+          line-height: 0.9;
+        }
+        .participant-message {
+          display: block;
+          flex: 1;
+          margin: 5px 0 22px;
+          color: var(--forest);
+          font-size: clamp(17px, 3vw, 22px);
+          font-weight: 600;
+          line-height: 1.45;
+          letter-spacing: -0.025em;
+          overflow-wrap: anywhere;
+          animation: message-arrive 420ms ease both;
+        }
+        .message-bottom-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding-top: 13px;
+          border-top: 1px solid rgba(45, 80, 70, 0.12);
+        }
+        .message-attribution, .message-control {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          color: var(--sage);
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .message-anonymous-dot {
+          width: 7px;
+          height: 7px;
+          flex: 0 0 7px;
+          border-radius: 50%;
+          background: var(--mint);
+          box-shadow: 0 0 0 3px rgba(141, 207, 148, 0.2);
+        }
+        .message-control { color: var(--forest); white-space: nowrap; }
+        .message-progress {
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          height: 3px;
+          background: rgba(45, 80, 70, 0.08);
+        }
+        .message-progress-bar {
+          display: block;
+          width: 100%;
+          height: 100%;
+          transform: scaleX(0);
+          transform-origin: left center;
+          background: var(--ochre);
+          animation: message-progress 4.5s linear forwards;
+        }
+        .message-progress-bar.paused { animation-play-state: paused; }
+        .voices-note {
+          margin: 13px 3px 0;
+          color: rgba(255, 255, 255, 0.58);
+          font-size: 10px;
+          line-height: 1.6;
+          text-align: center;
+        }
+        @keyframes message-arrive {
+          from { opacity: 0; transform: translateY(7px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes message-progress {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+
+        /* ==================================================
            JOURNEY
         ================================================== */
 
@@ -852,11 +1021,6 @@ export default function Home({ locationName = "Pretoria" }) {
           letter-spacing: -0.055em;
         }
 
-        /*
-          IMPORTANT:
-          Straight — no rotation.
-        */
-
         .journey-script {
           margin-top: 14px;
 
@@ -892,23 +1056,26 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================== */
 
         .footer {
+          margin: 24px 0 0;
+          padding-top: 20px;
+          border-top: 1px solid rgba(245, 242, 232, 0.16);
           display: flex;
-
           flex-direction: column;
-
-          gap: 7px;
-
-          padding: 25px 4px 8px;
-
-          color: rgba(255, 255, 255, 0.45);
-
-          font-size: 8px;
-
-          letter-spacing: 0.08em;
-
-          text-transform: uppercase;
-
+          align-items: center;
+          gap: 6px;
           text-align: center;
+        }
+
+        .footer-brand {
+          color: var(--mint-bright);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.15em;
+        }
+
+        .footer-tagline {
+          color: rgba(245, 242, 232, 0.58);
+          font-size: 11px;
         }
 
         /* ==================================================
@@ -916,6 +1083,12 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================== */
 
         @media (max-width: 360px) {
+          .brand-logo {
+            width: 29px;
+            height: 29px;
+            flex-basis: 29px;
+          }
+
           .hero-copy {
             padding-left: 18px;
             padding-right: 18px;
@@ -1118,17 +1291,21 @@ export default function Home({ locationName = "Pretoria" }) {
           }
 
           .footer {
-            flex-direction: row;
-
-            justify-content: space-between;
-
-            text-align: left;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
           }
         }
 
         /* ==================================================
            REDUCE MOTION
         ================================================== */
+
+        @media (max-width: 420px) {
+          .community-voices { padding: 21px 13px 15px; }
+          .message-window { min-height: 205px; padding: 20px 16px 17px; }
+          .message-bottom-row { align-items: flex-start; flex-direction: column; gap: 9px; }
+        }
 
         @media (prefers-reduced-motion: reduce) {
           *,
@@ -1150,7 +1327,12 @@ export default function Home({ locationName = "Pretoria" }) {
 
           <header className="topbar">
             <div className="brand">
-              <span className="brand-mark" />
+              <img
+                  className="brand-logo"
+                  src="/logos/factor-of-ten-logo.jpg"
+                  alt="Factor of Ten Foundation logo"
+              />
+              <span className="brand-mark" aria-hidden="true" />
               The Chair Listens
             </div>
 
@@ -1181,7 +1363,7 @@ export default function Home({ locationName = "Pretoria" }) {
 
               {/* STRAIGHT */}
               <div className="script-line">
-                Take a seat.
+                Take a seat
               </div>
 
               <p className="hero-description">
@@ -1269,7 +1451,7 @@ export default function Home({ locationName = "Pretoria" }) {
                 onClick={handleContinue}
                 disabled={!consented}
             >
-              Take a seat →
+              Take a seat
             </button>
 
           </section>
@@ -1334,6 +1516,40 @@ export default function Home({ locationName = "Pretoria" }) {
           </section>
 
           {/* ================================================
+            COMMUNITY VOICES
+        ================================================= */}
+
+          <section className="community-voices" aria-label="Messages from the community">
+            <div className="voices-heading">
+              <div>
+                <div className="voices-kicker">A few words from the community</div>
+                <h2 className="voices-title">You are not sitting alone.</h2>
+              </div>
+              <span className="voices-symbol" aria-hidden="true">🗨️</span>
+            </div>
+
+            <button
+                type="button"
+                className="message-window"
+                onClick={() => setMessagesPaused((paused) => !paused)}
+                aria-pressed={messagesPaused}
+                aria-label={messagesPaused ? "Resume rotating messages" : "Pause rotating messages to read"}
+            >
+              <span className="message-quote-mark" aria-hidden="true">“</span>
+              <span key={activeMessageIndex} className="participant-message">
+                {participantMessages[activeMessageIndex]}
+              </span>
+              <span className="message-bottom-row">
+                <span className="message-control">{messagesPaused ? "Paused · tap to play ▷" : "Tap to pause Ⅱ"}</span>
+              </span>
+              <span className="message-progress" aria-hidden="true">
+                <span key={`${activeMessageIndex}-${messagesPaused}`} className={`message-progress-bar${messagesPaused ? " paused" : ""}`} />
+              </span>
+            </button>
+            <p className="voices-note">Anonymous words. Shared understanding. Take a moment to listen.</p>
+          </section>
+
+          {/* ================================================
             JOURNEY
         ================================================= */}
 
@@ -1373,15 +1589,8 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <footer className="footer">
-
-          <span>
-            The Chair Listens
-          </span>
-
-            <span>
-            A quiet place in a noisy world.
-          </span>
-
+            <span className="footer-brand">FACTOR OF TEN</span>
+            <span className="footer-tagline">Know more. Ask more. Check sooner.</span>
           </footer>
 
         </div>

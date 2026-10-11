@@ -1,5 +1,6 @@
 // Destination: pages/stay-connected.jsx
 import { useState } from "react";
+import { useRouter } from "next/router";
 import { LINKS } from "@/lib/campaignLinks";
 
 function InstagramIcon() {
@@ -29,6 +30,8 @@ function FacebookIcon() {
 }
 
 export default function StayConnected() {
+    const router = useRouter();
+    const displayLocation = router.query.location || "Pretoria";
     const [shareFeedback, setShareFeedback] = useState("");
 
     async function handleShare() {
@@ -80,10 +83,10 @@ export default function StayConnected() {
         .stay-shell { width: min(100%, 760px); margin: 0 auto; }
         .stay-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 20px; padding:4px 3px 14px; }
         .stay-brand { display:flex; align-items:center; gap:8px; color:var(--stay-white); font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+        .stay-brand-logo { width:34px; height:34px; flex:0 0 34px; border-radius:50%; object-fit:cover; border:1px solid rgba(245,242,232,.55); }
         .stay-brand-mark { width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:var(--stay-mint); box-shadow:0 0 0 4px rgba(141,207,148,.12), 0 0 18px rgba(141,207,148,.25); }
-        .stay-location { display:inline-flex; align-items:center; gap:7px; max-width:55%; min-width:0; padding:8px 12px; border:1px solid rgba(32,63,54,.1); border-radius:999px; background:var(--stay-mint); color:var(--stay-dark); font-size:10px; font-weight:800; letter-spacing:.035em; white-space:nowrap; }
-        .stay-pin { display:block; width:13px; height:13px; flex:0 0 13px; }
-        .stay-location-text { overflow:hidden; text-overflow:ellipsis; }
+        .stay-location { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; color:var(--stay-dark); background:var(--stay-mint); border-radius:100px; padding:7px 10px; font-size:9px; font-weight:800; letter-spacing:.04em; }
+        .stay-location-dot { width:5px; height:5px; border-radius:50%; background:var(--stay-forest); }
         .stay-back { display:inline-flex; align-items:center; gap:8px; margin:0 0 18px 3px; color:rgba(251,250,245,.78); font-size:13px; font-weight:600; text-decoration:none; transition:color 150ms ease; }
         .stay-back:hover { color:var(--stay-bright); }
         .stay-card { position:relative; isolation:isolate; overflow:hidden; border-radius:27px; background:var(--stay-cream); color:var(--stay-dark); box-shadow:0 20px 50px rgba(17,45,37,.25); }
@@ -109,27 +112,31 @@ export default function StayConnected() {
         .stay-share:hover { transform:translateY(-2px); background:var(--stay-bright); box-shadow:0 9px 0 rgba(32,63,54,.1), 0 15px 28px rgba(45,80,70,.13); }
         .stay-feedback { margin:12px 0 0; color:var(--stay-sage); font-size:12px; text-align:center; }
         .stay-continue-wrap { display:flex; justify-content:center; padding-top:24px; }
-        .stay-continue { display:inline-flex; align-items:center; gap:9px; color:var(--stay-bright); font-size:14px; font-weight:700; text-decoration:none; }
-        .stay-continue:hover { text-decoration:underline; text-underline-offset:4px; }
+        .stay-continue { display:inline-flex; align-items:center; gap:9px; padding:12px 24px; border:1.5px solid rgba(251, 250, 245, 0.35); border-radius:999px; background:transparent; color:var(--stay-bright); font-size:14px; font-weight:700; text-decoration:none; transition:border-color 150ms ease, background 150ms ease, transform 150ms ease; }
+        .stay-continue:hover { border-color:var(--stay-bright); background:rgba(141, 207, 148, 0.1); transform:translateY(-2px); }
         .stay-back:focus-visible, .stay-whatsapp-pill:focus-visible, .stay-social-icon:focus-visible, .stay-share:focus-visible, .stay-continue:focus-visible { outline:3px solid var(--stay-ochre); outline-offset:4px; }
-        .stay-footer { margin:22px 0 0; color:rgba(245,242,232,.58); font-size:10px; letter-spacing:.08em; text-align:center; }
+        .stay-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+        .stay-footer-brand { color:var(--stay-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
+        .stay-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        @media (max-width:390px) { .stay-brand-logo { width:29px; height:29px; flex-basis:29px; } }
         @media (max-width:600px) { .stay-content { padding:32px 20px 24px; } .stay-social-panel { padding:21px 17px; } .stay-title { font-size:clamp(38px, 10vw, 54px); } .stay-script { font-size:34px; } .stay-body { font-size:14px; } }
-        @media (prefers-reduced-motion:reduce) { .stay-back, .stay-whatsapp-pill, .stay-social-icon, .stay-share { transition:none; } }
+        @media (prefers-reduced-motion:reduce) { .stay-back, .stay-whatsapp-pill, .stay-social-icon, .stay-share, .stay-continue { transition:none; } }
       `}</style>
 
             <div className="stay-shell">
                 <header className="stay-topbar">
-                    <div className="stay-brand"><span className="stay-brand-mark" aria-hidden="true" />The Chair Listens</div>
+                    <div className="stay-brand">
+                        <img className="stay-brand-logo" src="/logos/factor-of-ten-logo.jpg" alt="Factor of Ten Foundation logo" />
+                        <span className="stay-brand-mark" aria-hidden="true" />
+                        The Chair Listens
+                    </div>
                     <div className="stay-location" aria-label="Campaign location">
-                        <svg className="stay-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
-                            <circle cx="12" cy="10" r="2.5" />
-                        </svg>
-                        <span className="stay-location-text">The Blue Chair</span>
+                        <span className="stay-location-dot" />
+                        {displayLocation}
                     </div>
                 </header>
 
-                <a href="/take-action" className="stay-back">‹‹ Back</a>
+                <a href="/take-action" className="stay-back">⮜ Back</a>
 
                 <section className="stay-card">
                     <div className="stay-content">
@@ -154,7 +161,6 @@ export default function StayConnected() {
                                     <path d="M20.52 3.48A11.83 11.83 0 0 0 12.1 0C5.55 0 .22 5.33.22 11.88c0 2.1.55 4.15 1.6 5.96L.12 24l6.32-1.66a11.9 11.9 0 0 0 5.66 1.44h.01c6.55 0 11.88-5.33 11.88-11.88 0-3.17-1.24-6.15-3.47-8.42ZM12.1 21.77h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.75.98 1-3.66-.24-.38a9.84 9.84 0 0 1-1.51-5.24c0-5.45 4.44-9.89 9.9-9.89a9.82 9.82 0 0 1 7 2.9 9.82 9.82 0 0 1 2.89 7c0 5.45-4.44 9.88-9.89 9.88Zm5.43-7.4c-.3-.15-1.77-.87-2.05-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.47-2.4-1.49-.89-.79-1.49-1.77-1.67-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.08 4.49.71.31 1.27.5 1.7.64.72.23 1.37.2 1.88.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35Z" />
                                 </svg>
                                 Connect with us on WhatsApp
-                                <span aria-hidden="true"></span>
                             </a>
                             <h2 id="stay-follow-title" className="stay-follow-label">Follow Factor of Ten</h2>
                             <div className="stay-icon-row">
@@ -162,7 +168,7 @@ export default function StayConnected() {
                                 <a href={LINKS.facebook} aria-label="Factor of Ten on Facebook" className="stay-social-icon"><FacebookIcon /></a>
                                 <a href={LINKS.linkedin} aria-label="Factor of Ten on LinkedIn" className="stay-social-icon"><LinkedInIcon /></a>
                             </div>
-                            <button type="button" onClick={handleShare} className="stay-share">Share the Campaign </button>
+                            <button type="button" onClick={handleShare} className="stay-share">Share the Campaign</button>
                             {shareFeedback && <p role="status" className="stay-feedback">{shareFeedback}</p>}
                         </section>
                     </div>
@@ -171,7 +177,11 @@ export default function StayConnected() {
                 <div className="stay-continue-wrap">
                     <a href="/thank-you" className="stay-continue">Continue</a>
                 </div>
-                <p className="stay-footer">The Chair Listens · A quiet place in a noisy world.</p>
+
+                <footer className="stay-footer">
+                    <span className="stay-footer-brand">FACTOR OF TEN</span>
+                    <span className="stay-footer-tagline">Know more. Ask more. Check sooner.</span>
+                </footer>
             </div>
         </main>
     );

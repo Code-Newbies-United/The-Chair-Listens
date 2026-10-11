@@ -78,28 +78,377 @@ export default function SetLocation() {
         }
     }
 
+    async function handleLogout() {
+        await fetch("/api/admin-logout", { method: "POST" });
+        router.push("/admin/login");
+    }
+
     return (
-        <main style={styles.page}>
-            <div style={styles.frame}>
-                <Link href="/admin/dashboard" style={styles.backLink}>
-                    « Back to Dashboard
-                </Link>
+        <main className="admin-page">
+            <style jsx global>{`
+                @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800;900&family=Pinyon+Script&display=swap');
 
-                <h1 style={styles.title}>Pin the Chair's Location</h1>
-                <p style={styles.subtitle}>
-                    Use this when the chair arrives at a new stop. This becomes the
-                    live "Currently in..." location shown on the site.
-                </p>
+                :root {
+                    --forest: #2d5046;
+                    --forest-dark: #203f36;
+                    --forest-deep: #19362f;
 
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <label style={styles.label}>
+                    --mint: #8dcf94;
+                    --mint-bright: #a5dfa9;
+
+                    --powder-blue: #d4e9ed;
+                    --cream: #f5f2e8;
+                    --white: #fbfaf5;
+
+                    --ochre: #bc9553;
+                    --sage: #526b61;
+                    --text-muted: #52645e;
+                }
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                html,
+                body {
+                    margin: 0;
+                    padding: 0;
+                    background: var(--forest);
+                }
+
+                body {
+                    overflow-x: hidden;
+                }
+
+                button, a, input {
+                    font: inherit;
+                }
+
+                .admin-page {
+                    min-height: 100dvh;
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background:
+                        radial-gradient(circle at 100% 0%, rgba(141, 207, 148, 0.2), transparent 30%),
+                        radial-gradient(circle at 0% 90%, rgba(212, 233, 237, 0.1), transparent 28%),
+                        var(--forest);
+                    color: var(--white);
+                    font-family: "IBM Plex Sans", "Benton Sans", "Helvetica Neue", Arial, sans-serif;
+                    padding: max(28px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+                }
+
+                .admin-frame {
+                    position: relative;
+                    width: 100%;
+                    max-width: 620px;
+                    padding: 35px 20px 30px;
+                    border-radius: 27px;
+                    background: var(--cream);
+                    color: var(--forest);
+                    box-shadow: 0 24px 60px rgba(17, 45, 37, 0.25);
+                }
+
+                .admin-topbar {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 24px;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                }
+
+                .admin-brand-area {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .admin-brand-logo {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    border: 1px solid rgba(45, 80, 70, 0.25);
+                }
+
+                .admin-brand {
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0.13em;
+                    text-transform: uppercase;
+                    color: var(--forest);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .admin-brand-mark {
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 50%;
+                    background: var(--mint);
+                    box-shadow: 0 0 0 3px rgba(141, 207, 148, 0.2);
+                }
+
+                .admin-logout-btn {
+                    background: transparent;
+                    border: 1px solid rgba(82, 107, 97, 0.3);
+                    border-radius: 100px;
+                    padding: 6px 14px;
+                    color: var(--forest);
+                    font-size: 11px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 160ms ease;
+                }
+                .admin-logout-btn:hover {
+                    border-color: var(--ochre);
+                    background: rgba(188, 149, 83, 0.1);
+                }
+
+                .admin-header-main {
+                    margin-bottom: 20px;
+                }
+
+                .admin-kicker {
+                    display: block;
+                    font-size: 9px;
+                    font-weight: 800;
+                    color: var(--ochre);
+                    text-transform: uppercase;
+                    letter-spacing: 0.15em;
+                    margin-bottom: 6px;
+                }
+
+                .admin-title {
+                    font-size: clamp(28px, 7vw, 42px);
+                    font-weight: 900;
+                    letter-spacing: -0.04em;
+                    color: var(--forest);
+                    margin: 0 0 8px 0;
+                    line-height: 1.1;
+                }
+
+                .admin-subtitle {
+                    color: var(--text-muted);
+                    font-size: 13.5px;
+                    line-height: 1.5;
+                    margin: 0 0 24px 0;
+                }
+
+                .admin-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .admin-field-label {
+                    color: var(--forest);
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.12em;
+                    text-transform: uppercase;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .admin-input {
+                    width: 100%;
+                    min-height: 48px;
+                    padding: 12px 16px;
+                    border-radius: 14px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.25);
+                    background: rgba(255, 255, 255, 0.7);
+                    color: var(--forest);
+                    font-size: 15px;
+                    transition: border-color 160ms ease, box-shadow 160ms ease;
+                }
+                .admin-input:focus {
+                    outline: none;
+                    border-color: var(--ochre);
+                    box-shadow: 0 0 0 3px rgba(188, 149, 83, 0.15);
+                }
+
+                .admin-secondary-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    min-height: 48px;
+                    padding: 12px 20px;
+                    border-radius: 100px;
+                    border: 1.5px solid var(--ochre);
+                    background: transparent;
+                    color: var(--forest);
+                    font-weight: 700;
+                    font-size: 13.5px;
+                    cursor: pointer;
+                    transition: all 160ms ease;
+                }
+                .admin-secondary-btn:hover:not(:disabled) {
+                    background: rgba(188, 149, 83, 0.1);
+                    border-color: var(--ochre);
+                }
+                .admin-secondary-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .admin-coords-preview {
+                    color: var(--forest-dark);
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin: 0;
+                }
+
+                .admin-manual-entry {
+                    color: var(--text-muted);
+                    font-size: 13px;
+                }
+
+                .admin-manual-summary {
+                    cursor: pointer;
+                    font-weight: 600;
+                    margin-bottom: 8px;
+                }
+
+                .admin-manual-fields {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 8px;
+                }
+
+                .admin-error {
+                    color: #b95c51;
+                    font-size: 13px;
+                    margin: 0;
+                    font-weight: 600;
+                }
+
+                .admin-success {
+                    color: #2e6b3e;
+                    font-size: 13px;
+                    margin: 0;
+                    font-weight: 600;
+                }
+
+                .admin-submit-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    min-height: 52px;
+                    padding: 14px 24px;
+                    border-radius: 100px;
+                    border: none;
+                    background: var(--mint);
+                    color: var(--forest-dark);
+                    font-weight: 800;
+                    font-size: 14px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 14px rgba(45, 80, 70, 0.08);
+                    transition: all 160ms ease;
+                }
+                .admin-submit-btn:hover:not(:disabled) {
+                    background: var(--mint-bright);
+                    transform: translateY(-1px);
+                    box-shadow: 0 6px 18px rgba(45, 80, 70, 0.14);
+                }
+                .admin-submit-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .admin-bottom-nav {
+                    margin-top: 24px;
+                    display: flex;
+                    justify-content: center;
+                }
+
+                .admin-back-link {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 12px 24px;
+                    border-radius: 100px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.25);
+                    color: var(--forest);
+                    font-size: 13px;
+                    font-weight: 700;
+                    text-decoration: none;
+                    background: rgba(255, 255, 255, 0.62);
+                    transition: all 160ms ease;
+                }
+                .admin-back-link:hover {
+                    border-color: var(--ochre);
+                    background: rgba(188, 149, 83, 0.1);
+                    color: var(--forest-dark);
+                    transform: translateY(-1px);
+                }
+
+                .admin-footer {
+                    margin-top: 24px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(45, 80, 70, 0.12);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 4px;
+                    text-align: center;
+                }
+
+                .admin-footer-brand {
+                    color: var(--forest-dark);
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.15em;
+                }
+
+                .admin-footer-tagline {
+                    color: var(--sage);
+                    font-size: 11px;
+                }
+            `}</style>
+
+            <div className="admin-frame">
+                <header className="admin-topbar">
+                    <div className="admin-brand-area">
+                        <img
+                            className="admin-brand-logo"
+                            src="/logos/factor-of-ten-logo-1.jpg"
+                            alt="Factor of Ten Foundation logo"
+                        />
+                        <div className="admin-brand">
+                            <span className="admin-brand-mark" />
+                            The Chair Listens
+                        </div>
+                    </div>
+
+                    <button type="button" onClick={handleLogout} className="admin-logout-btn">
+                        Log out
+                    </button>
+                </header>
+
+                <div className="admin-header-main">
+                    <span className="admin-kicker">Admin Portal</span>
+                    <h1 className="admin-title">Pin the Chair's Location</h1>
+                    <p className="admin-subtitle">
+                        Use this when the chair arrives at a new stop. This becomes the live "Currently in..." location shown on the site.
+                    </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="admin-form">
+                    <label className="admin-field-label">
                         Location Name
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Durban Golf Day"
-                            style={styles.input}
+                            className="admin-input"
                         />
                     </label>
 
@@ -107,20 +456,20 @@ export default function SetLocation() {
                         type="button"
                         onClick={handleUseMyLocation}
                         disabled={locating}
-                        style={styles.secondaryButton}
+                        className="admin-secondary-btn"
                     >
                         {locating ? "Getting your location..." : "📍 Use My Current Location"}
                     </button>
 
                     {coords && coords.lat != null && coords.lng != null && (
-                        <p style={styles.coordsPreview}>
+                        <p className="admin-coords-preview">
                             Coordinates set: {Number(coords.lat).toFixed(5)}, {Number(coords.lng).toFixed(5)}
                         </p>
                     )}
 
-                    <details style={styles.manualEntry}>
-                        <summary style={styles.manualSummary}>Enter coordinates manually instead</summary>
-                        <div style={styles.manualFields}>
+                    <details className="admin-manual-entry">
+                        <summary className="admin-manual-summary">Enter coordinates manually instead</summary>
+                        <div className="admin-manual-fields">
                             <input
                                 type="number"
                                 step="any"
@@ -129,7 +478,7 @@ export default function SetLocation() {
                                 onChange={(e) =>
                                     setCoords((prev) => ({ ...prev, lat: parseFloat(e.target.value) }))
                                 }
-                                style={styles.input}
+                                className="admin-input"
                             />
                             <input
                                 type="number"
@@ -139,107 +488,30 @@ export default function SetLocation() {
                                 onChange={(e) =>
                                     setCoords((prev) => ({ ...prev, lng: parseFloat(e.target.value) }))
                                 }
-                                style={styles.input}
+                                className="admin-input"
                             />
                         </div>
                     </details>
 
-                    {error && <p style={styles.error}>{error}</p>}
-                    {status && <p style={styles.success}>{status}</p>}
+                    {error && <p className="admin-error">{error}</p>}
+                    {status && <p className="admin-success">{status}</p>}
 
-                    <button type="submit" disabled={saving} style={styles.submitButton}>
+                    <button type="submit" disabled={saving} className="admin-submit-btn">
                         {saving ? "Saving..." : "Pin This Location"}
                     </button>
                 </form>
 
-                <button
-                    type="button"
-                    onClick={async () => {
-                        await fetch("/api/admin-logout", { method: "POST" });
-                        router.push("/admin/login");
-                    }}
-                    style={styles.logoutLink}
-                >
-                    Log out
-                </button>
+                <div className="admin-bottom-nav">
+                    <Link href="/admin/dashboard" className="admin-back-link">
+                        Back to Dashboard
+                    </Link>
+                </div>
+
+                <footer className="admin-footer">
+                    <span className="admin-footer-brand">FACTOR OF TEN</span>
+                    <span className="admin-footer-tagline">Know more. Ask more. Check sooner.</span>
+                </footer>
             </div>
         </main>
     );
 }
-
-const styles = {
-    page: {
-        minHeight: "100vh",
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0A1735",
-        fontFamily: "'IBM Plex Sans', sans-serif",
-        padding: "32px 24px 56px",
-        boxSizing: "border-box",
-    },
-    frame: {
-        width: "100%",
-        maxWidth: "400px",
-        margin: "0 auto",
-    },
-    backLink: {
-        display: "inline-block",
-        color: "#7E88AC",
-        fontSize: "13px",
-        textDecoration: "none",
-        marginBottom: "24px",
-    },
-    title: { color: "#F5F6FA", fontSize: "22px", marginBottom: "8px" },
-    subtitle: { color: "#AEB8D6", fontSize: "13.5px", lineHeight: 1.5, marginBottom: "24px" },
-    form: { display: "flex", flexDirection: "column", gap: "14px" },
-    label: { color: "#D9C489", fontSize: "13px", fontWeight: 600, display: "flex", flexDirection: "column", gap: "6px" },
-    input: {
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid rgba(174, 184, 214, 0.25)",
-        background: "rgba(255,255,255,0.05)",
-        color: "#F5F6FA",
-        fontSize: "14px",
-        boxSizing: "border-box",
-        width: "100%",
-    },
-    secondaryButton: {
-        padding: "12px",
-        borderRadius: "999px",
-        border: "1.5px solid #B99B5B",
-        background: "transparent",
-        color: "#D9C489",
-        fontWeight: 600,
-        fontSize: "14px",
-        cursor: "pointer",
-    },
-    coordsPreview: { color: "#8FD19E", fontSize: "12.5px", margin: 0 },
-    manualEntry: { color: "#AEB8D6", fontSize: "13px" },
-    manualSummary: { cursor: "pointer", marginBottom: "8px" },
-    manualFields: { display: "flex", gap: "8px" },
-    error: { color: "#FF6B6B", fontSize: "13px", margin: 0 },
-    success: { color: "#8FD19E", fontSize: "13px", margin: 0 },
-    submitButton: {
-        padding: "13px",
-        borderRadius: "999px",
-        border: "none",
-        background: "#B99B5B",
-        color: "#0A1735",
-        fontWeight: 700,
-        fontSize: "14px",
-        cursor: "pointer",
-    },
-    logoutLink: {
-        display: "block",
-        margin: "20px auto 0",
-        background: "none",
-        border: "none",
-        color: "#7E88AC",
-        fontSize: "12.5px",
-        textDecoration: "underline",
-        cursor: "pointer",
-        textAlign: "center",
-    },
-};

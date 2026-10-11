@@ -518,8 +518,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                 disabled={savingSession}
                 aria-label="Go back"
             >
-              <span aria-hidden="true">←</span>
-              <span>Back</span>
+              <span aria-hidden="true"></span>
+              <span>⮜ Back</span>
             </button>
 
             <div className="location-pill">
@@ -646,9 +646,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                           ? "Complete reflection"
                           : "Continue"}
 
-                  {!savingSession && (
-                      <span aria-hidden="true">→</span>
-                  )}
+                  {/*{!savingSession && (*/}
+                  {/*    <span aria-hidden="true"></span>*/}
+                  {/*)}*/}
                 </button>
               </div>
 

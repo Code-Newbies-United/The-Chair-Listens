@@ -57,6 +57,11 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         <div className="responses-shell">
           <header className="topbar">
             <div className="brand" aria-label="The Chair Listens">
+              <img
+                  className="brand-logo"
+                  src="/logos/factor-of-ten-logo.jpg"
+                  alt="Factor of Ten Foundation logo"
+              />
               <span className="brand-mark" aria-hidden="true" />
               <span>The Chair Listens</span>
             </div>
@@ -80,7 +85,11 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
               </div>
 
               <div className="intro">
-                <div className="completion-icon" aria-hidden="true">✓</div>
+                <div className="completion-icon" aria-hidden="true">
+                  <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
+                    <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
                 <div className="script-line">Session complete</div>
                 <h1 className="headline">
                   Your
@@ -136,9 +145,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
               )}
 
               <footer className="card-footer">
-                <span className="footer-rule" />
                 <p>You showed up. That matters.</p>
-                <span className="footer-rule" />
               </footer>
             </div>
           </section>
@@ -156,7 +163,11 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
             <span>Return to Start</span>
             <span className="button-arrow" aria-hidden="true"></span>
           </button>
-          <p className="page-note">A quiet place in a noisy world.</p>
+
+          <footer className="responses-footer">
+            <span className="responses-footer-brand">FACTOR OF TEN</span>
+            <span className="responses-footer-tagline">Know more. Ask more. Check sooner.</span>
+          </footer>
         </div>
 
         <style jsx>{`
@@ -168,7 +179,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           box-sizing: border-box;
           padding: 28px 20px 42px;
           color: #203f36;
-          font-family: "Benton Sans", "Helvetica Neue", Arial, sans-serif;
+          font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
           background:
             radial-gradient(circle at 100% 0%, rgba(141, 207, 148, 0.2), transparent 28%),
             radial-gradient(circle at 0% 90%, rgba(212, 233, 237, 0.1), transparent 25%),
@@ -199,6 +210,15 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           text-transform: uppercase;
         }
 
+        .brand-logo {
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 1px solid rgba(245, 242, 232, 0.55);
+        }
+
         .brand-mark {
           width: 9px;
           height: 9px;
@@ -206,7 +226,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           border-radius: 50%;
           background: #8dcf94;
           box-shadow: 0 0 0 4px rgba(141, 207, 148, 0.12),
-                      0 0 18px rgba(141, 207, 148, 0.25);
+                    0 0 18px rgba(141, 207, 148, 0.25);
         }
 
         .location-pill {
@@ -299,23 +319,19 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           background: #bc9553;
         }
 
-
         .intro { max-width: 500px; margin: 0 auto; text-align: center; }
 
         .completion-icon {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 43px;
-          height: 43px;
-          margin: 0 auto 14px;
-          border: 1px solid rgba(45, 80, 70, 0.12);
+          width: 58px;
+          height: 58px;
+          margin: 0 auto 20px;
           border-radius: 50%;
-          background: #dce9df;
+          background: rgba(141, 207, 148, .28);
           color: #2d5046;
-          font-size: 20px;
-          font-weight: 700;
-          box-shadow: 0 5px 14px rgba(45, 80, 70, 0.08);
+          border: 1px solid rgba(45, 80, 70, 0.12);
         }
 
         .script-line {
@@ -423,12 +439,11 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         .card-footer p {
           margin: 0;
           color: #526b61;
-          font-family: "Pinyon Script", cursive;
-          font-size: 23px;
+          font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+          font-size: 14px;
+          font-weight: 600;
           white-space: nowrap;
         }
-
-        .footer-rule { width: 27px; height: 1px; background: #bc9553; opacity: 0.7; }
 
         .take-action-button {
           display: flex;
@@ -483,17 +498,32 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         .home-button:hover { transform: translateY(-2px); background: #a5dfa9; box-shadow: 0 10px 24px rgba(17, 45, 37, 0.18); }
         .home-button:focus-visible { outline: 3px solid #d4e9ed; outline-offset: 4px; }
         .button-arrow { font-size: 19px; line-height: 1; }
-        .page-note { margin: 15px 0 0; color: rgba(245, 242, 232, 0.72); font-size: 12px; text-align: center; }
+        
+        .responses-footer { 
+          margin: 24px 0 0; 
+          padding-top: 20px; 
+          border-top: 1px solid rgba(245,242,232,.16); 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center; 
+          gap: 6px; 
+          text-align: center; 
+        }
+        .responses-footer-brand { color: #a5dfa9; font-size: 11px; font-weight: 800; letter-spacing: .15em; }
+        .responses-footer-tagline { color: rgba(245,242,232,.58); font-size: 11px; }
 
         @keyframes loading {
           0% { transform: translateX(-120%); }
           100% { transform: translateX(340%); }
         }
 
+        @media (max-width: 390px) {
+          .brand-logo { width: 29px; height: 29px; flex-basis: 29px; }
+        }
+
         @media (max-width: 560px) {
           .responses-page { padding: 18px 13px 30px; }
           .topbar { align-items: flex-start; }
-          .brand-mark { padding-top: 8px; font-size: 11px; }
           .location-pill { max-width: 55%; padding: 8px 10px; font-size: 11px; }
           .card-content { padding: 27px 20px 24px; }
           .session-meta { margin-bottom: 25px; }
@@ -503,8 +533,6 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           .summary-content { padding: 20px 17px; }
           .summary-text { font-size: 14px; }
           .card-footer { gap: 8px; }
-          .card-footer p { font-size: 20px; }
-          .footer-rule { width: 18px; }
         }
 
         @media (prefers-reduced-motion: reduce) {

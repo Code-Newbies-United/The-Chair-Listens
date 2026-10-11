@@ -41,6 +41,7 @@ export default function TakeAction() {
         .ta-shell { width: min(100%, 760px); margin: 0 auto; }
         .ta-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; padding:4px 3px 14px; }
         .ta-brand { display:flex; align-items:center; gap:8px; color:var(--ta-white); font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+        .ta-brand-logo { width:34px; height:34px; flex:0 0 34px; border-radius:50%; object-fit:cover; border:1px solid rgba(245,242,232,.55); }
         .ta-brand-mark { width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:var(--ta-mint); box-shadow:0 0 0 4px rgba(141,207,148,.12), 0 0 18px rgba(141,207,148,.25); }
         .ta-location { display:inline-flex; align-items:center; gap:6px; max-width:55%; padding:7px 11px; border-radius:999px; background:var(--ta-mint); color:var(--ta-forest-dark); font-size:9px; font-weight:800; letter-spacing:.04em; }
         .ta-location-dot { width:5px; height:5px; flex:0 0 5px; border-radius:50%; background:var(--ta-forest); }
@@ -68,22 +69,29 @@ export default function TakeAction() {
         .ta-primary:focus-visible, .ta-secondary:focus-visible, .ta-continue:focus-visible { outline:3px solid var(--ta-ochre); outline-offset:4px; }
         .ta-text-link { display:block; width:fit-content; margin:15px auto 0; color:var(--ta-sage); font-size:12px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
         .ta-after { display:flex; flex-direction:column; align-items:center; gap:16px; padding-top:24px; }
-        .ta-secondary { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border:1px solid rgba(245,242,232,.35); border-radius:999px; background:rgba(245,242,232,.08); color:var(--ta-white); font:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:background 160ms ease, border-color 160ms ease; }
-        .ta-secondary:hover { background:rgba(141,207,148,.15); border-color:var(--ta-mint); }
-        .ta-continue { display:inline-flex; align-items:center; gap:9px; color:var(--ta-mint-bright); font-size:14px; font-weight:700; text-decoration:none; }
-        .ta-continue:hover { text-decoration:underline; text-underline-offset:4px; }
-        .ta-footer { margin:22px 0 0; color:rgba(245,242,232,.58); font-size:10px; letter-spacing:.08em; text-align:center; }
+        .ta-secondary { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 12px; border:0; background:transparent; color:rgba(251,250,245,.85); font:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:3px; transition:color 160ms ease; }
+        .ta-secondary:hover { color:var(--ta-mint-bright); }
+        .ta-continue { display:inline-flex; align-items:center; gap:9px; padding:12px 24px; border:1.5px solid rgba(251, 250, 245, 0.35); border-radius:999px; background:transparent; color:var(--ta-mint-bright); font-size:14px; font-weight:700; text-decoration:none; transition:border-color 150ms ease, background 150ms ease, transform 150ms ease; }
+        .ta-continue:hover { border-color:var(--ta-mint-bright); background:rgba(141, 207, 148, 0.1); transform:translateY(-2px); }
+        .ta-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+        .ta-footer-brand { color:var(--ta-mint-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
+        .ta-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        @media (max-width:390px) { .ta-brand-logo { width:29px; height:29px; flex-basis:29px; } }
         @media (max-width:600px) { .ta-content { padding:32px 20px 25px; } .ta-pledge { padding:21px 17px; } .ta-pledge h2 { font-size:18px; } .ta-copy { font-size:14px; } .ta-script { font-size:34px; } .ta-headline { font-size:clamp(41px, 11vw, 58px); } }
-        @media (prefers-reduced-motion:reduce) { .ta-primary, .ta-secondary { transition:none; } }
+        @media (prefers-reduced-motion:reduce) { .ta-primary, .ta-secondary, .ta-continue { transition:none; } }
       `}</style>
 
             <div className="ta-shell">
                 <header className="ta-topbar">
-                    <div className="ta-brand"><span className="ta-brand-mark" aria-hidden="true" />The Chair Listens</div>
-                    <div className="ta-location"><span className="ta-location-dot" aria-hidden="true" />Take the next step</div>
+                    <div className="ta-brand">
+                        <img className="ta-brand-logo" src="/logos/factor-of-ten-logo.jpg" alt="Factor of Ten Foundation logo" />
+                        <span className="ta-brand-mark" aria-hidden="true" />
+                        The Chair Listens
+                    </div>
+                    <div className="ta-location"><span className="ta-location-dot" aria-hidden="true" />Pretoria</div>
                 </header>
 
-                <a href="/responses" className="ta-back">‹‹ Back to your reflection</a>
+                <a href="/responses" className="ta-back">⮜ Back</a>
 
                 <section className="ta-card">
                     <div className="ta-content">
@@ -102,17 +110,21 @@ export default function TakeAction() {
                                 <li>A father. A brother. A partner. A son. A friend. A colleague.</li>
                                 <li>Your signature is more than a signature. It’s a commitment to start the conversation.</li>
                             </ul>
-                            <a href={LINKS.petition} className="ta-primary">Sign the Factor of Ten Petition <span aria-hidden="true">→</span></a>
+                            <a href={LINKS.petition} className="ta-primary">Sign the Factor of Ten Petition</a>
                             <a href={LINKS.visitpage} className="ta-text-link">Visit the Factor of Ten page</a>
                         </section>
                     </div>
                 </section>
 
                 <div className="ta-after">
-                    <button type="button" className="ta-secondary" onClick={() => setIsModalOpen(true)}> Did You Know?</button>
+                    <button type="button" className="ta-secondary" onClick={() => setIsModalOpen(true)}>Did You Know?</button>
                     <a href="/stay-connected" className="ta-continue">Continue</a>
                 </div>
-                <p className="ta-footer">The Chair Listens · A quiet place in a noisy world.</p>
+
+                <footer className="ta-footer">
+                    <span className="ta-footer-brand">FACTOR OF TEN</span>
+                    <span className="ta-footer-tagline">Know more. Ask more. Check sooner.</span>
+                </footer>
             </div>
 
             <DidYouKnowModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} variant="bottom-sheet" />

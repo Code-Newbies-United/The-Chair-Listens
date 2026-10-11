@@ -105,8 +105,8 @@ export default function DidYouKnowModal({ isOpen, onClose }) {
                 <footer style={styles.modalFooter}>
                     <span style={styles.counter}><strong style={styles.counterCurrent}>{String(currentIndex + 1).padStart(2, "0")}</strong><span style={styles.counterDivider}>/</span>{String(DID_YOU_KNOW_FACTS.length).padStart(2, "0")}</span>
                     <div style={styles.btnGroup}>
-                        <button type="button" className="dyk-nav" onClick={handlePrev} style={styles.navBtn}>← <span>Prev</span></button>
-                        <button type="button" className="dyk-nav" onClick={handleNext} style={styles.nextBtn}><span>Next</span> →</button>
+                        <button type="button" className="dyk-nav" onClick={handlePrev} style={styles.navBtn}><span>Previous</span></button>
+                        <button type="button" className="dyk-nav" onClick={handleNext} style={styles.nextBtn}><span>Next</span></button>
                     </div>
                 </footer>
             </section>

@@ -68,7 +68,7 @@ export default function SelectScript({
       <main className="path-page">
 
         <style jsx global>{`
-@import url("https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800;900&family=Pinyon+Script&display=swap");
 
 :root {
   /* ==========================================
@@ -102,7 +102,7 @@ export default function SelectScript({
 }
 
 html,
-    body {
+body {
   margin: 0;
   padding: 0;
   background: var(--forest);
@@ -130,30 +130,31 @@ button {
 
   padding:
       max(28px, env(safe-area-inset-top))
-  max(18px, env(safe-area-inset-right))
-  max(40px, env(safe-area-inset-bottom))
-  max(18px, env(safe-area-inset-left));
+      max(18px, env(safe-area-inset-right))
+      max(40px, env(safe-area-inset-bottom))
+      max(18px, env(safe-area-inset-left));
 
   background:
       radial-gradient(
           circle at 100% 0%,
-      rgba(141, 207, 148, 0.2),
-      transparent 30%
-),
-  radial-gradient(
-      circle at 0% 90%,
-      rgba(212, 233, 237, 0.1),
-      transparent 28%
-),
-  var(--forest);
+          rgba(141, 207, 148, 0.2),
+          transparent 30%
+      ),
+      radial-gradient(
+          circle at 0% 90%,
+          rgba(212, 233, 237, 0.1),
+          transparent 28%
+      ),
+      var(--forest);
 
   color: var(--white);
 
   font-family:
-  "Benton Sans",
+      "IBM Plex Sans",
+      "Benton Sans",
       "Helvetica Neue",
       Arial,
-  sans-serif;
+      sans-serif;
 }
 
 /* ==========================================
@@ -181,7 +182,7 @@ button {
   isolation: isolate;
 
   box-shadow:
-  0 24px 60px rgba(17, 45, 37, 0.25);
+      0 24px 60px rgba(17, 45, 37, 0.25);
 }
 
 .path-frame::before {
@@ -254,13 +255,23 @@ button {
   background: var(--mint);
 
   box-shadow:
-  0 0 0 4px rgba(141, 207, 148, 0.16),
+      0 0 0 4px rgba(141, 207, 148, 0.16),
       0 0 15px rgba(141, 207, 148, 0.22);
 }
 
 /* ==========================================
-   HEADING
+   LOGO & HEADING
 ========================================== */
+
+.path-brand-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(45, 80, 70, 0.15);
+  box-shadow: 0 6px 18px rgba(17, 45, 37, 0.08);
+}
 
 .headline {
   margin: 0;
@@ -282,7 +293,7 @@ button {
   color: var(--ochre);
 
   font-family:
-  "Pinyon Script",
+      "Pinyon Script",
       cursive;
 
   font-size: 38px;
@@ -341,13 +352,13 @@ button {
   cursor: pointer;
 
   box-shadow:
-  0 5px 14px rgba(45, 80, 70, 0.06);
+      0 5px 14px rgba(45, 80, 70, 0.06);
 
   transition:
       transform 160ms ease,
-  border-color 160ms ease,
+      border-color 160ms ease,
       background 160ms ease,
-  box-shadow 160ms ease;
+      box-shadow 160ms ease;
 }
 
 .path-card:hover {
@@ -358,7 +369,7 @@ button {
   background: rgba(141, 207, 148, 0.14);
 
   box-shadow:
-  0 10px 22px rgba(45, 80, 70, 0.1);
+      0 10px 22px rgba(45, 80, 70, 0.1);
 }
 
 .path-card:active {
@@ -425,9 +436,9 @@ button {
   background:
       linear-gradient(
           135deg,
-      rgba(212, 233, 237, 0.72),
-      rgba(255, 255, 255, 0.68)
-);
+          rgba(212, 233, 237, 0.72),
+          rgba(255, 255, 255, 0.68)
+      );
 }
 
 .quiz-card:hover {
@@ -436,9 +447,9 @@ button {
   background:
       linear-gradient(
           135deg,
-      rgba(212, 233, 237, 0.9),
-      rgba(141, 207, 148, 0.16)
-);
+          rgba(212, 233, 237, 0.9),
+          rgba(141, 207, 148, 0.16)
+      );
 }
 
 .quiz-badge {
@@ -470,17 +481,28 @@ button {
 ========================================== */
 
 .path-footer {
-  margin-top: 23px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(45, 80, 70, 0.12);
 
-  color: rgba(45, 80, 70, 0.48);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 
-  font-size: 8px;
+  text-align: center;
+}
 
-  font-weight: 700;
+.path-footer-brand {
+  color: var(--forest-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
 
-  letter-spacing: 0.1em;
-
-  text-transform: uppercase;
+.path-footer-tagline {
+  color: var(--sage);
+  font-size: 11px;
 }
 
 /* ==========================================
@@ -488,27 +510,33 @@ button {
 ========================================== */
 
 @media (max-width: 360px) {
-.path-page {
+  .path-page {
     padding-left: 12px;
     padding-right: 12px;
   }
 
-.path-frame {
+  .path-frame {
     padding:
         28px 15px 24px;
 
     border-radius: 23px;
   }
 
-.headline {
+  .path-brand-logo {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 12px;
+  }
+
+  .headline {
     font-size: 40px;
   }
 
-.headline-script {
+  .headline-script {
     font-size: 34px;
   }
 
-.path-card {
+  .path-card {
     padding: 17px;
   }
 }
@@ -518,42 +546,48 @@ button {
 ========================================== */
 
 @media (min-width: 700px) {
-.path-page {
+  .path-page {
     padding: 40px 20px;
   }
 
-.path-frame {
+  .path-frame {
     max-width: 650px;
 
     padding:
         50px 45px 38px;
   }
 
-.headline {
+  .path-brand-logo {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 18px;
+  }
+
+  .headline {
     font-size: 66px;
   }
 
-.headline-script {
+  .headline-script {
     font-size: 46px;
   }
 
-.body {
+  .body {
     font-size: 15px;
 
     margin-bottom: 34px;
   }
 
-.path-card {
+  .path-card {
     padding: 21px 23px;
 
     border-radius: 20px;
   }
 
-.path-label {
+  .path-label {
     font-size: 18px;
   }
 
-.path-description {
+  .path-description {
     font-size: 13px;
   }
 }
@@ -563,9 +597,9 @@ button {
 ========================================== */
 
 @media (prefers-reduced-motion: reduce) {
-*,
-*::before,
-*::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
 
     animation-duration: 0.01ms !important;
@@ -587,8 +621,16 @@ button {
               aria-hidden="true"
           />
 
-            Sitting in {displayLocation}
+            {displayLocation}
           </div>
+
+          {/* LOGO */}
+
+          <img
+              className="path-brand-logo"
+              src="/logos/factor-of-ten-logo-1.jpg"
+              alt="Factor of Ten Foundation logo"
+          />
 
           {/* HEADING */}
 
@@ -646,9 +688,10 @@ button {
 
           {/* FOOTER */}
 
-          <div className="path-footer">
-            The Chair Listens · A quiet place in a noisy world.
-          </div>
+          <footer className="path-footer">
+            <span className="path-footer-brand">FACTOR OF TEN</span>
+            <span className="path-footer-tagline">Know more. Ask more. Check sooner.</span>
+          </footer>
 
         </div>
       </main>
