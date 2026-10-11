@@ -1,5 +1,10 @@
 // Destination: pages/thank-you.jsx
 import { LINKS } from "@/lib/campaignLinks";
+import { useEffect } from "react";
+import { clearAnswers } from "@/lib/session";
+
+
+  // ...rest unchanged
 
 // This is the final page in the flow: Reflection -> Take Action -> Stay Connected -> Thank You
 
@@ -11,6 +16,9 @@ const PARTNERS = [
 ];
 
 export default function ThankYou() {
+    useEffect(() => {
+        clearAnswers();
+    }, []);
     function handleDone() {
         // Best-effort close — browsers only allow script-initiated close()
         // on tabs/windows that were themselves opened via script, so this

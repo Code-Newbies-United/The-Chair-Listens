@@ -1,10 +1,11 @@
 // Destination: pages/responses.jsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { loadAnswers, sessionHeaders } from "@/lib/session";
 
 export default function ResponsesPage() {
   const router = useRouter();
-  const { script, data } = router.query;
+  const { script } = router.query;
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,24 +22,35 @@ export default function ResponsesPage() {
     if (!router.isReady) return;
 
     async function fetchSessionSummary() {
-      let parsedAnswers = [];
-      if (data) {
-        try {
-          parsedAnswers = JSON.parse(decodeURIComponent(data));
-        } catch (e) {
-          console.error("Failed to parse answers", e);
-        }
+      const parsedAnswers = loadAnswers();
+
+      // Nothing saved (e.g. opened in a new tab, or storage was cleared):
+      // show the friendly fallback instead of calling the AI with no answers.
+      if (parsedAnswers.length === 0) {
+        setSummary({
+          overallReflection:
+            "Thank you for taking the time to share your perspective today.",
+          takeaways: [
+            "Acknowledging your journey is an important step forward.",
+            "Your voice contributes meaningfully to our collective healing.",
+          ],
+        });
+        setLoading(false);
+        return;
       }
 
       try {
         const res = await fetch("/api/session-reflection", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...sessionHeaders() },
           body: JSON.stringify({
             script: script || "men_mental_health",
             answers: parsedAnswers,
           }),
         });
+
+        // A 400/429/500 from the server has no reflection in it: use the fallback below.
+        if (!res.ok) throw new Error(`Reflection request failed (${res.status})`);
 
         const result = await res.json();
         setSummary(result);
@@ -58,7 +70,7 @@ export default function ResponsesPage() {
     }
 
     fetchSessionSummary();
-  }, [router.isReady, script, data]);
+  }, [router.isReady, script]);
 
   return (
       <main style={styles.page}>

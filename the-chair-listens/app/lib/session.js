@@ -3,10 +3,10 @@
 // The session ID is created by the server when the person consents.
 // It lives in sessionStorage: it is private to this browser tab and disappears
 // when the tab is closed. It is NOT a login and holds no personal information.
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 
-const KEY = "chair_session_id";
+const KEY = 'chair_session_id';
 
 export function getSessionId() {
   try {
@@ -14,6 +14,14 @@ export function getSessionId() {
   } catch {
     return null;
   }
+}
+
+// Headers that tell the server which consent session a request belongs to, so
+// rate limits (FIX-11) can be applied per person and not only per IP address.
+// Spread it into fetch headers:  headers: { "Content-Type": "...", ...sessionHeaders() }
+export function sessionHeaders() {
+  const id = getSessionId();
+  return id ? { 'x-session-id': id } : {};
 }
 
 // Returns true if saved, false if the browser blocked storage (e.g. some private modes)
@@ -48,7 +56,7 @@ export function useRequireSession() {
 
   useEffect(() => {
     if (!getSessionId()) {
-      router.replace("/?consent=required");
+      router.replace('/?consent=required');
       return;
     }
     setReady(true);
@@ -56,4 +64,36 @@ export function useRequireSession() {
   }, []);
 
   return ready;
+}
+
+// ---- Answers (FIX-08) ----
+// Answers live in sessionStorage instead of the URL, so they never end up in
+// browser history, server logs or referrers. Cleared on the thank-you page.
+const ANSWERS_KEY = 'chair_answers';
+
+export function saveAnswers(answers) {
+  try {
+    sessionStorage.setItem(ANSWERS_KEY, JSON.stringify(answers));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function loadAnswers() {
+  try {
+    const raw = sessionStorage.getItem(ANSWERS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function clearAnswers() {
+  try {
+    sessionStorage.removeItem(ANSWERS_KEY);
+  } catch {
+    /* nothing to clear */
+  }
 }

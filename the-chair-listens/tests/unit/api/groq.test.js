@@ -1,80 +1,96 @@
-import handler from "../../../app/pages/api/groq";
-import { rateLimit, getClientIp } from "../../../app/lib/rateLimit";
+import handler from '@/pages/api/groq';
+import { rateLimit } from '@/lib/rateLimit';
+import { RATE_LIMITS } from '@/lib/apiGuard';
+import { MAX_ANSWER_CHARS } from '@/lib/limits';
+import { mockReq, mockRes, SESSION_ID, TEST_IP } from '../helpers/http';
 
-jest.mock("../../../app/lib/rateLimit", () => ({
-    rateLimit: jest.fn(),
-    getClientIp: jest.fn()
+jest.mock('@/lib/rateLimit', () => ({
+  rateLimit: jest.fn(),
+  getClientIp: jest.fn(() => '203.0.113.7'),
 }));
 
-describe("/api/groq rate limiting", () => {
+const body = (overrides = {}) => ({
+  script: 'men_mental_health',
+  question: 'How are you?',
+  answer: 'Tired, honestly.',
+  ...overrides,
+});
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
+describe('/api/groq', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    rateLimit.mockResolvedValue({ allowed: true, remaining: 9, count: 1 });
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Thank you.' } }] }),
+    }));
+  });
 
-    test("allows the request when rate limit has not been exceeded", async () => {
-        getClientIp.mockReturnValue("192.168.1.10");
+  test('rejects anything but POST with 405 and an Allow header', async () => {
+    const res = mockRes();
+    await handler(mockReq({ method: 'GET' }), res);
+    expect(res.statusCode).toBe(405);
+    expect(res.headers.Allow).toBe('POST');
+    expect(res.body.error).toBe('Method Not Allowed');
+  });
 
-        rateLimit.mockResolvedValue({
-            allowed: true,
-            remaining: 9,
-            count: 1
-        });
+  test('allows the request when the rate limit has not been exceeded', async () => {
+    const res = mockRes();
+    await handler(mockReq({ body: body() }), res);
 
-        const req = {
-            method: "POST",
-            headers: {},
-            body: {
-                message: "Hello"
-            }
-        };
+    const { perIp, windowSeconds } = RATE_LIMITS.groq;
+    expect(rateLimit).toHaveBeenCalledWith(
+      'groq',
+      TEST_IP,
+      perIp,
+      windowSeconds,
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ text: 'Thank you.' });
+  });
 
-        const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
-        };
+  test('also limits per session when the browser sends its session ID', async () => {
+    const res = mockRes();
+    await handler(
+      mockReq({ body: body(), headers: { 'x-session-id': SESSION_ID } }),
+      res,
+    );
 
-        await handler(req, res);
+    const { perSession, windowSeconds } = RATE_LIMITS.groq;
+    expect(rateLimit).toHaveBeenCalledWith(
+      'groq-session',
+      SESSION_ID,
+      perSession,
+      windowSeconds,
+    );
+  });
 
-        expect(rateLimit).toHaveBeenCalledWith(
-            "groq",
-            "192.168.1.10",
-            10,
-            60
-        );
+  test('returns 429 in the standard shape, without calling Groq, when over the limit', async () => {
+    rateLimit.mockResolvedValue({ allowed: false, remaining: 0, count: 61 });
+    const res = mockRes();
+    await handler(mockReq({ body: body() }), res);
 
-        expect(res.status).not.toHaveBeenCalledWith(429);
-    });
+    expect(res.statusCode).toBe(429);
+    expect(res.body.error).toBe('Too Many Requests');
+    expect(res.body.message).toEqual(expect.any(String));
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 
-    test("returns 429 when rate limit is exceeded", async () => {
-        getClientIp.mockReturnValue("192.168.1.10");
+  test.each([
+    ['no body', undefined],
+    ['a missing answer', { question: 'Q?' }],
+    ['a blank answer', body({ answer: '   ' })],
+    [
+      'an answer that is too long',
+      body({ answer: 'a'.repeat(MAX_ANSWER_CHARS + 1) }),
+    ],
+    ['an unknown script', body({ script: 'made_up' })],
+  ])('returns 400 for %s, without calling Groq', async (_label, payload) => {
+    const res = mockRes();
+    await handler(mockReq({ body: payload }), res);
 
-        rateLimit.mockResolvedValue({
-            allowed: false,
-            remaining: 0,
-            count: 11
-        });
-
-        const req = {
-            method: "POST",
-            headers: {},
-            body: {
-                message: "Hello"
-            }
-        };
-
-        const res = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn()
-        };
-
-        await handler(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(429);
-
-        expect(res.json).toHaveBeenCalledWith({
-            error: "Too many requests. Please try again later."
-        });
-    });
-
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('Bad Request');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });

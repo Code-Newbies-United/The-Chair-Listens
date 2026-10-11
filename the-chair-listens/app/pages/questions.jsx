@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { checkForSafetyTrigger } from "@/lib/safety.js";
-import { useRequireSession, getSessionId, clearSessionId } from "@/lib/session";
+import {
+  useRequireSession,
+  getSessionId,
+  clearSessionId,
+  sessionHeaders,
+} from "@/lib/session";
+import { MAX_ANSWER_CHARS } from "@/lib/limits";
 
 const SCRIPT_TITLES = {
   men_mental_health: "For Men",
@@ -212,8 +218,9 @@ export default function QuestionsPage() {
       for (let i = 0; i < event.results.length; i++) {
         fullTranscript += event.results[i][0].transcript;
       }
-      setCurrentText(fullTranscript);
-      checkSafetyAndRedirect(fullTranscript);
+      const clipped = fullTranscript.slice(0, MAX_ANSWER_CHARS);
+      setCurrentText(clipped);
+      checkSafetyAndRedirect(clipped);
     };
 
     recognition.onerror = (event) => {
@@ -274,7 +281,7 @@ export default function QuestionsPage() {
     try {
       const res = await fetch("/api/groq", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...sessionHeaders() },
         body: JSON.stringify({
           script: activeScriptKey,
           question: currentQuestion?.question,
@@ -419,8 +426,9 @@ export default function QuestionsPage() {
 
             <textarea
                 value={currentText}
+                maxLength={MAX_ANSWER_CHARS}
                 onChange={(e) => {
-                  const text = e.target.value;
+                  const text = e.target.value.slice(0, MAX_ANSWER_CHARS);
                   setCurrentText(text);
                   checkSafetyAndRedirect(text);
                 }}
