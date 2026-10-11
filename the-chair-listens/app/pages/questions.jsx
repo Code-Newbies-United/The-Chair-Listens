@@ -15,10 +15,12 @@ const PAGE_BG =
 
 export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
-  const { script, location } = router.query;
+  const { script } = router.query;
 
   const activeScriptKey = SCRIPT_TITLES[script] ? script : "men_mental_health";
-  const displayLocation = location || locationName;
+
+  // Prefer the location passed through from earlier pages, fall back to the prop
+  const displayLocation = router.query.location || locationName;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
@@ -59,15 +61,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     async function fetchQuestions() {
       setQuestionsLoading(true);
       try {
-        const res = await fetch(`/api/questions?script=${encodeURIComponent(activeScriptKey)}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/questions?script=${activeScriptKey}`);
         const result = await res.json();
         const mapped = (result.questions || []).map((q) => ({
           id: q.id,
           title: q.title,
-          question: q.question_text || q.question,
-          placeholder: q.placeholder || "Type or speak your answer here...",
+          question: q.question_text,
+          placeholder: q.placeholder,
         }));
         setQuestions(mapped);
       } catch (err) {
@@ -132,19 +132,22 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   };
 
+  // Save all answers to Supabase, then navigate to the summary page with the data
   async function finishSession(answers) {
     try {
       await fetch("/api/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, script: activeScriptKey, location: displayLocation }),
+        body: JSON.stringify({ answers }),
       });
     } catch (err) {
       console.error("Failed to save responses:", err);
     }
     const encodedData = encodeURIComponent(JSON.stringify(answers));
     router.push(
-        `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(displayLocation)}`
+      `/responses?script=${activeScriptKey}&data=${encodedData}&location=${encodeURIComponent(
+        displayLocation
+      )}`
     );
   }
 
@@ -164,7 +167,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   };
 
   function initSpeechRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
     if (!SpeechRecognition) return null;
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -177,46 +182,34 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         fullTranscript += event.results[i][0].transcript;
       }
       setCurrentText(fullTranscript);
-      checkSafetyAndRedirect(fullTranscript);
     };
 
     recognition.onerror = (event) => {
       console.error("Speech error:", event.error);
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        permissionDeniedRef.current = true;
-        stopListening();
+      setIsListening(false);
+      if (event.error === "not-allowed") {
+        alert("Microphone permission was denied. Please allow microphone access in your browser settings.");
       }
     };
 
-    recognition.onend = () => {
-      if (isListeningRef.current && !permissionDeniedRef.current) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error("Failed to restart speech recognition:", e);
-        }
-      } else {
-        stopListening();
-      }
-    };
-
+    recognition.onend = () => setIsListening(false);
     return recognition;
   }
 
   function toggleListening() {
     if (isListening) {
-      stopListening();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
     } else {
       if (!recognitionRef.current) recognitionRef.current = initSpeechRecognition();
       if (recognitionRef.current) {
         try {
-          permissionDeniedRef.current = false;
-          isListeningRef.current = true;
-          setIsListening(true);
           recognitionRef.current.start();
+          setIsListening(true);
         } catch (err) {
           console.error("Start speech failed:", err);
-          stopListening();
         }
       }
     }
@@ -236,7 +229,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           script: activeScriptKey,
-          question: currentQuestion?.question,
+          question: currentQuestion.question,
           answer: currentText,
         }),
       });
@@ -266,15 +259,14 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     utterance.pitch = 0.95;
 
     const voices = synth.getVoices();
-    const naturalVoice =
-        voices.find(
-            (v) =>
-                v.lang.startsWith("en") &&
-                (v.name.includes("Natural") ||
-                    v.name.includes("Google") ||
-                    v.name.includes("Enhanced") ||
-                    v.name.includes("Premium"))
-        ) || voices.find((v) => v.lang.startsWith("en"));
+    const naturalVoice = voices.find(
+      (v) =>
+        v.lang.startsWith("en") &&
+        (v.name.includes("Natural") ||
+          v.name.includes("Google") ||
+          v.name.includes("Enhanced") ||
+          v.name.includes("Premium"))
+    ) || voices.find((v) => v.lang.startsWith("en"));
 
     if (naturalVoice) utterance.voice = naturalVoice;
     utterance.onend = () => setIsPlaying(false);
@@ -283,7 +275,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     synth.speak(utterance);
   }
 
-  if (questionsLoading) {
+  // Show a loading state until questions have arrived from Supabase
+  if (questionsLoading || questions.length === 0) {
     return (
         <main className={`min-h-[100dvh] w-full flex items-center justify-center ${PAGE_BG} p-6 font-sans`}>
           <p className="text-[#AEB8D6]">Loading questions...</p>

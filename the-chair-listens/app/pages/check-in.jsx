@@ -83,7 +83,7 @@ export default function CheckInPage() {
         {!isSubmitted ? (
           /* Step 1: Asking how the user feels */
           <div style={styles.contentBlock}>
-            <span style={styles.stepBadge}>Check-In</span>
+            <span style={styles.stepBadge}>Step 1 of 2 • Check-In</span>
             <h1 style={styles.headline}>How are you arriving at the chair today?</h1>
             <p style={styles.subheadline}>
               There are no wrong answers. Choose the option that closest describes your headspace.
