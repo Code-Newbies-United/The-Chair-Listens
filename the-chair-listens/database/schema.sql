@@ -64,3 +64,15 @@ CREATE TABLE IF NOT EXISTS consent (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message TEXT NOT NULL CHECK (char_length(btrim(message)) BETWEEN 1 AND 1OOO),
+    session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_visible_created_at
+    ON messages (created_at DESC) WHERE is_visible = TRUE;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+

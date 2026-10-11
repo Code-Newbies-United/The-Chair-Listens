@@ -1,72 +1,63 @@
-// pages/api/session-reflection.js
-import Groq from "groq-sdk";
-import { getClientIp, rateLimit } from "@/lib/rateLimit";
+// pages/api/transcribe.js
+import formidable from 'formidable';
+import fs from 'fs';
+import Groq from 'groq-sdk';
+import { methodNotAllowed, sendError } from '@/lib/apiErrors';
+import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
+
+// Tell Next.js not to parse the body: formidable needs the raw upload.
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return methodNotAllowed(res, 'POST');
   }
 
-  // Rate limit INSIDE the handler
-  const ip = getClientIp(req);
-  const limit = await rateLimit("session-reflection", ip, 5, 60);
-  if (!limit.allowed) {
-    return res.status(429).json({ message: "Too many requests. Please try again later." });
-  }
+  // Rate limit INSIDE the handler: per IP (shared wifi) and per session (one person).
+  const sessionId = getSessionIdFromHeader(req);
+  if (!(await checkRateLimit(req, res, 'transcribe', { sessionId }))) return;
 
-  const { script, answers } = req.body;
-
-  const systemPrompt = `You are "The Chair Listens", an empathetic, grounded AI listener for a community initiative in South Africa.
-Analyze all provided participant answers and create a JSON object containing:
-1. "overallReflection": A warm, validating 2-3 sentence summary of their session journey.
-2. "takeaways": An array of 2-3 concise, key takeaways or insights derived from their answers.
-
-Your response MUST be a valid JSON object matching this schema:
-{
-  "overallReflection": "string",
-  "takeaways": ["string", "string"]
-}`;
-
-  const userPrompt = `
-Pathway: ${script || "men_mental_health"}
-Session Answers:
-${JSON.stringify(answers || [], null, 2)}
-`;
+  const form = formidable({});
+  let audioFile;
 
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      model: "openai/gpt-oss-120b",
-      temperature: 0.7,
-      max_tokens: 400,
-      response_format: { type: "json_object" },
+    const [fields, files] = await form.parse(req);
+    audioFile = files.audio?.[0];
+
+    if (!audioFile) {
+      return sendError(res, 400, 'Bad Request', 'No audio file uploaded');
+    }
+
+    const fileStream = fs.createReadStream(audioFile.filepath);
+
+    const transcription = await groq.audio.transcriptions.create({
+      file: fileStream,
+      model: 'whisper-large-v3',
+      // language: "en", // removed: auto-detect is more accurate for a multilingual audience.
+      // Re-add with a specific language code ONLY if English-only is a deliberate scope decision.
     });
 
-    const content = completion.choices[0]?.message?.content || "{}";
-    const parsedData = JSON.parse(content);
-
-    return res.status(200).json({
-      overallReflection: parsedData.overallReflection || "Thank you for taking the time to pause and share your thoughts today.",
-      takeaways: parsedData.takeaways || [
-        "Your experiences and feelings are valid.",
-        "Taking time for self-reflection is an important step forward.",
-      ],
-    });
+    return res.status(200).json({ text: transcription.text });
   } catch (error) {
-    console.error("Session Reflection API Error:", error);
-    return res.status(500).json({
-      overallReflection: "Thank you for taking the time to pause and share your thoughts today.",
-      takeaways: [
-        "Your experiences and feelings are valid.",
-        "Taking time for self-reflection is an important step forward.",
-      ],
-    });
+    console.error('Transcription Handler Error:', error);
+    return sendError(
+      res,
+      500,
+      'Transcription failed',
+      'Failed to transcribe audio.',
+    );
+  } finally {
+    // Delete the temporary upload (formidable leaves it on disk)
+    if (audioFile?.filepath) {
+      fs.unlink(audioFile.filepath, () => {});
+    }
   }
 }

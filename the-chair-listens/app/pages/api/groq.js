@@ -1,5 +1,10 @@
 // pages/api/groq.js
-import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { methodNotAllowed, badRequest, sendError } from '@/lib/apiErrors';
+import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
+import { parseGroqBody } from '@/lib/validators';
+
+// Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
+export const config = { api: { bodyParser: { sizeLimit: '32kb' } } };
 
 const SYSTEM_PROMPTS = {
   men_mental_health:
@@ -12,57 +17,59 @@ const SYSTEM_PROMPTS = {
 
 export default async function handler(req, res) {
   // 1. Method check
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return methodNotAllowed(res, 'POST');
   }
 
-  // 2. Rate limit (INSIDE the handler, so req/res exist)
-  const ip = getClientIp(req);
-  const limit = await rateLimit("groq", ip, 10, 60); // was misspelled "grog"
-  if (!limit.allowed) {
-    return res.status(429).json({ message: "Too many requests. Please try again later." });
-  }
+  // 2. Rate limit (INSIDE the handler, so req/res exist): per IP and per session
+  const sessionId = getSessionIdFromHeader(req);
+  if (!(await checkRateLimit(req, res, 'groq', { sessionId }))) return;
 
   // 3. Validate input
-  const { script, question, answer } = req.body;
-  if (typeof answer !== "string" || !answer.trim()) {
-    return res.status(400).json({ message: "answer must be a non-empty string" });
+  const parsed = parseGroqBody(req.body);
+  if (!parsed.ok) {
+    return badRequest(res, parsed.issues);
   }
+  const { script, question, answer } = parsed.data;
 
-  const systemPrompt = SYSTEM_PROMPTS[script] || SYSTEM_PROMPTS.men_mental_health;
+  const systemPrompt =
+    SYSTEM_PROMPTS[script] || SYSTEM_PROMPTS.men_mental_health;
 
   // 4. Call Groq
   try {
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+    const groqRes = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b', // verify against Groq's current model list
+          messages: [
+            { role: 'system', content: systemPrompt },
+            {
+              role: 'user',
+              content: `Question asked: "${question}"\n\nTheir answer: "${answer}"\n\nOffer a short, supportive reflection.`,
+            },
+          ],
+          max_tokens: 150,
+        }),
       },
-      body: JSON.stringify({
-        model: "openai/gpt-oss-120b", // verify against Groq's current model list
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `Question asked: "${question}"\n\nTheir answer: "${answer}"\n\nOffer a short, supportive reflection.`,
-          },
-        ],
-        max_tokens: 150,
-      }),
-    });
+    );
 
     if (!groqRes.ok) {
       const errorBody = await groqRes.text();
-      console.error("Groq API error:", groqRes.status, errorBody);
-      return res.status(502).json({ message: "Groq API request failed" });
+      console.error('Groq API error:', groqRes.status, errorBody);
+      return sendError(res, 502, 'Bad Gateway', 'Groq API request failed');
     }
 
     const data = await groqRes.json();
-    const text = data.choices?.[0]?.message?.content ?? "";
+    const text = data.choices?.[0]?.message?.content ?? '';
     return res.status(200).json({ text });
   } catch (err) {
-    console.error("Unexpected error calling Groq:", err);
-    return res.status(500).json({ message: "Unexpected server error" });
+    console.error('Unexpected error calling Groq:', err);
+    return sendError(res, 500, 'Server error', 'Unexpected server error');
   }
 }

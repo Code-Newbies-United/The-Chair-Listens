@@ -1,4 +1,6 @@
-import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin';
+import { methodNotAllowed, sendError } from '@/lib/apiErrors';
+import { checkRateLimit } from '@/lib/apiGuard';
 
 /**
  * GET /api/quiz-questions
@@ -9,19 +11,26 @@ import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
  * table, so the anon client would silently return zero rows.
  */
 export default async function handler(req, res) {
-    if (req.method !== "GET") {
-        return res.status(405).json({ message: "Method not allowed" });
-    }
+  if (req.method !== 'GET') {
+    return methodNotAllowed(res, 'GET');
+  }
 
-    const { data, error } = await supabase
-        .from("quiz_questions")
-        .select("id, question_text, options, explanation, sort_order")
-        .order("sort_order", { ascending: true });
+  if (!(await checkRateLimit(req, res, 'quizQuestions'))) return;
 
-    if (error) {
-        console.error("Public quiz questions fetch error:", error);
-        return res.status(500).json({ message: "Failed to load quiz questions" });
-    }
+  const { data, error } = await supabase
+    .from('quiz_questions')
+    .select('id, question_text, options, explanation, sort_order')
+    .order('sort_order', { ascending: true });
 
-    return res.status(200).json({ questions: data || [] });
+  if (error) {
+    console.error('Public quiz questions fetch error:', error);
+    return sendError(
+      res,
+      500,
+      'Connection failed',
+      'Failed to load quiz questions',
+    );
+  }
+
+  return res.status(200).json({ questions: data || [] });
 }

@@ -350,6 +350,9 @@ API key configuration: GROQ_API_KEY must be configured in your environment. If i
 
 These are separate from the main location fix, so you can leave them for now.
 ---
+## FIX-23 Row Level Security for all the tables and the POLICIES
+
+Enable rls and draw up policies
 
 # PART 2: NEW FEATURES
 
