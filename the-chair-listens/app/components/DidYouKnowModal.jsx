@@ -8,8 +8,8 @@ const DID_YOU_KNOW_FACTS = [
     },
     {
         id: 2,
-        tag: "Mental Health",
-        fact: "Listening activates key neural pathways that lower stress response levels for both the speaker and the listener.",
+        tag: "Early Detection",
+        fact: "1 in 8 men will be diagnosed with prostate cancer in their lifetime.",
     },
     {
         id: 3,

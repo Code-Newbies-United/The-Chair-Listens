@@ -171,11 +171,6 @@ export default function ConsentTerms() {
           </Section>
 
           <Section num="5" title="Non-Clinical Disclaimer & Crisis Support">
-            {/*
-            TODO: Confirm these helpline numbers directly against SADAG's
-            current published listings before launch. Accuracy here matters
-            more than anywhere else on this page.
-          */}
             <p style={{ margin: "0 0 14px 0" }}>
               This installation provides health reflection and
               awareness&mdash;it does not offer medical diagnoses or
@@ -185,13 +180,19 @@ export default function ConsentTerms() {
             <ul style={styles.contactList}>
               <li>
                 <strong>SADAG (SA Depression &amp; Anxiety Group):</strong>{" "}
-                0800 567 567 (24/7 Helpline)
+                011 234 4837
               </li>
               <li>
-                <strong>Suicide Crisis Helpline:</strong> 0800 21 22 23
+                <strong>Suicide Crisis Helpline:</strong> 0800 567 567 (24/7 Helpline)
               </li>
               <li>
                 <strong>National Health Helpline:</strong> 0800 029 999
+              </li>
+              <li>
+                <strong>lifeline South Africa:</strong> 0861 322 322
+              </li>
+              <li>
+                <strong>Emergency:</strong> 112
               </li>
             </ul>
           </Section>
