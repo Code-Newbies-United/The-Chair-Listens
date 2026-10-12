@@ -13,23 +13,40 @@ export default function Home({ locationName = "Pretoria" }) {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [messagesPaused, setMessagesPaused] = useState(false);
 
-  // Display-only examples; connect this array to approved anonymous messages when available.
-  const participantMessages = [
+  // State for community messages fetched from backend
+  const [participantMessages, setParticipantMessages] = useState([
     "Some days, getting out of bed is already a brave thing.",
     "You do not have to have all the answers today.",
     "I am learning that asking for help is a kind of strength.",
     "To anyone carrying a lot right now: you are not alone.",
     "Small steps still count. Give yourself credit for them.",
     "I hope you find one gentle moment for yourself today.",
-  ];
+  ]);
+
+  // Fetch live community messages on mount
+  useEffect(() => {
+    async function fetchMessages() {
+      try {
+        const res = await fetch("/api/messages");
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          // Map the database rows to just the text content string
+          setParticipantMessages(data.messages.map((m) => m.message));
+        }
+      } catch (err) {
+        console.error("Failed to load community messages:", err);
+      }
+    }
+    fetchMessages();
+  }, []);
 
   useEffect(() => {
-    if (messagesPaused) return;
+    if (messagesPaused || participantMessages.length === 0) return;
     const interval = setInterval(() => {
       setActiveMessageIndex((current) => (current + 1) % participantMessages.length);
     }, 4500);
     return () => clearInterval(interval);
-  }, [messagesPaused]);
+  }, [messagesPaused, participantMessages.length]);
 
   // --------------------------------------------------
   // Detect visitor location
