@@ -4,7 +4,7 @@ const DID_YOU_KNOW_FACTS = [
     {
         id: 1,
         tag: "Campaign Impact",
-        fact: "Over 70% of men say they feel more comfortable sharing their struggles anonymously through community-led voice campaigns.",
+        fact: " While awareness campaigns are incredibly successful at changing what men know about their health, a \"behavioral gap\" still remains. Public health data shows that up to 40% of men have still never spoken to anyone about their mental health, meaning campaigns must work harder to get men from \"retweeting\" to actually booking an appointment",
     },
     {
         id: 2,
@@ -13,8 +13,8 @@ const DID_YOU_KNOW_FACTS = [
     },
     {
         id: 3,
-        tag: "Community Action",
-        fact: "Pinning live location activations increases local engagement and response rates by over 40%.",
+        tag: "The Silent Struggle",
+        fact: "Studies show that up to 72% of men who experience prostate-related mental health issues do not seek professional help, often relying instead on prescribed medications.",
     },
 ];
 
