@@ -1,5 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
-
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 /**
  * GET /api/locations
  * Returns every chair location (active and past) for ChairJourneyMap.

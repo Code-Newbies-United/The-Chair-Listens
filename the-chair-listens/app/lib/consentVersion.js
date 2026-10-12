@@ -1,0 +1,1 @@
+export const SESSION_MAX_AGE_HOURS = 24;
