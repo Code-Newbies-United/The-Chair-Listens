@@ -122,7 +122,7 @@ export default function ThankYou() {
                         </p>
                         <p className="ty-tagline">You took a seat. You checked in. Start the conversation. Pass it on.</p>
                         <div className="ty-buttons">
-                            <a href={LINKS.learnMore !== "#" ? LINKS.learnMore : LINKS.visitpage} className="ty-button ty-outline">Learn More</a>
+                            <a href={LINKS.learnMore} className="ty-button ty-outline">Learn More</a>
                             <button type="button" onClick={handleDone} className="ty-button ty-filled">Done</button>
                         </div>
                     </div>

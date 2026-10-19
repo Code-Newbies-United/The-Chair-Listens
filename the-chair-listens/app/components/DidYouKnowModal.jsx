@@ -4,7 +4,7 @@ const DID_YOU_KNOW_FACTS = [
     {
         id: 1,
         tag: "Campaign Impact",
-        fact: " While awareness campaigns are incredibly successful at changing what men know about their health, a \"behavioral gap\" still remains. Public health data shows that up to 40% of men have still never spoken to anyone about their mental health, meaning campaigns must work harder to get men from \"retweeting\" to actually booking an appointment",
+        fact: "While awareness campaigns are incredibly successful at changing what men know about their health, a \"behavioral gap\" still remains. Public health data shows that up to 40% of men have still never spoken to anyone about their mental health, meaning campaigns must work harder to get men from \"retweeting\" to actually booking an appointment.",
     },
     {
         id: 2,

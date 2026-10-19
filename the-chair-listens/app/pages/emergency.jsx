@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 export default function EmergencyPage() {
     const helplines = [
+        { name: 'Factor Of Ten Foundation', number: '063 028 2393', hours: '09:00 - 18:00' },
         { name: 'SADAG Mental Health Line', number: '011 234 4837', hours: '24/7' },
         { name: 'Suicide Crisis Helpline', number: '0800 567 567', hours: '24/7' },
         { name: 'LifeLine South Africa', number: '0861 322 322', hours: '24/7' },
@@ -11,8 +12,7 @@ export default function EmergencyPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-red-950 text-white p-6 flex flex-col items-center justify-center">
-            <div className="max-w-xl w-full bg-slate-900 border border-red-500/30 rounded-2xl p-8 shadow-2xl">
+        <div className="min-h-screen bg-red-950 text-white p-6 flex flex-col items-center justify-center"><div className="max-w-xl w-full bg-slate-900 border border-red-500/30 rounded-2xl p-8 shadow-2xl">
                 <div className="text-center mb-6">
                     <h1 className="text-3xl font-bold text-red-400 mb-2">You Are Not Alone</h1>
                     <p className="text-slate-300">
