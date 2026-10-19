@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 // Leaflet touches `window`/`document` directly, which breaks Next's
 // server-side render. Loading it with ssr: false skips SSR for just
 // this component and renders it client-side only.
-const ActivityMap = dynamic(() => import("../../components/ActivityMap"), {
+const ActivityMap = dynamic(() => import("../../components/Activitymap"), {
     ssr: false,
     loading: () => <p>Loading map…</p>,
 });
