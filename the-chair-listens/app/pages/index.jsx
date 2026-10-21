@@ -289,6 +289,69 @@ export default function Home({ locationName = "Pretoria" }) {
           letter-spacing: 0.04em;
         }
 
+        .header-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        .admin-test-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 31px;
+          padding: 7px 11px;
+          border: 1px solid rgba(245, 242, 232, 0.38);
+          border-radius: 100px;
+          background: rgba(25, 54, 47, 0.55);
+          color: var(--white);
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }
+
+        .admin-test-button:hover {
+          background: rgba(141, 207, 148, 0.16);
+          border-color: var(--mint);
+          transform: translateY(-1px);
+        }
+
+        .admin-test-button:focus-visible {
+          outline: 2px solid var(--mint);
+          outline-offset: 3px;
+        }
+
+        @media (max-width: 420px) {
+          .topbar {
+            gap: 8px;
+          }
+
+          .brand {
+            gap: 6px;
+            font-size: 8px;
+            letter-spacing: 0.08em;
+          }
+
+          .header-actions {
+            gap: 5px;
+          }
+
+          .location-pill {
+            padding: 7px 8px;
+            font-size: 8px;
+          }
+
+          .admin-test-button {
+            padding: 7px 8px;
+            font-size: 12px;
+          }
+        }
+
         .location-pill-dot {
           width: 5px;
           height: 5px;
@@ -1353,9 +1416,19 @@ export default function Home({ locationName = "Pretoria" }) {
               The Chair Listens
             </div>
 
-            <div className="location-pill">
-              <span className="location-pill-dot" />
-              {displayLocation}
+            <div className="header-actions">
+              <div className="location-pill">
+                <span className="location-pill-dot" />
+                {displayLocation}
+              </div>
+              <button
+                  type="button"
+                  className="admin-test-button"
+                  onClick={() => router.push("/admin/login")}
+                  aria-label="Open temporary admin login"
+              >
+                Admin
+              </button>
             </div>
           </header>
 
