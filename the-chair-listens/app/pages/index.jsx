@@ -1403,6 +1403,18 @@ export default function Home({ locationName = "Pretoria" }) {
               </div>
 
               <p className="hero-description">
+                The Chair gives men a quiet, anonymous place to be heard and to learn about prostate health, so that talking and getting checked feel a little easier.
+              </p>
+
+              <p className="hero-description">
+
+              </p>
+
+              <p className="hero-description">
+
+              </p>
+
+              <p className="hero-description">
                 Sit for a minute. Say what’s on your mind.
                 No names. No judgement. Just a moment to be heard.
               </p>
@@ -1582,7 +1594,7 @@ export default function Home({ locationName = "Pretoria" }) {
                 <span key={`${activeMessageIndex}-${messagesPaused}`} className={`message-progress-bar${messagesPaused ? " paused" : ""}`} />
               </span>
             </button>
-            <p className="voices-note">Anonymous words. Shared understanding. Take a moment to listen.</p>
+            <p className="voices-note">Anonymous words shared by our community members.</p>
           </section>
 
           {/* ================================================

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
+import { moderateMessage } from "@/pages/utils/messageModeration";
 
 export default function ResponsesPage({ locationName = "Pretoria" }) {
   const router = useRouter();
@@ -12,6 +14,10 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+
+  // Moderation state: { status: "nudge" | "blocked" | "crisis", matches: [...] }
+  const [moderation, setModeration] = useState(null);
+  const [nudgedText, setNudgedText] = useState("");
 
   const currentScript = script || "men_mental_health";
 
@@ -44,7 +50,7 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
         console.error("Error fetching summary:", err);
         setSummary({
           overallReflection:
-            "Thank you for taking the time to share your perspective today.",
+              "Thank you for taking the time to share your perspective today.",
           takeaways: [
             "Acknowledging your journey is an important step forward.",
             "Your voice contributes meaningfully to our collective healing.",
@@ -62,6 +68,22 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
     e.preventDefault();
     if (!message.trim() || message.length > 1000) return;
 
+    const result = moderateMessage(message);
+
+    // Blocked or crisis: never send, show the notice
+    if (result.status === "crisis" || result.status === "blocked") {
+      setModeration(result);
+      return;
+    }
+
+    // Gentle nudge once; sharing the same text again goes through
+    if (result.status === "nudge" && nudgedText !== message) {
+      setModeration(result);
+      setNudgedText(message);
+      return;
+    }
+
+    setModeration(null);
     setIsSubmitting(true);
     setSubmitStatus(null);
 
@@ -74,11 +96,19 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
+
+        // Server-side moderation rejection: show the gentle notice, not a crash
+        if (res.status === 422 && errData.code === "moderation") {
+          setModeration({ status: errData.status, matches: errData.matches || [] });
+          return;
+        }
+
         throw new Error(errData.error || "Failed to send message");
       }
 
       setSubmitStatus("success");
       setMessage("");
+      setNudgedText("");
     } catch (err) {
       console.error("Error submitting message:", err);
       setSubmitStatus("error");
@@ -88,166 +118,208 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
   };
 
   return (
-    <main className="responses-page">
-      <div className="responses-shell">
-        <header className="topbar">
-          <div className="brand" aria-label="The Chair Listens">
-            <img
-              className="brand-logo"
-              src="/logos/factor-of-ten-logo.jpg"
-              alt="Factor of Ten Foundation logo"
-            />
-            <span className="brand-mark" aria-hidden="true" />
-            <span>The Chair Listens</span>
-          </div>
-          <div className="location-pill">
-            <span className="location-dot" />
-            {displayLocation}
-          </div>
-        </header>
-
-        <section className="reflection-card">
-          <div className="decor-circle decor-circle-blue" aria-hidden="true" />
-          <div className="decor-circle decor-circle-mint" aria-hidden="true" />
-
-          <div className="card-content">
-            <div className="session-meta">
-              <div className="eyebrow">
-                <span className="eyebrow-line" aria-hidden="true" />
-                <span>A moment to reflect</span>
-                <span className="eyebrow-line" aria-hidden="true" />
-              </div>
+      <main className="responses-page">
+        <div className="responses-shell">
+          <header className="topbar">
+            <div className="brand" aria-label="The Chair Listens">
+              <img
+                  className="brand-logo"
+                  src="/logos/factor-of-ten-logo.jpg"
+                  alt="Factor of Ten Foundation logo"
+              />
+              <span className="brand-mark" aria-hidden="true" />
+              <span>The Chair Listens</span>
             </div>
-
-            <div className="intro">
-              <div className="completion-icon" aria-hidden="true">
-                <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
-                  <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div className="script-line">Session complete</div>
-              <h1 className="headline">
-                Your
-                <span className="headline-accent">Reflection</span>
-              </h1>
-              <p className="intro-copy">
-                Thank you for making space for your thoughts, your story, and your voice.
-              </p>
+            <div className="location-pill">
+              <span className="location-dot" />
+              {displayLocation}
             </div>
+          </header>
 
-            {loading ? (
-              <div className="loading-panel" role="status" aria-live="polite">
-                <div className="chair-icon" aria-hidden="true">🪑</div>
-                <div className="loading-track"><span /></div>
-                <p>The Chair is bringing your reflection together...</p>
+          <section className="reflection-card">
+            <div className="decor-circle decor-circle-blue" aria-hidden="true" />
+            <div className="decor-circle decor-circle-mint" aria-hidden="true" />
+
+            <div className="card-content">
+              <div className="session-meta">
+                <div className="eyebrow">
+                  <span className="eyebrow-line" aria-hidden="true" />
+                  <span>A moment to reflect</span>
+                  <span className="eyebrow-line" aria-hidden="true" />
+                </div>
               </div>
-            ) : (
-              <div className="summary-content">
-                <section className="summary-section">
-                  <div className="section-heading">
-                    <span className="section-icon" aria-hidden="true">✧</span>
-                    <h2>Summary</h2>
+
+              <div className="intro">
+                <div className="completion-icon" aria-hidden="true">
+                  <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
+                    <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="script-line">Session complete</div>
+                <h1 className="headline">
+                  Your
+                  <span className="headline-accent">Reflection</span>
+                </h1>
+                <p className="intro-copy">
+                  Thank you for making space for your thoughts, your story, and your voice.
+                </p>
+              </div>
+
+              {loading ? (
+                  <div className="loading-panel" role="status" aria-live="polite">
+                    <div className="chair-icon" aria-hidden="true">🪑</div>
+                    <div className="loading-track"><span /></div>
+                    <p>The Chair is bringing your reflection together...</p>
                   </div>
-                  <p className="summary-text">
-                    {summary?.overallReflection ||
-                      "Thank you for taking the time to share your perspective today."}
-                  </p>
-                </section>
+              ) : (
+                  <div className="summary-content">
+                    <section className="summary-section">
+                      <div className="section-heading">
+                        <span className="section-icon" aria-hidden="true">✧</span>
+                        <h2>Summary</h2>
+                      </div>
+                      <p className="summary-text">
+                        {summary?.overallReflection ||
+                            "Thank you for taking the time to share your perspective today."}
+                      </p>
+                    </section>
 
-                <div className="section-divider" />
+                    <div className="section-divider" />
 
-                <section className="summary-section takeaways-section">
-                  <div className="section-heading">
-                    <span className="section-icon" aria-hidden="true">✦</span>
-                    <h2>Key Takeaways</h2>
-                  </div>
-                  {summary?.takeaways?.length ? (
-                    <ul className="takeaway-list">
-                      {summary.takeaways.map((item, index) => (
-                        <li key={index} className="takeaway-item">
-                          <span className="takeaway-bullet" aria-hidden="true">✦</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="summary-text">
-                      Your reflections are part of the conversation and can help create understanding.
-                    </p>
-                  )}
-                </section>
+                    <section className="summary-section takeaways-section">
+                      <div className="section-heading">
+                        <span className="section-icon" aria-hidden="true">✦</span>
+                        <h2>Key Takeaways</h2>
+                      </div>
+                      {summary?.takeaways?.length ? (
+                          <ul className="takeaway-list">
+                            {summary.takeaways.map((item, index) => (
+                                <li key={index} className="takeaway-item">
+                                  <span className="takeaway-bullet" aria-hidden="true">✦</span>
+                                  <span>{item}</span>
+                                </li>
+                            ))}
+                          </ul>
+                      ) : (
+                          <p className="summary-text">
+                            Your reflections are part of the conversation and can help create understanding.
+                          </p>
+                      )}
+                    </section>
 
-                <div className="section-divider" />
+                    <div className="section-divider" />
 
-                <section className="summary-section message-section">
-                  <div className="section-heading">
-                    <span className="section-icon" aria-hidden="true">✎</span>
-                    <h2>Leave a Message for the Community</h2>
-                  </div>
+                    <section className="summary-section message-section">
+                      <div className="section-heading">
+                        <span className="section-icon" aria-hidden="true">✎</span>
+                        <h2>Leave a Message for the Community</h2>
+                      </div>
 
-                  {submitStatus === "success" ? (
-                    <div className="success-message">
-                      <p>Thank you. Your message has been shared with the community.</p>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleMessageSubmit} className="message-form">
+                      {submitStatus === "success" ? (
+                          <div className="success-message">
+                            <p>Thank you. Your message has been shared with the community.</p>
+                          </div>
+                      ) : (
+                          <form onSubmit={handleMessageSubmit} className="message-form">
                       <textarea
-                        className="message-input"
-                        placeholder="Share a thought, a word of encouragement, or a piece of your story..."
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        maxLength={1000}
-                        rows={4}
-                        disabled={isSubmitting}
+                          className="message-input"
+                          placeholder="Share a thought, a word of encouragement, or a piece of your story..."
+                          value={message}
+                          onChange={(e) => {
+                            setMessage(e.target.value);
+                            if (moderation && moderation.status !== "nudge") setModeration(null);
+                          }}
+                          maxLength={1000}
+                          rows={4}
+                          disabled={isSubmitting}
                       />
-                      <div className="message-footer">
+
+                            {moderation && (
+                                <div className={`moderation-notice ${moderation.status}`} role="alert">
+                                  {moderation.status === "crisis" ? (
+                                      <>
+                                        <p>
+                                          It sounds like you may be going through something really heavy,
+                                          and we're glad you said it. We haven't posted this message,
+                                          because you matter more than a public wall. Please reach out
+                                          for support right now.
+                                        </p>
+                                        <Link href="/emergency" className="moderation-link">
+                                          Get help now
+                                        </Link>
+                                      </>
+                                  ) : (
+                                      <>
+                                        <p>
+                                          {moderation.status === "blocked"
+                                              ? "This message wasn't shared. Some wording can hurt people living with mental health conditions. Could you try something like:"
+                                              : "A small thought before you share. Different wording can feel kinder to readers:"}
+                                        </p>
+                                        {moderation.matches.length > 0 && (
+                                            <ul>
+                                              {moderation.matches.map((m) => (
+                                                  <li key={m.term}>
+                                                    <strong>{m.term}</strong> → {m.suggestion}
+                                                  </li>
+                                              ))}
+                                            </ul>
+                                        )}
+                                        {moderation.status === "nudge" && (
+                                            <p>Happy with it as is? Tap Share Message again.</p>
+                                        )}
+                                      </>
+                                  )}
+                                </div>
+                            )}
+
+                            <div className="message-footer">
                         <span className={`char-count ${message.length > 900 ? "warning" : ""}`}>
                           {message.length} / 1000
                         </span>
-                        <button
-                          type="submit"
-                          className="submit-message-button"
-                          disabled={isSubmitting || !message.trim() || message.length > 1000}
-                        >
-                          {isSubmitting ? "Sending..." : "Share Message"}
-                        </button>
-                      </div>
-                      {submitStatus === "error" && (
-                        <p className="error-text">Something went wrong. Please try again.</p>
+                              <button
+                                  type="submit"
+                                  className="submit-message-button"
+                                  disabled={isSubmitting || !message.trim() || message.length > 1000}
+                              >
+                                {isSubmitting ? "Sending..." : "Share Message"}
+                              </button>
+                            </div>
+                            {submitStatus === "error" && (
+                                <p className="error-text">Something went wrong. Please try again.</p>
+                            )}
+                          </form>
                       )}
-                    </form>
-                  )}
-                </section>
-              </div>
-            )}
+                    </section>
+                  </div>
+              )}
 
-            <footer className="card-footer">
-              <p>You showed up. That matters.</p>
-            </footer>
-          </div>
-        </section>
+              <footer className="card-footer">
+                <p>You showed up. That matters.</p>
+              </footer>
+            </div>
+          </section>
 
-        <button
-          type="button"
-          onClick={() => router.push("/take-action")}
-          className="take-action-button"
-        >
-          <span aria-hidden="true">✦</span>
-          <span>Take Action</span>
-          <span className="button-arrow" aria-hidden="true"></span>
-        </button>
-        <button type="button" onClick={() => router.push("/")} className="home-button">
-          <span>Return to Start</span>
-          <span className="button-arrow" aria-hidden="true"></span>
-        </button>
+          <button
+              type="button"
+              onClick={() => router.push("/take-action")}
+              className="take-action-button"
+          >
+            <span aria-hidden="true">✦</span>
+            <span>Take Action</span>
+            <span className="button-arrow" aria-hidden="true"></span>
+          </button>
+          <button type="button" onClick={() => router.push("/")} className="home-button">
+            <span>Return to Start</span>
+            <span className="button-arrow" aria-hidden="true"></span>
+          </button>
 
-        <footer className="responses-footer">
-          <span className="responses-footer-brand">FACTOR OF TEN</span>
-          <span className="responses-footer-tagline">Know more. Ask more. Check sooner.</span>
-        </footer>
-      </div>
+          <footer className="responses-footer">
+            <span className="responses-footer-brand">FACTOR OF TEN</span>
+            <span className="responses-footer-tagline">Know more. Ask more. Check sooner.</span>
+          </footer>
+        </div>
 
-      <style jsx>{`
+        <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap');
 
         .responses-page {
@@ -595,6 +667,36 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           text-align: right;
         }
 
+        .moderation-notice {
+          padding: 13px 15px;
+          border-radius: 12px;
+          font-size: 13px;
+          line-height: 1.6;
+          background: #f3ead2;
+          color: #5a4a22;
+          border: 1px solid rgba(188, 149, 83, 0.4);
+        }
+
+        .moderation-notice.crisis {
+          background: #dce9df;
+          color: #2d5046;
+          border-color: rgba(45, 80, 70, 0.25);
+        }
+
+        .moderation-notice p { margin: 0 0 8px; }
+        .moderation-notice p:last-child { margin-bottom: 0; }
+        .moderation-notice ul { margin: 0 0 8px; padding-left: 18px; }
+
+        .moderation-link {
+          display: inline-block;
+          padding: 8px 16px;
+          border-radius: 999px;
+          background: #2d5046;
+          color: #fbfaf5;
+          font-weight: 700;
+          text-decoration: none;
+        }
+
         .card-footer {
           display: flex;
           align-items: center;
@@ -708,6 +810,6 @@ export default function ResponsesPage({ locationName = "Pretoria" }) {
           .home-button, .take-action-button { transition: none; }
         }
       `}</style>
-    </main>
+      </main>
   );
 }
