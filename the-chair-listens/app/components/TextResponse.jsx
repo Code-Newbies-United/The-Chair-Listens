@@ -40,6 +40,8 @@ export default function TextResponse({
                                      }) {
     const router = useRouter();
     const [isTranscribing, setIsTranscribing] = useState(false);
+    const [isFallbackRecording, setIsFallbackRecording] = useState(false);
+    const [microphoneError, setMicrophoneError] = useState("");
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 

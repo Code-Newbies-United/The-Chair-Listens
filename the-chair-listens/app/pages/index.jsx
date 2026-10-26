@@ -1095,6 +1095,25 @@ export default function Home({ locationName = "Pretoria" }) {
           font-size: 11px;
         }
 
+        /* NEW: footer disclaimer */
+        .footer-disclaimer {
+          max-width: 520px;
+          margin: 10px 0 0;
+          color: rgba(245, 242, 232, 0.5);
+          font-size: 10px;
+          line-height: 1.6;
+        }
+
+        .footer-disclaimer a {
+          color: var(--mint);
+          text-decoration-thickness: 1px;
+          text-underline-offset: 3px;
+        }
+
+        .footer-disclaimer a:hover {
+          color: var(--white);
+        }
+
         /* ==================================================
            VERY SMALL PHONES
         ================================================== */
@@ -1608,6 +1627,14 @@ export default function Home({ locationName = "Pretoria" }) {
           <footer className="footer">
             <span className="footer-brand">FACTOR OF TEN</span>
             <span className="footer-tagline">Know more. Ask more. Check sooner.</span>
+
+            {/* NEW: disclaimer */}
+            <p className="footer-disclaimer">
+              The Chair Listens offers awareness and reflection, not medical
+              advice, diagnosis or crisis care. If you have symptoms or
+              concerns, speak to a doctor or clinic. If you are in danger or
+              distress, use the <a href="/emergency">emergency resources</a>.
+            </p>
           </footer>
 
         </div>
