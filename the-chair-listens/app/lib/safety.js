@@ -24,3 +24,6 @@ export function checkForSafetyTrigger(text) {
         normalizedText.includes(keyword)
     );
 }
+
+export default function SafetyPage() 
+{ return null; }

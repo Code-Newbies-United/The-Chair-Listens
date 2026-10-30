@@ -1,105 +1,98 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { SESSION_MAX_AGE_HOURS } from "@/lib/consentVersion";
-import { isUuid } from "@/lib/validators";
-import { getClientIp, rateLimit } from "@/lib/rateLimit";
+// pages/api/messages.js
+//
+// Community messages left on the reflection page.
+//   GET  : the latest visible messages (public, read-only)
+//   POST : leave a message; needs a valid consent session (x-session-id header)
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { MAX_MESSAGE_CHARS } from '@/lib/limits';
+import {
+  methodNotAllowed,
+  badRequest,
+  sendError,
+} from '@/lib/apiErrors';
+import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
+import { parseMessageBody } from '@/lib/validators';
+import { verifyConsentSession } from '@/lib/consentSession';
 
-const MAX_MESSAGE_LENGTH = 1000;
+// Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
+export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
+
 const MAX_MESSAGES_TO_RETURN = 20;
 
-async function applyRateLimit(reqs, res, sessionId) {
-    const ip = getClientIp(req);
-    const ipLimit = await rateLimit("messages", ip, 30, 60);
-    if (!ipLimit.allowed) {
-        res.setHeader("Retry-Header", "60");
-        res.status(429).json({ error:"Too many requests", message: "Please wait before trying again."});
-        return false;
-    }
-
-    if (sessionId) {
-        const sessionLimit = await rateLimit("messages-session", sessionId, 5, 60);
-        if (!sessionLimit.allowed) {
-            res.setHeader(429).json({ error: "Too many requests", message: "You have sent messages too quickly, please wait and try again"});
-            return false;
-        }
-    }
-
-    return true;
-}
-
-async function verifyConsentSession(sessionId) {
-    if (isUuid(sessionId)) return { valid: false, status: 403};
-
-    const { data: session, error } = await supabaseAdmin
-        .from("sessions")
-        .select("id, consented_at")
-        .eq("id", sessionId)
-        .maybeSingle();
-    
-    if (error) {
-        console.error("Message session lookup failed:", error);
-        return { valid: false, status: 403};
-    }
-
-    return { valid: true, session };
-}
-
 export default async function handler(req, res) {
-    if (req.method === "GET") {
-        if (!(await applyRateLimit(req, res, null))) return;
+  if (req.method === 'GET') {
+    if (!(await checkRateLimit(req, res, 'messages'))) return;
 
-        const { data, error } = await supabaseAdmin
-            .from("messages")
-            .select("id, message, created_at")
-            .eq("is_visible", true)
-            .order("created_at", { ascending: false })
-            .limit(MAX_MESSAGES_TO_RETURN);
+    const { data, error } = await supabaseAdmin
+      .from('messages')
+      .select('id, message, created_at')
+      .eq('is_visible', true)
+      .order('created_at', { ascending: false })
+      .limit(MAX_MESSAGES_TO_RETURN);
 
-        if (error) {
-            console.error("Failed to fetch community messages:", error);
-            return res.status(500).json({ error: "Connection failed", message: "Failed to load messages." });
-        }
-
-        return res.status(200).json({ messages: data ?? [] });
+    if (error) {
+      console.error('Failed to fetch community messages:', error);
+      return sendError(
+        res,
+        500,
+        'Connection failed',
+        'Failed to load messages.',
+      );
     }
 
-    if (req.method === "POST") {
-        const sessionId = req.headers["x-session-id"];
-        if (!(await applyRateLimit(req, res, isUuid(sessionId) ?  sessionId : null))) return;
-        
-        const { message } = req.body || {};
-        if (typeof message !== "string") {
-            return res.status(400).json({ error: "Bad Request", message: "Failed to load messages"});
-        }
+    return res.status(200).json({ messages: data ?? [] });
+  }
 
-        const cleanMessage = message.trim();
-    if (!cleanMessage) {
-      return res.status(400).json({ error: "Bad Request", message: "Please enter a message before submitting." });
-    }
-    if (cleanMessage.length > MAX_MESSAGE_LENGTH) {
-      return res.status(400).json({ error: "Bad Request", message: `Messages must be ${MAX_MESSAGE_LENGTH} characters or fewer.` });
+  if (req.method === 'POST') {
+    const sessionId = getSessionIdFromHeader(req);
+    if (!(await checkRateLimit(req, res, 'messages', { sessionId }))) return;
+
+    const parsed = parseMessageBody(req.body);
+    if (!parsed.ok) {
+      return badRequest(res, parsed.issues, 'Please enter a message of up to ' + MAX_MESSAGE_CHARS + ' characters.');
     }
 
     const consent = await verifyConsentSession(sessionId);
-    if (!consent.valid) {
+    if (!consent.ok) {
       if (consent.status === 500) {
-        return res.status(500).json({ error: "Connection failed", message: "Could not verify your consent session." });
+        return sendError(
+          res,
+          500,
+          'Connection failed',
+          'Could not verify your consent session.',
+        );
       }
-      return res.status(403).json({ error: "Consent required", message: "Please complete the consent step before leaving a message." });
+      return sendError(
+        res,
+        403,
+        'Consent required',
+        'Please complete the consent step before leaving a message.',
+      );
     }
 
+    // The text stored is the trimmed text that was validated.
     const { data, error } = await supabaseAdmin
-      .from("messages")
-      .insert({ message: cleanMessage, session_id: consent.session.id })
-      .select("id, message, created_at")
+      .from('messages')
+      .insert({
+        message: parsed.data.message.trim(),
+        session_id: consent.session.id,
+        is_visible: true,
+      })
+      .select('id, message, created_at')
       .single();
 
     if (error) {
-      console.error("Failed to save community message:", error);
-      return res.status(500).json({ error: "Connection failed", message: "Failed to save your message. Please try again." });
+      console.error('Failed to save community message:', error);
+      return sendError(
+        res,
+        500,
+        'Connection failed',
+        'Failed to save your message. Please try again.',
+      );
     }
+
     return res.status(201).json({ success: true, message: data });
   }
 
-  res.setHeader("Allow", "GET, POST");
-  return res.status(405).json({ error: "Method Not Allowed", message: "Only GET and POST requests are accepted." });
+  return methodNotAllowed(res, 'GET, POST');
 }

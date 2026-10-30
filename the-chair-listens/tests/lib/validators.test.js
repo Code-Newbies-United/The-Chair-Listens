@@ -12,7 +12,7 @@ import {
   MAX_QUESTION_CHARS,
   MAX_CONSENT_VERSION_CHARS,
 } from '@/lib/limits';
-import { validResponseBody } from '../helpers/http';
+import { validResponseBody } from '../unit/helpers/http';
 
 const answer = (overrides = {}) => ({
   questionId: 'q-1',

@@ -21,6 +21,8 @@ export const RATE_LIMITS = {
   transcribe: { perIp: 30, perSession: 8, windowSeconds: 60 },
   sessionReflection: { perIp: 30, perSession: 6, windowSeconds: 60 },
   groq: { perIp: 60, perSession: 12, windowSeconds: 60 },
+  messages: { perIp: 60, perSession: 5, windowSeconds: 60 },
+  visitorPins: { perIp: 120, windowSeconds: 60 },
 };
 
 // Browsers send the consent session ID in this header on endpoints that have

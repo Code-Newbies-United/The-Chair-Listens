@@ -4,7 +4,7 @@ import {
   checkRateLimit,
   getSessionIdFromHeader,
 } from '@/lib/apiGuard';
-import { mockReq, mockRes, SESSION_ID, TEST_IP } from '../helpers/http';
+import { mockReq, mockRes, SESSION_ID, TEST_IP } from '../unit/helpers/http';
 
 jest.mock('@/lib/rateLimit', () => ({
   rateLimit: jest.fn(),

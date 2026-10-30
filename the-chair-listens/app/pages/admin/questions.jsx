@@ -21,31 +21,477 @@ export default function Questions() {
     }
 
     return (
-        <main style={styles.page}>
-            <div style={styles.frame}>
-                <div style={styles.topRow}>
-                    <Link href="/admin/dashboard" style={styles.back}>
-                        « Back to Dashboard
-                    </Link>
-                    <button type="button" onClick={handleLogout} style={styles.logoutButton}>
+        <main className="admin-page">
+            <style jsx global>{`
+                @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800;900&family=Pinyon+Script&display=swap');
+
+                :root {
+                    --forest: #2d5046;
+                    --forest-dark: #203f36;
+                    --forest-deep: #19362f;
+
+                    --mint: #8dcf94;
+                    --mint-bright: #a5dfa9;
+
+                    --powder-blue: #d4e9ed;
+                    --cream: #f5f2e8;
+                    --white: #fbfaf5;
+
+                    --ochre: #bc9553;
+                    --sage: #526b61;
+                    --text-muted: #52645e;
+                }
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                html,
+                body {
+                    margin: 0;
+                    padding: 0;
+                    background: var(--forest);
+                }
+
+                body {
+                    overflow-x: hidden;
+                }
+
+                button, a, input, textarea {
+                    font: inherit;
+                }
+
+                .admin-page {
+                    min-height: 100dvh;
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background:
+                        radial-gradient(circle at 100% 0%, rgba(141, 207, 148, 0.2), transparent 30%),
+                        radial-gradient(circle at 0% 90%, rgba(212, 233, 237, 0.1), transparent 28%),
+                        var(--forest);
+                    color: var(--white);
+                    font-family: "IBM Plex Sans", "Benton Sans", "Helvetica Neue", Arial, sans-serif;
+                    padding: max(28px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+                }
+
+                .admin-frame {
+                    position: relative;
+                    width: 100%;
+                    max-width: 620px;
+                    padding: 35px 20px 30px;
+                    border-radius: 27px;
+                    background: var(--cream);
+                    color: var(--forest);
+                    box-shadow: 0 24px 60px rgba(17, 45, 37, 0.25);
+                }
+
+                .admin-topbar {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 24px;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                }
+
+                .admin-brand-area {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .admin-brand-logo {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    border: 1px solid rgba(45, 80, 70, 0.25);
+                }
+
+                .admin-brand {
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0.13em;
+                    text-transform: uppercase;
+                    color: var(--forest);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .admin-brand-mark {
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 50%;
+                    background: var(--mint);
+                    box-shadow: 0 0 0 3px rgba(141, 207, 148, 0.2);
+                }
+
+                .admin-logout-btn {
+                    background: transparent;
+                    border: 1px solid rgba(82, 107, 97, 0.3);
+                    border-radius: 100px;
+                    padding: 6px 14px;
+                    color: var(--forest);
+                    font-size: 11px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 160ms ease;
+                }
+                .admin-logout-btn:hover {
+                    border-color: var(--ochre);
+                    background: rgba(188, 149, 83, 0.1);
+                }
+
+                .admin-title {
+                    color: var(--forest);
+                    font-size: clamp(28px, 7vw, 40px);
+                    font-weight: 900;
+                    letter-spacing: -0.04em;
+                    margin: 0 0 16px 0;
+                }
+
+                .admin-tab-row {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 16px;
+                }
+
+                .admin-tab {
+                    padding: 8px 16px;
+                    border-radius: 100px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.2);
+                    background: rgba(255, 255, 255, 0.5);
+                    color: var(--text-muted);
+                    font-size: 12px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 160ms ease;
+                }
+
+                .admin-tab-active {
+                    padding: 8px 16px;
+                    border-radius: 100px;
+                    border: 1.5px solid var(--ochre);
+                    background: rgba(188, 149, 83, 0.15);
+                    color: var(--forest-dark);
+                    font-size: 12px;
+                    font-weight: 800;
+                    cursor: pointer;
+                }
+
+                .admin-script-row {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 20px;
+                    flex-wrap: wrap;
+                }
+
+                .admin-script-pill {
+                    padding: 6px 12px;
+                    border-radius: 100px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.2);
+                    background: rgba(255, 255, 255, 0.5);
+                    color: var(--text-muted);
+                    font-size: 11.5px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 160ms ease;
+                }
+
+                .admin-script-pill-active {
+                    padding: 6px 12px;
+                    border-radius: 100px;
+                    border: 1.5px solid var(--ochre);
+                    background: rgba(188, 149, 83, 0.15);
+                    color: var(--forest-dark);
+                    font-size: 11.5px;
+                    font-weight: 800;
+                    cursor: pointer;
+                }
+
+                .admin-muted {
+                    color: var(--text-muted);
+                    font-size: 13.5px;
+                }
+
+                .admin-list {
+                    list-style: none;
+                    padding: 0;
+                    margin: 0 0 24px 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .admin-list-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 12px;
+                    background: rgba(255, 255, 255, 0.7);
+                    border: 1.5px solid rgba(82, 107, 97, 0.2);
+                    border-radius: 16px;
+                    padding: 16px;
+                }
+
+                .admin-list-item-title {
+                    font-size: 10px;
+                    font-weight: 800;
+                    color: var(--ochre);
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                    margin-bottom: 4px;
+                }
+
+                .admin-list-item-text {
+                    color: var(--forest);
+                    font-size: 14px;
+                    font-weight: 600;
+                    line-height: 1.4;
+                }
+
+                .admin-list-item-explanation {
+                    color: var(--text-muted);
+                    font-size: 12.5px;
+                    marginTop: 6px;
+                    line-height: 1.4;
+                }
+
+                .admin-option-preview-list {
+                    list-style: none;
+                    margin: 8px 0 0 0;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 3px;
+                }
+
+                .admin-option-preview-item {
+                    font-size: 12.5px;
+                    font-weight: 600;
+                }
+
+                .admin-delete-btn {
+                    background: transparent;
+                    border: 1px solid rgba(185, 92, 81, 0.4);
+                    color: #b95c51;
+                    border-radius: 8px;
+                    padding: 6px 10px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    flex-shrink: 0;
+                    transition: background 160ms ease;
+                }
+                .admin-delete-btn:hover {
+                    background: rgba(185, 92, 81, 0.1);
+                }
+
+                .admin-form {
+                    background: rgba(255, 255, 255, 0.6);
+                    border: 1.5px solid rgba(82, 107, 97, 0.2);
+                    border-radius: 18px;
+                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .admin-form-title {
+                    color: var(--forest);
+                    font-size: 15px;
+                    font-weight: 800;
+                    margin: 0 0 4px 0;
+                }
+
+                .admin-input {
+                    padding: 12px 14px;
+                    border-radius: 12px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.25);
+                    background: rgba(255, 255, 255, 0.9);
+                    color: var(--forest);
+                    font-size: 14px;
+                    width: 100%;
+                }
+                .admin-input:focus {
+                    outline: none;
+                    border-color: var(--ochre);
+                    box-shadow: 0 0 0 3px rgba(188, 149, 83, 0.15);
+                }
+
+                .admin-textarea {
+                    padding: 12px 14px;
+                    border-radius: 12px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.25);
+                    background: rgba(255, 255, 255, 0.9);
+                    color: var(--forest);
+                    font-size: 14px;
+                    resize: vertical;
+                    width: 100%;
+                    font-family: inherit;
+                }
+                .admin-textarea:focus {
+                    outline: none;
+                    border-color: var(--ochre);
+                    box-shadow: 0 0 0 3px rgba(188, 149, 83, 0.15);
+                }
+
+                .admin-options-edit-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .admin-option-edit-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .admin-remove-option-btn {
+                    background: transparent;
+                    border: 1px solid rgba(185, 92, 81, 0.4);
+                    color: #b95c51;
+                    border-radius: 8px;
+                    width: 32px;
+                    height: 42px;
+                    font-size: 16px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    flex-shrink: 0;
+                }
+
+                .admin-add-option-btn {
+                    align-self: flex-start;
+                    background: transparent;
+                    border: 1.5px dashed rgba(188, 149, 83, 0.6);
+                    color: var(--ochre);
+                    border-radius: 100px;
+                    padding: 8px 14px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    cursor: pointer;
+                }
+
+                .admin-hint {
+                    color: var(--text-muted);
+                    font-size: 11.5px;
+                    margin: 0;
+                }
+
+                .admin-error {
+                    color: #b95c51;
+                    font-size: 12.5px;
+                    margin: 0;
+                    font-weight: 600;
+                }
+
+                .admin-add-btn {
+                    padding: 13px 20px;
+                    border-radius: 100px;
+                    border: none;
+                    background: var(--mint);
+                    color: var(--forest-dark);
+                    font-weight: 800;
+                    font-size: 13.5px;
+                    cursor: pointer;
+                    transition: background 160ms ease;
+                }
+                .admin-add-btn:hover:not(:disabled) {
+                    background: var(--mint-bright);
+                }
+                .admin-add-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .admin-bottom-nav {
+                    margin-top: 24px;
+                    display: flex;
+                    justify-content: center;
+                }
+
+                .admin-back-link {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 12px 24px;
+                    border-radius: 100px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.25);
+                    color: var(--forest);
+                    font-size: 13px;
+                    font-weight: 700;
+                    text-decoration: none;
+                    background: rgba(255, 255, 255, 0.62);
+                    transition: all 160ms ease;
+                }
+                .admin-back-link:hover {
+                    border-color: var(--ochre);
+                    background: rgba(188, 149, 83, 0.1);
+                    color: var(--forest-dark);
+                    transform: translateY(-1px);
+                }
+
+                .admin-footer {
+                    margin-top: 24px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(45, 80, 70, 0.12);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 4px;
+                    text-align: center;
+                }
+
+                .admin-footer-brand {
+                    color: var(--forest-dark);
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.15em;
+                }
+
+                .admin-footer-tagline {
+                    color: var(--sage);
+                    font-size: 11px;
+                }
+            `}</style>
+
+            <div className="admin-frame">
+                <header className="admin-topbar">
+                    <div className="admin-brand-area">
+                        <img
+                            className="admin-brand-logo"
+                            src="/logos/factor-of-ten-logo-1.jpg"
+                            alt="Factor of Ten Foundation logo"
+                        />
+                        <div className="admin-brand">
+                            <span className="admin-brand-mark" />
+                            The Chair Listens
+                        </div>
+                    </div>
+
+                    <button type="button" onClick={handleLogout} className="admin-logout-btn">
                         Log out
                     </button>
-                </div>
+                </header>
 
-                <h1 style={styles.title}>Manage Questions</h1>
+                <h1 className="admin-title">Manage Questions</h1>
 
-                <div style={styles.tabRow}>
+                <div className="admin-tab-row">
                     <button
                         type="button"
                         onClick={() => setTab("reflection")}
-                        style={tab === "reflection" ? styles.tabActive : styles.tab}
+                        className={tab === "reflection" ? "admin-tab-active" : "admin-tab"}
                     >
                         Reflection Questions
                     </button>
                     <button
                         type="button"
                         onClick={() => setTab("quiz")}
-                        style={tab === "quiz" ? styles.tabActive : styles.tab}
+                        className={tab === "quiz" ? "admin-tab-active" : "admin-tab"}
                     >
                         Quiz Questions
                     </button>
@@ -53,13 +499,13 @@ export default function Questions() {
 
                 {tab === "reflection" ? (
                     <>
-                        <div style={styles.scriptRow}>
+                        <div className="admin-script-row">
                             {SCRIPTS.map((s) => (
                                 <button
                                     key={s.key}
                                     type="button"
                                     onClick={() => setActiveScript(s.key)}
-                                    style={activeScript === s.key ? styles.scriptPillActive : styles.scriptPill}
+                                    className={activeScript === s.key ? "admin-script-pill-active" : "admin-script-pill"}
                                 >
                                     {s.label}
                                 </button>
@@ -70,6 +516,17 @@ export default function Questions() {
                 ) : (
                     <QuizQuestions />
                 )}
+
+                <div className="admin-bottom-nav">
+                    <Link href="/admin/dashboard" className="admin-back-link">
+                        Back to Dashboard
+                    </Link>
+                </div>
+
+                <footer className="admin-footer">
+                    <span className="admin-footer-brand">FACTOR OF TEN</span>
+                    <span className="admin-footer-tagline">Know more. Ask more. Check sooner.</span>
+                </footer>
             </div>
         </main>
     );
@@ -148,21 +605,21 @@ function ReflectionQuestions({ scriptKey }) {
     return (
         <div>
             {loading ? (
-                <p style={styles.muted}>Loading...</p>
+                <p className="admin-muted">Loading...</p>
             ) : questions.length === 0 ? (
-                <p style={styles.muted}>No questions yet for this category.</p>
+                <p className="admin-muted">No questions yet for this category.</p>
             ) : (
-                <ul style={styles.list}>
+                <ul className="admin-list">
                     {questions.map((q) => (
-                        <li key={q.id} style={styles.listItem}>
+                        <li key={q.id} className="admin-list-item">
                             <div>
-                                <div style={styles.listItemTitle}>{q.title || "Untitled"}</div>
-                                <div style={styles.listItemText}>{q.question_text}</div>
+                                <div className="admin-list-item-title">{q.title || "Untitled"}</div>
+                                <div className="admin-list-item-text">{q.question_text}</div>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => handleDelete(q.id)}
-                                style={styles.deleteButton}
+                                className="admin-delete-btn"
                             >
                                 Remove
                             </button>
@@ -171,31 +628,31 @@ function ReflectionQuestions({ scriptKey }) {
                 </ul>
             )}
 
-            <form onSubmit={handleAdd} style={styles.form}>
-                <h3 style={styles.formTitle}>Add a Question</h3>
+            <form onSubmit={handleAdd} className="admin-form">
+                <h3 className="admin-form-title">Add a Question</h3>
                 <input
                     type="text"
                     placeholder="Title (e.g. 'The Silent Load')"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    style={styles.input}
+                    className="admin-input"
                 />
                 <textarea
                     placeholder="Question text"
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
                     rows={3}
-                    style={styles.textarea}
+                    className="admin-textarea"
                 />
                 <input
                     type="text"
                     placeholder="Placeholder text shown in the answer box"
                     value={placeholder}
                     onChange={(e) => setPlaceholder(e.target.value)}
-                    style={styles.input}
+                    className="admin-input"
                 />
-                {error && <p style={styles.error}>{error}</p>}
-                <button type="submit" disabled={saving} style={styles.addButton}>
+                {error && <p className="admin-error">{error}</p>}
+                <button type="submit" disabled={saving} className="admin-add-btn">
                     {saving ? "Adding..." : "Add Question"}
                 </button>
             </form>
@@ -234,17 +691,16 @@ function QuizQuestions() {
     }
 
     function setCorrectOption(index) {
-        // Single-correct-answer model, matching the existing quiz UI
         setOptions((prev) => prev.map((o, i) => ({ ...o, is_correct: i === index })));
     }
 
     function addOption() {
-        if (options.length >= 6) return; // sane upper bound
+        if (options.length >= 6) return;
         setOptions((prev) => [...prev, emptyOption()]);
     }
 
     function removeOption(index) {
-        if (options.length <= 2) return; // never go below 2
+        if (options.length <= 2) return;
         setOptions((prev) => prev.filter((_, i) => i !== index));
     }
 
@@ -318,35 +774,36 @@ function QuizQuestions() {
     return (
         <div>
             {loading ? (
-                <p style={styles.muted}>Loading...</p>
+                <p className="admin-muted">Loading...</p>
             ) : questions.length === 0 ? (
-                <p style={styles.muted}>No quiz questions yet.</p>
+                <p className="admin-muted">No quiz questions yet.</p>
             ) : (
-                <ul style={styles.list}>
+                <ul className="admin-list">
                     {questions.map((q) => (
-                        <li key={q.id} style={styles.listItem}>
+                        <li key={q.id} className="admin-list-item">
                             <div>
-                                <div style={styles.listItemText}>{q.question_text}</div>
-                                <ul style={styles.optionPreviewList}>
+                                <div className="admin-list-item-text">{q.question_text}</div>
+                                <ul className="admin-option-preview-list">
                                     {(q.options || []).map((o, i) => (
                                         <li
                                             key={i}
                                             style={{
                                                 ...styles.optionPreviewItem,
-                                                color: o.is_correct ? "#8FD19E" : "#AEB8D6",
+                                                color: o.is_correct ? "#3e8053" : "var(--text-muted)",
                                             }}
+                                            className="admin-option-preview-item"
                                         >
                                             {o.is_correct ? "✓ " : "– "}
                                             {o.text}
                                         </li>
                                     ))}
                                 </ul>
-                                <div style={styles.listItemExplanation}>{q.explanation}</div>
+                                <div className="admin-list-item-explanation">{q.explanation}</div>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => handleDelete(q.id)}
-                                style={styles.deleteButton}
+                                className="admin-delete-btn"
                             >
                                 Remove
                             </button>
@@ -355,19 +812,19 @@ function QuizQuestions() {
                 </ul>
             )}
 
-            <form onSubmit={handleAdd} style={styles.form}>
-                <h3 style={styles.formTitle}>Add a Quiz Question</h3>
+            <form onSubmit={handleAdd} className="admin-form">
+                <h3 className="admin-form-title">Add a Quiz Question</h3>
                 <textarea
                     placeholder="Question (e.g. 'At what age should screening discussions start?')"
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
                     rows={2}
-                    style={styles.textarea}
+                    className="admin-textarea"
                 />
 
-                <div style={styles.optionsEditList}>
+                <div className="admin-options-edit-list">
                     {options.map((opt, i) => (
-                        <div key={i} style={styles.optionEditRow}>
+                        <div key={i} className="admin-option-edit-row">
                             <label style={styles.radioLabel}>
                                 <input
                                     type="radio"
@@ -381,13 +838,14 @@ function QuizQuestions() {
                                 placeholder={`Option ${i + 1}`}
                                 value={opt.text}
                                 onChange={(e) => updateOptionText(i, e.target.value)}
-                                style={{ ...styles.input, flex: 1 }}
+                                className="admin-input"
+                                style={{ flex: 1 }}
                             />
                             {options.length > 2 && (
                                 <button
                                     type="button"
                                     onClick={() => removeOption(i)}
-                                    style={styles.removeOptionButton}
+                                    className="admin-remove-option-btn"
                                     aria-label={`Remove option ${i + 1}`}
                                 >
                                     ×
@@ -398,22 +856,22 @@ function QuizQuestions() {
                 </div>
 
                 {options.length < 6 && (
-                    <button type="button" onClick={addOption} style={styles.addOptionButton}>
+                    <button type="button" onClick={addOption} className="admin-add-option-btn">
                         + Add another option
                     </button>
                 )}
 
-                <p style={styles.hint}>Select the radio button next to the correct answer.</p>
+                <p className="admin-hint">Select the radio button next to the correct answer.</p>
 
                 <textarea
                     placeholder="Explanation shown after answering"
                     value={explanation}
                     onChange={(e) => setExplanation(e.target.value)}
                     rows={2}
-                    style={styles.textarea}
+                    className="admin-textarea"
                 />
-                {error && <p style={styles.error}>{error}</p>}
-                <button type="submit" disabled={saving} style={styles.addButton}>
+                {error && <p className="admin-error">{error}</p>}
+                <button type="submit" disabled={saving} className="admin-add-btn">
                     {saving ? "Adding..." : "Add Quiz Question"}
                 </button>
             </form>
@@ -422,172 +880,6 @@ function QuizQuestions() {
 }
 
 const styles = {
-    page: {
-        minHeight: "100vh",
-        background:
-            "radial-gradient(120% 60% at 50% 0%, #14265C 0%, #0F1E4A 40%, #0A1735 75%, #081128 100%)",
-        fontFamily: "'IBM Plex Sans', sans-serif",
-        padding: "32px 20px 56px",
-        boxSizing: "border-box",
-    },
-    frame: { width: "100%", maxWidth: "560px", margin: "0 auto" },
-    topRow: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "20px",
-    },
-    back: { color: "#AEB8D6", fontSize: "14px", textDecoration: "none" },
-    logoutButton: {
-        background: "none",
-        border: "1px solid rgba(174, 184, 214, 0.3)",
-        borderRadius: "999px",
-        padding: "6px 14px",
-        color: "#AEB8D6",
-        fontSize: "12px",
-        cursor: "pointer",
-    },
-    title: { color: "#F5F6FA", fontSize: "22px", marginBottom: "20px" },
-    tabRow: { display: "flex", gap: "10px", marginBottom: "16px" },
-    tab: {
-        padding: "8px 16px",
-        borderRadius: "999px",
-        border: "1px solid rgba(174, 184, 214, 0.25)",
-        background: "transparent",
-        color: "#AEB8D6",
-        fontSize: "13px",
-        cursor: "pointer",
-    },
-    tabActive: {
-        padding: "8px 16px",
-        borderRadius: "999px",
-        border: "1px solid #B99B5B",
-        background: "rgba(185, 155, 91, 0.15)",
-        color: "#D9C489",
-        fontSize: "13px",
-        fontWeight: 600,
-        cursor: "pointer",
-    },
-    scriptRow: { display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" },
-    scriptPill: {
-        padding: "6px 12px",
-        borderRadius: "999px",
-        border: "1px solid rgba(174, 184, 214, 0.2)",
-        background: "transparent",
-        color: "#7E88AC",
-        fontSize: "12px",
-        cursor: "pointer",
-    },
-    scriptPillActive: {
-        padding: "6px 12px",
-        borderRadius: "999px",
-        border: "1px solid #B99B5B",
-        background: "rgba(185, 155, 91, 0.12)",
-        color: "#D9C489",
-        fontSize: "12px",
-        fontWeight: 600,
-        cursor: "pointer",
-    },
-    muted: { color: "#7E88AC", fontSize: "13.5px" },
-    list: { listStyle: "none", padding: 0, margin: "0 0 28px 0", display: "flex", flexDirection: "column", gap: "10px" },
-    listItem: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: "12px",
-        backgroundColor: "rgba(15, 30, 74, 0.5)",
-        border: "1px solid rgba(174, 184, 214, 0.15)",
-        borderRadius: "10px",
-        padding: "14px",
-    },
-    listItemTitle: {
-        fontSize: "11px",
-        fontWeight: 700,
-        color: "#B99B5B",
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-        marginBottom: "4px",
-    },
-    listItemText: { color: "#F5F6FA", fontSize: "14px", lineHeight: 1.4 },
-    listItemExplanation: { color: "#AEB8D6", fontSize: "12.5px", marginTop: "6px", lineHeight: 1.4 },
-    optionPreviewList: { listStyle: "none", margin: "8px 0 0 0", padding: 0, display: "flex", flexDirection: "column", gap: "3px" },
+    radioLabel: { display: "flex", alignItems: "center", gap: "6px", color: "#52645e", fontSize: "13px", cursor: "pointer" },
     optionPreviewItem: { fontSize: "12.5px" },
-    deleteButton: {
-        background: "none",
-        border: "1px solid rgba(255, 107, 107, 0.4)",
-        color: "#FF6B6B",
-        borderRadius: "8px",
-        padding: "6px 10px",
-        fontSize: "12px",
-        cursor: "pointer",
-        flexShrink: 0,
-    },
-    form: {
-        backgroundColor: "rgba(15, 30, 74, 0.4)",
-        border: "1px solid rgba(174, 184, 214, 0.15)",
-        borderRadius: "12px",
-        padding: "18px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px",
-    },
-    formTitle: { color: "#D9C489", fontSize: "14px", margin: "0 0 4px 0" },
-    input: {
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid rgba(174, 184, 214, 0.25)",
-        background: "rgba(10, 23, 53, 0.7)",
-        color: "#F5F6FA",
-        fontSize: "13.5px",
-        boxSizing: "border-box",
-    },
-    textarea: {
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid rgba(174, 184, 214, 0.25)",
-        background: "rgba(10, 23, 53, 0.7)",
-        color: "#F5F6FA",
-        fontSize: "13.5px",
-        resize: "vertical",
-        boxSizing: "border-box",
-        fontFamily: "'IBM Plex Sans', sans-serif",
-    },
-    optionsEditList: { display: "flex", flexDirection: "column", gap: "8px" },
-    optionEditRow: { display: "flex", alignItems: "center", gap: "8px" },
-    removeOptionButton: {
-        background: "none",
-        border: "1px solid rgba(255, 107, 107, 0.4)",
-        color: "#FF6B6B",
-        borderRadius: "6px",
-        width: "28px",
-        height: "34px",
-        fontSize: "16px",
-        lineHeight: 1,
-        cursor: "pointer",
-        flexShrink: 0,
-    },
-    addOptionButton: {
-        alignSelf: "flex-start",
-        background: "none",
-        border: "1px dashed rgba(185, 155, 91, 0.5)",
-        color: "#D9C489",
-        borderRadius: "8px",
-        padding: "6px 12px",
-        fontSize: "12.5px",
-        cursor: "pointer",
-    },
-    hint: { color: "#7E88AC", fontSize: "11.5px", margin: 0 },
-    radioRow: { display: "flex", gap: "16px" },
-    radioLabel: { display: "flex", alignItems: "center", gap: "6px", color: "#AEB8D6", fontSize: "13px" },
-    error: { color: "#FF6B6B", fontSize: "12.5px", margin: 0 },
-    addButton: {
-        padding: "11px",
-        borderRadius: "999px",
-        border: "none",
-        background: "#B99B5B",
-        color: "#0A1735",
-        fontWeight: 700,
-        fontSize: "13.5px",
-        cursor: "pointer",
-    },
 };

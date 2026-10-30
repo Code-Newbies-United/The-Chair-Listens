@@ -15,6 +15,7 @@ import {
   MAX_TITLE_CHARS,
   MAX_ID_CHARS,
   MAX_CONSENT_VERSION_CHARS,
+  MAX_MESSAGE_CHARS,
 } from '@/lib/limits';
 
 // TODO(FIX-16): replace with the central pathway config once it exists.
@@ -73,6 +74,17 @@ const groqBodySchema = z.object({
   answer: answerTextSchema,
 });
 
+// Used by /api/messages (community message on the reflection page).
+const messageBodySchema = z.object({
+  message: z
+    .string()
+    .max(
+      MAX_MESSAGE_CHARS,
+      `message must be at most ${MAX_MESSAGE_CHARS} characters`,
+    )
+    .refine((text) => text.trim().length > 0, 'message must not be empty'),
+});
+
 function run(schema, input) {
   const result = schema.safeParse(input);
   if (result.success) {
@@ -89,5 +101,6 @@ function run(schema, input) {
 
 export const parseResponseBody = (body) => run(responseBodySchema, body);
 export const parseConsentBody = (body) => run(consentBodySchema, body);
+export const parseMessageBody = (body) => run(messageBodySchema, body);
 export const parseGroqBody = (body) => run(groqBodySchema, body);
 export const parseScriptKey = (value) => run(scriptSchema, value);

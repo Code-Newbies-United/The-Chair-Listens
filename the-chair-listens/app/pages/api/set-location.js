@@ -1,4 +1,3 @@
-// Destination: pages/api/set-location.js
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { verifyAdminSession } from "@/lib/adminsession";
 

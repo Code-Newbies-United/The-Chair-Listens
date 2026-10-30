@@ -3,6 +3,7 @@ import { CONSENT_VERSION } from '@/lib/consentVersion';
 import { methodNotAllowed, badRequest } from '@/lib/apiErrors';
 import { checkRateLimit } from '@/lib/apiGuard';
 import { parseConsentBody } from '@/lib/validators';
+import { recordVisit } from '@/lib/visitorPins';
 
 // Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
 export const config = { api: { bodyParser: { sizeLimit: '4kb' } } };
@@ -33,7 +34,7 @@ export default async function manage_communication(req, res) {
   // Resolve the chair's location on the server.
   const { data: location, error: locationError } = await supabaseAdmin
     .from('locations')
-    .select('id, name')
+    .select('id, name, lat, lng')
     .eq('active', true)
     .maybeSingle();
 
@@ -72,6 +73,10 @@ export default async function manage_communication(req, res) {
       message: 'Failed to save consent.',
     });
   }
+
+  // Feed the live visitor map / lifetime totals with the chair's own stop
+  // (best effort: never blocks the session).
+  await recordVisit({ city: location.name, lat: location.lat, lng: location.lng });
 
   return res.status(201).json({ sessionId: data.id });
 }

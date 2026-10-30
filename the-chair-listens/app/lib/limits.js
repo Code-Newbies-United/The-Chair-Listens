@@ -16,6 +16,9 @@ export const MAX_ID_CHARS = 64;
 
 export const MAX_CONSENT_VERSION_CHARS = 50;
 
+// Community message left on the reflection page.
+export const MAX_MESSAGE_CHARS = 1000;
+
 // Whole-request limits live in each API route as
 //   export const config = { api: { bodyParser: { sizeLimit: "..." } } };
 // Next.js only accepts literal values there, so they cannot be imported.
@@ -23,3 +26,4 @@ export const MAX_CONSENT_VERSION_CHARS = 50;
 //   answers routes: 256kb  (15 x (4000 + 500) chars, even at 2 bytes per char)
 //   groq route:     32kb   (one answer + one question)
 //   consent route:  4kb
+//   messages route: 8kb
