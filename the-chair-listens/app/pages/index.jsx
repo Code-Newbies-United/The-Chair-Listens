@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
+import AboutFactorOfTen from "@/components/AboutFactorOfTen";
 
 const POPIA_TERMS_URL = "/consent-terms";
 
@@ -12,6 +13,7 @@ export default function Home({ locationName = "Pretoria" }) {
   const [detectedLocation, setDetectedLocation] = useState(null);
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [messagesPaused, setMessagesPaused] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // State for community messages fetched from backend
   const [participantMessages, setParticipantMessages] = useState([
@@ -445,7 +447,28 @@ export default function Home({ locationName = "Pretoria" }) {
 
           line-height: 1.5;
         }
-
+        
+        .about-link {
+          margin: 14px 0 6px;
+          padding: 10px 18px;
+          border: 1.5px solid var(--ochre);
+          border-radius: 100px;
+          background: transparent;
+          color: var(--forest);
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 160ms ease, color 160ms ease;
+        }
+        .about-link:hover {
+          background: var(--ochre);
+          color: var(--white);
+        }
+        .about-link:focus-visible {
+          outline: 3px solid var(--forest);
+          outline-offset: 3px;
+        }
+        
         /* ==================================================
            HERO ART
         ================================================== */
@@ -1405,6 +1428,13 @@ export default function Home({ locationName = "Pretoria" }) {
               <p className="hero-description">
                 The Chair gives men a quiet, anonymous place to be heard and to learn about prostate health, so that talking and getting checked feel a little easier.
               </p>
+              <button
+                  type="button"
+                  className="about-link"
+                  onClick={() => setAboutOpen(true)}
+              >
+                Small Acts. Tenfold Impact.
+              </button>
 
               <p className="hero-description">
 
@@ -1650,6 +1680,7 @@ export default function Home({ locationName = "Pretoria" }) {
           </footer>
 
         </div>
+        <AboutFactorOfTen open={aboutOpen} onClose={() => setAboutOpen(false)} />
       </main>
   );
 }
