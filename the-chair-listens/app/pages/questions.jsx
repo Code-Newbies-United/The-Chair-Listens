@@ -14,7 +14,7 @@ import TextResponse from "@/components/TextResponse";
 
 const SCRIPT_TITLES = {
   men_mental_health: "For Men",
-  ally_support: "Ally & Support System",
+  ally_support: "Ally & Support",
   fast_track_activations: "Today's Event",
 };
 
