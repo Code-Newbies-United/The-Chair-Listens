@@ -7,6 +7,24 @@ const PARTNERS = [
     { name: "Partner 1", logo: "/logos/partner-1.png" },
     { name: "Partner 2", logo: "/logos/partner-2.png" },
     { name: "Partner 3", logo: "/logos/partner-3.png" },
+    { name: "Partner 4", logo: "/logos/partner-4.png" },
+    { name: "Partner 5", logo: "/logos/partner-5.png" },
+    { name: "Partner 6", logo: "/logos/partner-6.jpeg" },
+    { name: "Partner 7", logo: "/logos/partner-7.jpeg" },
+    { name: "Partner 8", logo: "/logos/partner-8.png" },
+    { name: "Partner 9", logo: "/logos/partner-9.png" },
+    { name: "Partner 10", logo: "/logos/partner-10.png" },
+    { name: "Partner 11", logo: "/logos/partner-11.png" },
+    { name: "Partner 12", logo: "/logos/partner-12.png" },
+    { name: "Partner 13", logo: "/logos/partner-13.png" },
+    { name: "Partner 14", logo: "/logos/partner-14.png" },
+    { name: "Partner 15", logo: "/logos/partner-15.png" },
+    { name: "Partner 16", logo: "/logos/partner-16.png" },
+    { name: "Partner 17", logo: "/logos/partner-17.png" },
+    { name: "Partner 18", logo: "/logos/partner-18.png" },
+    { name: "Partner 19", logo: "/logos/partner-19.png" },
+    { name: "Partner 20", logo: "/logos/partner-20.png" },
+    { name: "Partner 21", logo: "/logos/partner-21.png" },
 ];
 
 export default function ThankYou() {
@@ -77,7 +95,7 @@ export default function ThankYou() {
         .ty-partners-logo { display:block; width:86px; height:86px; margin:0 auto 14px; object-fit:cover; border-radius:50%; border:1px solid rgba(245,242,232,.55); }
         .ty-partners-kicker { display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:15px; color:rgba(245,242,232,.72); font-size:9px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
         .ty-marquee { width:100%; overflow:hidden; padding:3px 0 10px; mask-image:linear-gradient(90deg, transparent, black 10%, black 90%, transparent); -webkit-mask-image:linear-gradient(90deg, transparent, black 10%, black 90%, transparent); }
-        .ty-marquee-track { display:flex; gap:14px; width:max-content; animation:tyMarquee 20s linear infinite; }
+        .ty-marquee-track { display:flex; gap:14px; width:max-content; animation:tyMarquee 25s linear infinite; }
         .ty-marquee-track:hover { animation-play-state:paused; }
         @keyframes tyMarquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
         .ty-partner { flex:0 0 130px; width:130px; height:78px; display:flex; align-items:center; justify-content:center; padding:12px; border:1px solid rgba(245,242,232,.15); border-radius:15px; background:rgba(245,242,232,.07); transition:border-color 160ms ease, background 160ms ease; }
