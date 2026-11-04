@@ -1,19 +1,12 @@
-// Destination: lib/requireAdminSSR.js
-import { verifyAdminSession } from "@/lib/adminsession";
+import { requireAdmin } from "@/lib/requireAdmin";
 
-// Use in any admin page like:
-//   export const getServerSideProps = requireAdminSSR();
+// Same name and usage as before: export const getServerSideProps = requireAdminSSR();
 export function requireAdminSSR() {
-    return async function getServerSideProps(context) {
-        if (!verifyAdminSession(context.req)) {
-            return {
-                redirect: {
-                    destination: "/admin/login",
-                    permanent: false,
-                },
-            };
-        }
-
-        return { props: {} };
-    };
+  return async ({ req, res }) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) {
+      return { redirect: { destination: "/admin/login", permanent: false } };
+    }
+    return { props: { admin } };
+  };
 }

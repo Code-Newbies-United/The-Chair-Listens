@@ -47,3 +47,12 @@ CREATE TABLE IF NOT EXISTS locations (
     response_count INTEGER NOT NULL DEFAULT 0,
     visited_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+
+create table if not exists admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  role text not null default 'admin' check (role in ('admin')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
