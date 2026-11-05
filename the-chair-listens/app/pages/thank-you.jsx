@@ -12,7 +12,7 @@ const PARTNERS = [
     { name: "Partner 6", logo: "/logos/partner-6.jpeg" },
     { name: "Partner 7", logo: "/logos/partner-7.jpeg" },
     { name: "Partner 8", logo: "/logos/partner-8.png" },
-    { name: "Partner 9", logo: "/logos/partner-9.png" },
+    { name: "Partner 9", logo: "/logos/partner-9.jpeg" },
     { name: "Partner 10", logo: "/logos/partner-10.png" },
     { name: "Partner 11", logo: "/logos/partner-11.png" },
     { name: "Partner 12", logo: "/logos/partner-12.png" },
@@ -22,7 +22,7 @@ const PARTNERS = [
     { name: "Partner 16", logo: "/logos/partner-16.png" },
     { name: "Partner 17", logo: "/logos/partner-17.png" },
     { name: "Partner 18", logo: "/logos/partner-18.png" },
-    { name: "Partner 19", logo: "/logos/partner-19.png" },
+    { name: "Partner 19", logo: "/logos/partner-19.jpeg" },
     { name: "Partner 20", logo: "/logos/partner-20.png" },
     { name: "Partner 21", logo: "/logos/partner-21.png" },
 ];
@@ -91,7 +91,22 @@ export default function ThankYou() {
         .ty-outline:hover { background:rgba(141,207,148,.16); border-color:var(--ty-forest); }
         .ty-filled { border:1px solid var(--ty-mint); background:var(--ty-mint); color:var(--ty-dark); box-shadow:0 7px 0 rgba(32,63,54,.08), 0 10px 22px rgba(45,80,70,.12); }
         .ty-filled:hover { background:var(--ty-mint-bright); box-shadow:0 10px 24px rgba(45,80,70,.16); }
-        .ty-partners { margin-top:28px; padding:23px 0 4px; text-align:center; }
+        .ty-partner {
+            position: relative;
+            flex: 0 0 130px;
+            width: 130px;
+            height: 78px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border: 1px solid rgba(245,242,232,.15);
+            border-radius: 15px;
+            background: rgba(245,242,232,.07);
+            transition: border-color 160ms ease, background 160ms ease;
+            overflow: hidden;
+            cursor: pointer;
+        }
         .ty-partners-logo { display:block; width:86px; height:86px; margin:0 auto 14px; object-fit:cover; border-radius:50%; border:1px solid rgba(245,242,232,.55); }
         .ty-partners-kicker { display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:15px; color:rgba(245,242,232,.72); font-size:9px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
         .ty-marquee { width:100%; overflow:hidden; padding:3px 0 10px; mask-image:linear-gradient(90deg, transparent, black 10%, black 90%, transparent); -webkit-mask-image:linear-gradient(90deg, transparent, black 10%, black 90%, transparent); }
@@ -99,11 +114,59 @@ export default function ThankYou() {
         .ty-marquee-track:hover { animation-play-state:paused; }
         @keyframes tyMarquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
         .ty-partner { flex:0 0 130px; width:130px; height:78px; display:flex; align-items:center; justify-content:center; padding:12px; border:1px solid rgba(245,242,232,.15); border-radius:15px; background:rgba(245,242,232,.07); transition:border-color 160ms ease, background 160ms ease; }
-        .ty-partner:hover { border-color:rgba(141,207,148,.65); background:rgba(245,242,232,.11); }
-        .ty-partner img { max-width:100%; max-height:100%; object-fit:contain; }
+        .ty-partner:hover {
+            border-color: rgba(141,207,148,.65);
+            background: rgba(245,242,232,.11);
+        }
+
+        .ty-partner img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: opacity 200ms ease;
+        }
+        
+        .ty-partner-name {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            background: rgba(25,54,47,.94);
+            color: var(--ty-mint-bright);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.4;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 200ms ease, visibility 200ms ease;
+        }
+        .ty-partner:hover .ty-partner-name {
+            opacity: 1;
+            visibility: visible;
+        }
+        .ty-partner:focus-visible {
+            outline: 3px solid var(--ty-mint);
+            outline-offset: 3px;
+        }
+        .ty-partner:focus-visible .ty-partner-name {
+            opacity: 1;
+            visibility: visible;
+        }
+        .ty-partner-name {
+            font-size: 10px;
+        }
         .ty-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
         .ty-footer-brand { color:var(--ty-mint-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
         .ty-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        @media (max-width:520px) {
+            .ty-partner {
+                flex-basis: 112px;
+                width: 112px;
+                height: 70px;
+            }
         @media (max-width:390px) { .ty-tagline { font-size:9px; letter-spacing:-.025em; } .ty-brand-logo { width:29px; height:29px; flex-basis:29px; } }
         @media (max-width:520px) { .ty-topbar { margin-bottom:15px; } .ty-content { padding:30px 20px 26px; } .ty-body { font-size:14px; } .ty-disclaimer { font-size:12px; } .ty-button { flex:1 1 140px; } .ty-partner { flex-basis:112px; width:112px; height:70px; } }
         @media (prefers-reduced-motion:reduce) { .ty-button, .ty-partner { transition:none; } .ty-marquee-track { animation:none; } }
@@ -148,12 +211,26 @@ export default function ThankYou() {
 
                 <section className="ty-partners" aria-label="Campaign partners">
                     <img className="ty-partners-logo" src="/logos/factor-of-ten-logo.jpg" alt="Factor of Ten Foundation logo" />
-                    <div className="ty-partners-kicker"><span className="ty-line" />In Partnership With<span className="ty-line" /></div>
+                    <div className="ty-partners-kicker"><span className="ty-line" />Inaugural Partners<span className="ty-line" /></div>
                     <div className="ty-marquee">
                         <div className="ty-marquee-track">
                             {[...PARTNERS, ...PARTNERS].map((partner, i) => (
-                                <div key={`${partner.name}-${i}`} className="ty-partner">
-                                    <img src={partner.logo} alt={partner.name} loading="lazy" />
+                                <div
+                                    key={`${partner.name}-${i}`}
+                                    className="ty-partner"
+                                    tabIndex={0}
+                                    title={partner.name}
+                                    aria-label={partner.name}
+                                >
+                                    <img
+                                        src={partner.logo}
+                                        alt={partner.name}
+                                        loading="lazy"
+                                    />
+
+                                    <span className="ty-partner-name">
+                                        {partner.name}
+                                    </span>
                                 </div>
                             ))}
                         </div>
