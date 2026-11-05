@@ -447,7 +447,28 @@ export default function Home({ locationName = "Pretoria" }) {
 
           line-height: 1.5;
         }
-
+        
+        .about-link {
+          margin: 14px 0 6px;
+          padding: 10px 18px;
+          border: 1.5px solid var(--ochre);
+          border-radius: 100px;
+          background: transparent;
+          color: var(--forest);
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 160ms ease, color 160ms ease;
+        }
+        .about-link:hover {
+          background: var(--ochre);
+          color: var(--white);
+        }
+        .about-link:focus-visible {
+          outline: 3px solid var(--forest);
+          outline-offset: 3px;
+        }
+        
         /* ==================================================
            HERO ART
         ================================================== */
