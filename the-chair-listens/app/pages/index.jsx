@@ -1,5 +1,5 @@
 // Destination: pages/index.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
 import AboutFactorOfTen from "@/components/AboutFactorOfTen";
@@ -8,29 +8,6 @@ const POPIA_TERMS_URL = "/consent-terms";
 
 export default function Home({ locationName = "Pretoria" }) {
   const router = useRouter();
-
-  // Hidden admin shortcut: tap the brand five times within two seconds.
-  const brandTapTimes = useRef([]);
-
-  function handleBrandTap() {
-    const now = Date.now();
-    brandTapTimes.current = brandTapTimes.current.filter(
-        (tapTime) => now - tapTime <= 2000
-    );
-    brandTapTimes.current.push(now);
-
-    if (brandTapTimes.current.length >= 5) {
-      brandTapTimes.current = [];
-      router.push("/admin/login");
-    }
-  }
-
-  function handleBrandKeyDown(event) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleBrandTap();
-    }
-  }
 
   const [consented, setConsented] = useState(false);
   const [detectedLocation, setDetectedLocation] = useState(null);
@@ -267,13 +244,6 @@ export default function Home({ locationName = "Pretoria" }) {
 
           letter-spacing: 0.13em;
           text-transform: uppercase;
-          cursor: pointer;
-        }
-
-        .brand:focus-visible {
-          outline: 2px solid var(--mint);
-          outline-offset: 4px;
-          border-radius: 8px;
         }
 
         .brand-logo {
@@ -477,28 +447,7 @@ export default function Home({ locationName = "Pretoria" }) {
 
           line-height: 1.5;
         }
-        
-        .about-link {
-          margin: 14px 0 6px;
-          padding: 10px 18px;
-          border: 1.5px solid var(--ochre);
-          border-radius: 100px;
-          background: transparent;
-          color: var(--forest);
-          font-size: 13px;
-          font-weight: 800;
-          cursor: pointer;
-          transition: background 160ms ease, color 160ms ease;
-        }
-        .about-link:hover {
-          background: var(--ochre);
-          color: var(--white);
-        }
-        .about-link:focus-visible {
-          outline: 3px solid var(--forest);
-          outline-offset: 3px;
-        }
-        
+
         /* ==================================================
            HERO ART
         ================================================== */
@@ -1415,15 +1364,7 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <header className="topbar">
-            <div
-                className="brand"
-                onClick={handleBrandTap}
-                onKeyDown={handleBrandKeyDown}
-                role="button"
-                tabIndex={0}
-                aria-label="The Chair Listens brand mark"
-                title="The Chair Listens"
-            >
+            <div className="brand">
               <img
                   className="brand-logo"
                   src="/logos/factor-of-ten-logo.jpg"
