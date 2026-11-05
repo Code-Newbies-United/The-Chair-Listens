@@ -145,7 +145,7 @@ export default function TextResponse({
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full mt-5">
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
