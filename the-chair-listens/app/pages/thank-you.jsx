@@ -209,7 +209,11 @@ export default function ThankYou() {
                     </div>
                 </section>
 
-                <section className="ty-partners" aria-label="Campaign partners">
+                <section
+                    className="ty-partners"
+                    aria-label="Campaign partners"
+                    style={{ marginTop: "40px" }}
+                >
                     <img className="ty-partners-logo" src="/logos/factor-of-ten-logo.jpg" alt="Factor of Ten Foundation logo" />
                     <div className="ty-partners-kicker"><span className="ty-line" />Inaugural Partners<span className="ty-line" /></div>
                     <div className="ty-marquee">
