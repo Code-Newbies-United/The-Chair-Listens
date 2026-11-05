@@ -1,5 +1,5 @@
 // Destination: pages/index.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
 import AboutFactorOfTen from "@/components/AboutFactorOfTen";
@@ -8,6 +8,29 @@ const POPIA_TERMS_URL = "/consent-terms";
 
 export default function Home({ locationName = "Pretoria" }) {
   const router = useRouter();
+
+  // Hidden admin shortcut: tap the brand five times within two seconds.
+  const brandTapTimes = useRef([]);
+
+  function handleBrandTap() {
+    const now = Date.now();
+    brandTapTimes.current = brandTapTimes.current.filter(
+        (tapTime) => now - tapTime <= 2000
+    );
+    brandTapTimes.current.push(now);
+
+    if (brandTapTimes.current.length >= 5) {
+      brandTapTimes.current = [];
+      router.push("/admin/login");
+    }
+  }
+
+  function handleBrandKeyDown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleBrandTap();
+    }
+  }
 
   const [consented, setConsented] = useState(false);
   const [detectedLocation, setDetectedLocation] = useState(null);
@@ -244,6 +267,13 @@ export default function Home({ locationName = "Pretoria" }) {
 
           letter-spacing: 0.13em;
           text-transform: uppercase;
+          cursor: pointer;
+        }
+
+        .brand:focus-visible {
+          outline: 2px solid var(--mint);
+          outline-offset: 4px;
+          border-radius: 8px;
         }
 
         .brand-logo {
@@ -1385,7 +1415,15 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <header className="topbar">
-            <div className="brand">
+            <div
+                className="brand"
+                onClick={handleBrandTap}
+                onKeyDown={handleBrandKeyDown}
+                role="button"
+                tabIndex={0}
+                aria-label="The Chair Listens brand mark"
+                title="The Chair Listens"
+            >
               <img
                   className="brand-logo"
                   src="/logos/factor-of-ten-logo.jpg"

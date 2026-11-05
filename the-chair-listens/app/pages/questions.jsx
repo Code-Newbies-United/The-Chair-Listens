@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
+import { checkForSafetyTrigger } from "@/lib/safety.js";
 import QuestionCard from "@/components/QuestionCard";
 import TextResponse from "@/components/TextResponse";
 

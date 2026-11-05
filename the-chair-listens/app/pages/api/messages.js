@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { moderateMessage } from "@/pages/utils/messageModeration";
+import { moderateMessage } from "@/lib/messageModeration";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
