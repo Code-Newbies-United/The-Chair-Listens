@@ -2,7 +2,7 @@ import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { requireAdmin } from "@/lib/requireAdmin";
 
 export default async function handler(req, res) {
-    // Verify HMAC-signed session
+    // Only active admins (Supabase Auth session + admins table) may use this route
     if (!(await requireAdmin(req, res))) {
         return res.status(401).json({ message: "Unauthorized" });
     }
