@@ -1,9 +1,20 @@
 // Destination: pages/admin/login.jsx
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { requireAdmin } from "@/lib/requireAdmin";
+
+// Already signed in as an active admin? Skip the login page.
+export async function getServerSideProps({ req, res }) {
+    const admin = await requireAdmin(req, res);
+    if (admin) {
+        return { redirect: { destination: "/admin/dashboard", permanent: false } };
+    }
+    return { props: {} };
+}
 
 export default function Login() {
     const router = useRouter();
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -15,15 +26,15 @@ export default function Login() {
             const res = await fetch("/api/admin-login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password }),
+                body: JSON.stringify({ email: email.trim(), password }),
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
 
-            if (data.success) {
+            if (res.ok && data.success) {
                 router.push("/admin/dashboard");
             } else {
-                setError(data.message);
+                setError(data.message || "Login failed. Please try again.");
             }
         } catch (err) {
             console.error(err);
@@ -34,10 +45,10 @@ export default function Login() {
     }
 
     function handleKeyDown(e) {
-        if (e.key === "Enter") handleLogin();
+        if (e.key === "Enter" && !disabled) handleLogin();
     }
 
-    const disabled = loading || !password.trim();
+    const disabled = loading || !email.trim() || !password;
 
     return (
         <main className="admin-page">
@@ -459,6 +470,22 @@ export default function Login() {
 
                         {/* FORM */}
                         <div className="admin-action">
+                            <label className="admin-label" htmlFor="admin-email">
+                                Email
+                            </label>
+
+                            <input
+                                id="admin-email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="you@example.com"
+                                className="admin-input"
+                                autoComplete="username"
+                                autoFocus
+                            />
+
                             <label className="admin-label" htmlFor="admin-password">
                                 Password
                             </label>
@@ -472,7 +499,6 @@ export default function Login() {
                                 placeholder="Enter password"
                                 className="admin-input"
                                 autoComplete="current-password"
-                                autoFocus
                             />
 
                             {error && (

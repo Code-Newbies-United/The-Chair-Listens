@@ -47,3 +47,17 @@ CREATE TABLE IF NOT EXISTS locations (
     response_count INTEGER NOT NULL DEFAULT 0,
     visited_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+
+create table if not exists admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  role text not null default 'admin' check (role in ('admin')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Locked down: only the server (service role) reads or writes this table.
+-- RLS is on with no policy, and anon/authenticated have no grants.
+alter table admins enable row level security;
+revoke all on public.admins from anon, authenticated;

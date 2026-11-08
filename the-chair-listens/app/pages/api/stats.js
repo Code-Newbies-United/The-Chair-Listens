@@ -1,7 +1,6 @@
 // Destination: pages/api/stats.js
-import { supabase } from "@/lib/supabaseClient";
-import { verifyAdminSession } from "@/lib/adminsession";
-
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
+import { requireAdmin } from "@/lib/requireAdmin";
 const SCRIPT_COLUMN = "script";
 const SCRIPT_KEYS = ["men_mental_health", "ally_support", "fast_track_activations"];
 
@@ -10,9 +9,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ message: "Method not allowed" });
     }
 
-    if (!verifyAdminSession(req)) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
+       const admin = await requireAdmin(req, res);
+   if (!admin) {
+       return res.status(401).json({ message: "Unauthorized" });
+   }
 
     try {
         const [totalResponsesRes, totalLocationsRes, activeLocationRes, ...scriptCountResults] =

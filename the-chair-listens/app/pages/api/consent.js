@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 
 export default async function manage_communication(req, res) {
     if (req.method !== "POST") {

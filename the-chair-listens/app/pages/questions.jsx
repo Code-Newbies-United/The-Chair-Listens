@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { checkForSafetyTrigger } from "@/lib/safety.js";
+import { checkForSafetyTrigger } from "@/lib/safety";
 import QuestionCard from "@/components/QuestionCard";
 import TextResponse from "@/components/TextResponse";
 
@@ -47,7 +47,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const progress =
       totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
-  // 1. Fetch Questions from API
+  
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -89,7 +89,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     fetchQuestions();
   }, [router.isReady, script]);
 
-  // Reset state when switching scripts
+
   useEffect(() => {
     if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== script) {
       setCurrentIndex(0);
@@ -100,7 +100,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     lastScriptKeyRef.current = script;
   }, [script]);
 
-  // Speech Synthesis Controls for AI Reflection
+ 
   const speakText = (text) => {
     if (typeof window === "undefined" || !text) return;
 
@@ -154,7 +154,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     return true;
   };
 
-  // 2. Fetch Single Question AI Reflection via /api/groq
   const handleGetReflection = async () => {
     if (!currentText.trim() || !currentQuestion) return;
 
@@ -198,14 +197,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   };
 
-  // 3. Complete Session: Save to /api/responses & Fetch /api/session-reflection
   const finishSession = async (finalAnswers) => {
     if (savingSession) return;
 
     try {
       setSavingSession(true);
 
-      // Save raw responses to database
+      
       await fetch("/api/responses", {
         method: "POST",
         headers: {
@@ -218,7 +216,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         }),
       });
 
-      // Generate overall AI session summary
+      
       let summaryData = null;
       try {
         const summaryRes = await fetch("/api/session-reflection", {
@@ -1098,6 +1096,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           
           .intro h1 .chair-script {
               font-size: 0.85em;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
