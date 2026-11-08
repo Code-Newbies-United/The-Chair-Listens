@@ -56,3 +56,8 @@ create table if not exists admins (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+-- Locked down: only the server (service role) reads or writes this table.
+-- RLS is on with no policy, and anon/authenticated have no grants.
+alter table admins enable row level security;
+revoke all on public.admins from anon, authenticated;
