@@ -1,8 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-// Rate limit on FAILED attempts only. In-memory, so it is per server instance (best effort);
-// Supabase Auth also applies its own limits on sign-in attempts.
 const MAX_FAILURES = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const failures = new Map();
@@ -68,11 +66,9 @@ export default async function handler(req, res) {
     if (rowError) throw rowError;
 
     if (!adminRow?.active) {
-      // Valid Supabase user but not an active admin: no cookie, and kill the session just created
       discardCookies();
       await supabaseAdmin.auth.admin.signOut(data.session.access_token, "local").catch(() => {});
       recordFailure(key);
-      // Same message as a wrong password: don't reveal which emails exist
       return res.status(401).json({ success: false, message: "Incorrect email or password." });
     }
 

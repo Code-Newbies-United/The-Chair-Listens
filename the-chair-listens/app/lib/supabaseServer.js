@@ -3,11 +3,6 @@ import { createServerClient, serializeCookieHeader } from "@supabase/ssr";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-/**
- * Supabase client bound to the request's cookies (works in API routes and getServerSideProps).
- * Session cookies are written to the response automatically, unless holdCookies is true
- * (used by login, so a non-admin never receives a session cookie).
- */
 export function createSupabaseServerClient(req, res, { holdCookies = false } = {}) {
   const pending = [];
 

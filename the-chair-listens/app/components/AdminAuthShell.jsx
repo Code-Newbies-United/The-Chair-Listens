@@ -1,4 +1,3 @@
-// Shared look for the admin onboarding pages (accept-invite, set-password).
 export default function AdminAuthShell({ eyebrow = "Team access", title, script, children }) {
   return (
     <main className="aas-page">

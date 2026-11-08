@@ -1,9 +1,7 @@
-// Destination: pages/admin/login.jsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-// Already signed in as an active admin? Skip the login page.
 export async function getServerSideProps({ req, res }) {
     const admin = await requireAdmin(req, res);
     if (admin) {
@@ -436,7 +434,7 @@ export default function Login() {
             `}</style>
 
             <div className="admin-shell">
-                {/* HEADER */}
+                {}
                 <header className="admin-topbar">
                     <div className="admin-brand">
                         <img
@@ -452,7 +450,7 @@ export default function Login() {
                     </div>
                 </header>
 
-                {/* HERO */}
+                {}
                 <section className="admin-hero">
                     <div className="admin-hero-copy">
                         <div className="admin-eyebrow">
@@ -468,7 +466,7 @@ export default function Login() {
 
                         <div className="admin-script">Welcome back.</div>
 
-                        {/* FORM */}
+                        {}
                         <div className="admin-action">
                             <label className="admin-label" htmlFor="admin-email">
                                 Email
@@ -519,7 +517,7 @@ export default function Login() {
                     </div>
                 </section>
 
-                {/* FOOTER */}
+                {}
                 <footer className="admin-footer">
                     <span>FACTOR OF TEN</span>
                     <span>Authorised team only.</span>

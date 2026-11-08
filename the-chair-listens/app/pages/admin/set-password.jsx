@@ -4,7 +4,6 @@ import AdminAuthShell from "@/components/AdminAuthShell";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { hasAdminInviteFlag, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/lib/adminInvite";
 
-// Public page, but only usable with the invite session issued by /api/admin/accept-invite.
 export async function getServerSideProps({ req, res }) {
   try {
     const { supabase } = createSupabaseServerClient(req, res);

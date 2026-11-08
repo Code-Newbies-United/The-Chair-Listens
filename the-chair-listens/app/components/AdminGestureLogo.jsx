@@ -4,8 +4,6 @@ import { useRouter } from "next/router";
 export const TAPS_REQUIRED = 5;
 export const TAP_WINDOW_MS = 3000;
 
-// A logo image that opens /admin/login after 5 taps within 3 seconds.
-// This is only a shortcut for the team: the login page is the real protection.
 export default function AdminGestureLogo({ style, ...imgProps }) {
   const router = useRouter();
   const taps = useRef([]);
@@ -20,7 +18,6 @@ export default function AdminGestureLogo({ style, ...imgProps }) {
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       {...imgProps}
       alt={imgProps.alt || ""}

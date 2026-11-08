@@ -2,8 +2,6 @@ import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hasAdminInviteFlag } from "@/lib/adminInvite";
 
-// Public by design (the invitee has no session yet). POST { token_hash }.
-// A session cookie is issued ONLY for a genuine admin invite.
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, message: "Method not allowed" });
@@ -26,7 +24,6 @@ export default async function handler(req, res) {
       return res.status(401).json(invalid);
     }
 
-    // Not created by the admin invite flow, or already onboarded: no session for them
     let allowed = hasAdminInviteFlag(data.user);
     if (allowed) {
       const { data: existing, error: rowError } = await supabaseAdmin

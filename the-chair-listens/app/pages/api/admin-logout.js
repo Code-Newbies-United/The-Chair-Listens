@@ -7,14 +7,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Ends this session at Supabase (server-side) and clears the cookies
     const { supabase } = createSupabaseServerClient(req, res);
     await supabase.auth.signOut({ scope: "local" });
   } catch (err) {
     console.error("Admin logout error:", err);
   }
 
-  // Belt and braces: expire every Supabase cookie even if the call above failed
   const previous = res.getHeader("Set-Cookie");
   const previousList = previous ? (Array.isArray(previous) ? previous : [String(previous)]) : [];
   const expired = Object.keys(req.cookies || {})

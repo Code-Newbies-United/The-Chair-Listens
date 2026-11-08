@@ -2,9 +2,6 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import AdminAuthShell from "@/components/AdminAuthShell";
 
-// Public page (the invitee has no session yet). The link from the invitation email lands here
-// as /admin/accept-invite?token_hash=...&type=invite. The token is only used when the person
-// clicks the button, so email scanners that pre-open links cannot burn the one-time token.
 export default function AcceptInvite() {
   const router = useRouter();
   const [error, setError] = useState("");

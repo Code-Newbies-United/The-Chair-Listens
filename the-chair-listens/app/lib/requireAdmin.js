@@ -1,11 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/**
- * Returns { id, email, role } for an active admin, or null.
- * Runs on EVERY request: the session is verified with Supabase Auth, then the
- * admins table is checked, so deactivating an admin blocks their next request.
- */
 export async function requireAdmin(req, res) {
   try {
     const { supabase } = createSupabaseServerClient(req, res);
@@ -27,7 +22,6 @@ export async function requireAdmin(req, res) {
   }
 }
 
-// Wrap an API handler: 401 unless an active admin is logged in. Sets req.admin.
 export function withAdmin(handler) {
   return async (req, res) => {
     const admin = await requireAdmin(req, res);

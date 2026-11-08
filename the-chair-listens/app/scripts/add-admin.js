@@ -1,10 +1,3 @@
-// Usage (from the app folder):
-//   node scripts/add-admin.js invite someone@example.com        (sends the invitation email; normal way to add an admin)
-//   node scripts/add-admin.js add someone@example.com 'a-long-password'   (FIRST ADMIN / BREAK-GLASS ONLY: sets the password from the shell)
-//   node scripts/add-admin.js deactivate someone@example.com
-//   node scripts/add-admin.js activate someone@example.com
-// Uses whichever Supabase project is in .env.local (set the env vars in the shell to target another).
-// PowerShell: wrap passwords in single quotes so $ is not expanded.
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { createClient } from "@supabase/supabase-js";
@@ -49,7 +42,6 @@ try {
     }
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
     if (error) throw error;
-    // Only the server can set app_metadata: this flag marks a genuine admin invite
     const { error: flagError } = await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
       app_metadata: { admin_invite: true },
     });
@@ -69,7 +61,6 @@ try {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
         password,
         email_confirm: true,
-        // Clear any leftover invite so it cannot be used later
         app_metadata: { admin_invite: null },
       });
       if (error) throw error;
