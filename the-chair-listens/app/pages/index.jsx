@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
 import AboutFactorOfTen from "@/components/AboutFactorOfTen";
+import AdminGestureLogo from "@/components/AdminGestureLogo";
 
 const POPIA_TERMS_URL = "/consent-terms";
 
@@ -1386,7 +1387,7 @@ export default function Home({ locationName = "Pretoria" }) {
 
           <header className="topbar">
             <div className="brand">
-              <img
+              <AdminGestureLogo
                   className="brand-logo"
                   src="/logos/factor-of-ten-logo.jpg"
                   alt="Factor of Ten Foundation logo"
