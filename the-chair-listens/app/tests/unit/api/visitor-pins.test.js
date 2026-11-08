@@ -1,13 +1,13 @@
 import handler from "../../../pages/api/visitor-pins";
 
-jest.mock("@/lib/supabaseClient", () => ({
-  supabase: {
+jest.mock("@/lib/supabaseAdmin", () => ({
+  supabaseAdmin: {
     from: jest.fn(),
     rpc: jest.fn(),
   },
 }));
 
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 
 function mockRes() {
   return {

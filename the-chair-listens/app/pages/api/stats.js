@@ -1,5 +1,5 @@
 // Destination: pages/api/stats.js
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { requireAdmin } from "@/lib/requireAdmin";
 const SCRIPT_COLUMN = "script";
 const SCRIPT_KEYS = ["men_mental_health", "ally_support", "fast_track_activations"];
