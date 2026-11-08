@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { moderateMessage } from "@/pages/utils/messageModeration";
+import { moderateMessage } from "@/lib/messageModeration";
 
 export default function ResponsesPage({ locationName = "Pretoria" }) {
   const router = useRouter();
