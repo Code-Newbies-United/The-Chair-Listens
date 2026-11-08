@@ -1,0 +1,11 @@
+<!--
+  Paste into Supabase > Authentication > Email Templates > "Invite user".
+  Subject suggestion: You're invited to The Chair Listens admin dashboard
+  The link goes to our own page, which needs a button click, so email scanners
+  that pre-open links cannot use up the one-time token.
+-->
+<h2>You're invited to The Chair Listens</h2>
+<p>You have been invited to join the admin team for The Chair Listens.</p>
+<p>Click the link below, accept the invitation, then choose your own password (12 to 72 characters).</p>
+<p><a href="{{ .SiteURL }}/admin/accept-invite?token_hash={{ .TokenHash }}&type=invite">Accept invitation</a></p>
+<p>If you were not expecting this, ignore this email. The link can only be used once and expires.</p>
