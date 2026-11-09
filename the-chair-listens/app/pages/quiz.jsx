@@ -39,6 +39,10 @@ export default function QuizPage({ locationName = "Pretoria" }) {
     router.push("/select-script");
   }
 
+  function handleHome() {
+    router.push("/");
+  }
+
   function handleSelectOption(option) {
     if (showExplanation) return;
     setSelectedOption(option);
@@ -152,7 +156,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
           )}
 
           <div className="quiz-bottom-actions">
-            <button type="button" onClick={handleBack} className="quiz-outline-button">Exit Quiz</button>
+            <button type="button" onClick={handleHome} className="quiz-outline-button">Exit Quiz</button>
           </div>
 
           <footer className="quiz-footer">

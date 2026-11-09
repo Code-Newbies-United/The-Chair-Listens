@@ -1,11 +1,17 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { data, error } = await supabase
+  const admin = await requireAdmin(req, res);
+  if (!admin) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { data, error } = await supabaseAdmin
     .from("city_visit_totals")
     .select("city, total_visits, first_seen, last_seen")
     .order("total_visits", { ascending: false });

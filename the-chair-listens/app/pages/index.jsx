@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
+import AboutFactorOfTen from "@/components/AboutFactorOfTen";
+import AdminGestureLogo from "@/components/AdminGestureLogo";
 
 const POPIA_TERMS_URL = "/consent-terms";
 
@@ -12,6 +14,7 @@ export default function Home({ locationName = "Pretoria" }) {
   const [detectedLocation, setDetectedLocation] = useState(null);
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [messagesPaused, setMessagesPaused] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // State for community messages fetched from backend
   const [participantMessages, setParticipantMessages] = useState([
@@ -508,7 +511,28 @@ export default function Home({ locationName = "Pretoria" }) {
 
           line-height: 1.5;
         }
-
+        
+        .about-link {
+          margin: 14px 0 6px;
+          padding: 10px 18px;
+          border: 1.5px solid var(--ochre);
+          border-radius: 100px;
+          background: transparent;
+          color: var(--forest);
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 160ms ease, color 160ms ease;
+        }
+        .about-link:hover {
+          background: var(--ochre);
+          color: var(--white);
+        }
+        .about-link:focus-visible {
+          outline: 3px solid var(--forest);
+          outline-offset: 3px;
+        }
+        
         /* ==================================================
            HERO ART
         ================================================== */
@@ -1158,6 +1182,25 @@ export default function Home({ locationName = "Pretoria" }) {
           font-size: 11px;
         }
 
+        /* NEW: footer disclaimer */
+        .footer-disclaimer {
+          max-width: 520px;
+          margin: 10px 0 0;
+          color: rgba(245, 242, 232, 0.5);
+          font-size: 10px;
+          line-height: 1.6;
+        }
+
+        .footer-disclaimer a {
+          color: var(--mint);
+          text-decoration-thickness: 1px;
+          text-underline-offset: 3px;
+        }
+
+        .footer-disclaimer a:hover {
+          color: var(--white);
+        }
+
         /* ==================================================
            VERY SMALL PHONES
         ================================================== */
@@ -1407,7 +1450,7 @@ export default function Home({ locationName = "Pretoria" }) {
 
           <header className="topbar">
             <div className="brand">
-              <img
+              <AdminGestureLogo
                   className="brand-logo"
                   src="/logos/factor-of-ten-logo.jpg"
                   alt="Factor of Ten Foundation logo"
@@ -1455,6 +1498,25 @@ export default function Home({ locationName = "Pretoria" }) {
               <div className="script-line">
                 Take a seat
               </div>
+
+              <p className="hero-description">
+                The Chair gives men a quiet, anonymous place to be heard and to learn about prostate health, so that talking and getting checked feel a little easier.
+              </p>
+              <button
+                  type="button"
+                  className="about-link"
+                  onClick={() => setAboutOpen(true)}
+              >
+                Small Acts. Tenfold Impact.
+              </button>
+
+              <p className="hero-description">
+
+              </p>
+
+              <p className="hero-description">
+
+              </p>
 
               <p className="hero-description">
                 Sit for a minute. Say what’s on your mind.
@@ -1636,7 +1698,7 @@ export default function Home({ locationName = "Pretoria" }) {
                 <span key={`${activeMessageIndex}-${messagesPaused}`} className={`message-progress-bar${messagesPaused ? " paused" : ""}`} />
               </span>
             </button>
-            <p className="voices-note">Anonymous words. Shared understanding. Take a moment to listen.</p>
+            <p className="voices-note">Anonymous words shared by our community members.</p>
           </section>
 
           {/* ================================================
@@ -1681,9 +1743,18 @@ export default function Home({ locationName = "Pretoria" }) {
           <footer className="footer">
             <span className="footer-brand">FACTOR OF TEN</span>
             <span className="footer-tagline">Know more. Ask more. Check sooner.</span>
+
+            {/* NEW: disclaimer */}
+            <p className="footer-disclaimer">
+              The Chair Listens offers awareness and reflection, not medical
+              advice, diagnosis or crisis care. If you have symptoms or
+              concerns, speak to a doctor or clinic. If you are in danger or
+              distress, use the <a href="/emergency">emergency resources</a>.
+            </p>
           </footer>
 
         </div>
+        <AboutFactorOfTen open={aboutOpen} onClose={() => setAboutOpen(false)} />
       </main>
   );
 }

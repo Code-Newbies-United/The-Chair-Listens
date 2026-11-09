@@ -96,6 +96,7 @@
 
 <h4>5. Admin Dashboard</h4>
 <p>An authenticated section where the campaign team can manage questions, view participation analytics, and see a live map of where The Blue Chair has travelled and how each stop performed.</p>
+<p>Admins sign in with their own email and password (Supabase Auth, invite-only, checked against the <code>admins</code> table on every request). Setup, inviting, deactivating and troubleshooting: see <a href="the-chair-listens/docs/admin-runbook.md"><code>docs/admin-runbook.md</code></a>.</p>
 
 <hr>
 
@@ -158,6 +159,8 @@ the-chair-listens/
 │   │   ├── thank-you.jsx           # Confirmation screen
 │   │   └── admin/
 │   │       ├── login.jsx
+│   │       ├── accept-invite.jsx   # Invitation landing page
+│   │       ├── set-password.jsx    # Invitee chooses a password
 │   │       ├── dashboard.jsx       # Analytics dashboard
 │   │       ├── questions.jsx       # Question CMS
 │   │       └── map.jsx             # Live location map
@@ -186,15 +189,19 @@ the-chair-listens/
 │   │       ├── question-cms.spec.js
 │   │       ├── response-submission.spec.js
 │   │       └── admin-dashboard.spec.js
+│   ├── .env.example                # Copy to .env.local (never commit .env.local)
 │   ├── package.json
 │   ├── jest.config.js
 │   └── next.config.js
 │
 ├── database/
-│   ├── schema.sql                  # questions, responses, locations, consent
+│   ├── schema.sql                  # questions, responses, locations, consent, admins
+│   ├── admins.sql                  # admins table only (run on each Supabase project)
 │   └── seed-data/                  # initial questions, campaign locations
 │
 ├── docs/
+│   ├── admin-runbook.md            # Admin access: setup, invites, deactivation
+│   ├── invite-email-template.html  # Supabase "Invite user" email template
 │   ├── architecture.md
 │   ├── api-reference.md
 │   ├── testing.md
@@ -206,7 +213,6 @@ the-chair-listens/
 │       ├── ci-unit.yml
 │       └── ci-acceptance.yml
 │
-├── .env.example
 ├── .gitignore
 ├── LICENSE
 └── README.md

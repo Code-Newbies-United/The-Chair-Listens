@@ -40,6 +40,8 @@ export default function TextResponse({
                                      }) {
     const router = useRouter();
     const [isTranscribing, setIsTranscribing] = useState(false);
+    const [isFallbackRecording, setIsFallbackRecording] = useState(false);
+    const [microphoneError, setMicrophoneError] = useState("");
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 
@@ -143,7 +145,7 @@ export default function TextResponse({
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full mt-5">
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

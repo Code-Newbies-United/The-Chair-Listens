@@ -117,7 +117,7 @@ const styles = {
     },
     statusText: {
         fontSize: "13.5px",
-        color: "#F5F6FA",
+        color: "#7E88AC",
     },
     statusTextMuted: {
         fontSize: "13.5px",

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { checkForSafetyTrigger } from "@/pages/utils/safety.js";
+import { checkForSafetyTrigger } from "@/lib/safety";
 import QuestionCard from "@/components/QuestionCard";
 import TextResponse from "@/components/TextResponse";
 
@@ -47,7 +47,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const progress =
       totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
-  // 1. Fetch Questions from API
+  
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -89,7 +89,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     fetchQuestions();
   }, [router.isReady, script]);
 
-  // Reset state when switching scripts
+
   useEffect(() => {
     if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== script) {
       setCurrentIndex(0);
@@ -100,7 +100,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     lastScriptKeyRef.current = script;
   }, [script]);
 
-  // Speech Synthesis Controls for AI Reflection
+ 
   const speakText = (text) => {
     if (typeof window === "undefined" || !text) return;
 
@@ -154,7 +154,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     return true;
   };
 
-  // 2. Fetch Single Question AI Reflection via /api/groq
   const handleGetReflection = async () => {
     if (!currentText.trim() || !currentQuestion) return;
 
@@ -198,14 +197,13 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     }
   };
 
-  // 3. Complete Session: Save to /api/responses & Fetch /api/session-reflection
   const finishSession = async (finalAnswers) => {
     if (savingSession) return;
 
     try {
       setSavingSession(true);
 
-      // Save raw responses to database
+      
       await fetch("/api/responses", {
         method: "POST",
         headers: {
@@ -218,7 +216,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         }),
       });
 
-      // Generate overall AI session summary
+      
       let summaryData = null;
       try {
         const summaryRes = await fetch("/api/session-reflection", {
@@ -539,8 +537,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
               </span>
 
                 <h1>
-                  Take a moment.
-                  <span className="chair-script">Tell the Chair.</span>
+                  Take a moment
+                  <span className="chair-script">Tell the Chair</span>
                 </h1>
 
                 <p>
@@ -565,7 +563,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                 </div>
               </div>
 
-              <div className="content-card">
+              <div className={`content-card ${reflection && !reflectionLoading ? "content-card-scrollable" : ""}`}>
                 <QuestionCard
                     category={currentQuestion.category}
                     question={currentQuestion.question}
@@ -765,7 +763,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         .intro {
           position: relative;
           z-index: 2;
-          max-width: 540px;
+          max-width: 500px;
           margin: 0 auto;
           text-align: center;
         }
@@ -775,7 +773,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           margin-bottom: 8px;
           color: #bc9553;
           font-family: "Pinyon Script", cursive;
-          font-size: 31px;
+          font-size: 40px;
           line-height: 1;
         }
 
@@ -792,7 +790,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           margin-top: 5px;
           color: #2d5046;
           font-family: "Pinyon Script", cursive;
-          font-size: 1.18em;
+          font-size: 0.85em;
           font-weight: 400;
           letter-spacing: 0;
         }
@@ -850,6 +848,19 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           border-radius: 21px;
           background: rgba(251, 250, 245, 0.8);
           box-shadow: 0 12px 30px rgba(17, 45, 37, 0.08);
+        }
+        
+        .content-card-scrollable::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .content-card-scrollable::-webkit-scrollbar-thumb {
+            background: #8dcf94;
+            border-radius: 999px;
+        }
+        
+        .content-card-scrollable::-webkit-scrollbar-thumb:hover {
+            background: #2d5046;
         }
 
         .action-row {
@@ -1076,6 +1087,15 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
           .location-pill {
             font-size: 11px;
+          }
+          
+          .content-card-scrollable {
+              max-height: 60vh;
+              padding-right: 14px;
+          }
+          
+          .intro h1 .chair-script {
+              font-size: 0.85em;
           }
         }
 
