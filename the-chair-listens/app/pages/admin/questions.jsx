@@ -2,18 +2,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { requireAdminSSR } from "@/lib/requireAdminSSR";
+import { usePathways } from "@/lib/usePathways";
 
 export const getServerSideProps = requireAdminSSR();
 
-const SCRIPTS = [
-    { key: "men_mental_health", label: "For Men" },
-    { key: "ally_support", label: "Ally & Support" },
-    { key: "fast_track_activations", label: "Today's Event" },
-];
-
 export default function Questions() {
     const [tab, setTab] = useState("reflection"); // "reflection" | "quiz"
-    const [activeScript, setActiveScript] = useState(SCRIPTS[0].key);
+    // Pathway tabs come from the database (FIX-16), including inactive ones,
+    // so questions can be prepared before a pathway goes live.
+    const { pathways, loading: pathwaysLoading, error: pathwaysError } =
+        usePathways({ admin: true });
+    const [selectedScript, setSelectedScript] = useState(null);
+    const activeScript =
+        selectedScript && pathways?.some((p) => p.key === selectedScript)
+            ? selectedScript
+            : pathways?.[0]?.key ?? null;
 
     async function handleLogout() {
         await fetch("/api/admin-logout", { method: "POST" });
@@ -500,18 +503,24 @@ export default function Questions() {
                 {tab === "reflection" ? (
                     <>
                         <div className="admin-script-row">
-                            {SCRIPTS.map((s) => (
+                            {(pathways || []).map((s) => (
                                 <button
                                     key={s.key}
                                     type="button"
-                                    onClick={() => setActiveScript(s.key)}
+                                    onClick={() => setSelectedScript(s.key)}
                                     className={activeScript === s.key ? "admin-script-pill-active" : "admin-script-pill"}
                                 >
-                                    {s.label}
+                                    {s.label}{s.active ? "" : " (inactive)"}
                                 </button>
                             ))}
                         </div>
-                        <ReflectionQuestions scriptKey={activeScript} />
+                        {pathwaysLoading && <p className="admin-muted">Loading pathways...</p>}
+                        {pathwaysError && (
+                            <p className="admin-muted" role="alert">
+                                Failed to load pathways. Refresh the page to try again.
+                            </p>
+                        )}
+                        {activeScript && <ReflectionQuestions scriptKey={activeScript} />}
                     </>
                 ) : (
                     <QuizQuestions />

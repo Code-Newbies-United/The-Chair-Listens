@@ -1,6 +1,8 @@
 -- schema.sql : FULL schema for a brand-new, empty Supabase database.
 --
--- Run this once in the Supabase SQL editor, then run seed-data/questions.sql.
+-- Run this once in the Supabase SQL editor, then, in this order:
+--   1. node scripts/seed-pathways.js   (from the app folder; loads the starting pathways)
+--   2. seed-data/questions.sql         (needs the pathways from step 1)
 -- It matches what the merged code reads and writes (consent sessions, chair
 -- locations, visitor map, community messages) and locks every table down with
 -- Row Level Security (FIX-05 / FIX-23).
@@ -51,11 +53,29 @@ REVOKE ALL ON FUNCTION set_active_chair_location(TEXT, DOUBLE PRECISION, DOUBLE 
 GRANT EXECUTE ON FUNCTION set_active_chair_location(TEXT, DOUBLE PRECISION, DOUBLE PRECISION) TO service_role;
 
 -- ---------------------------------------------------------------------------
+-- Pathways (FIX-16): the reflection tracks a visitor can choose. Add a row here
+-- and it appears in the app (menu, questions, AI reflections, dashboard) within
+-- ~30 seconds, with no deploy. Never change a `key` once responses exist; set
+-- active = false to retire a pathway instead of deleting it.
+-- ai_system_prompt is server-only. The server adds the "no medical advice"
+-- guardrail to every prompt, so it does not need to be written here.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS pathways (
+    key              TEXT PRIMARY KEY CHECK (key ~ '^[a-z0-9_]{1,64}$'),
+    label            TEXT        NOT NULL,
+    description      TEXT        NOT NULL DEFAULT '',
+    ai_system_prompt TEXT        NOT NULL DEFAULT '',
+    active           BOOLEAN     NOT NULL DEFAULT TRUE,
+    sort_order       INTEGER     NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Questions (managed from Admin -> Questions)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS questions (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    script_key    TEXT        NOT NULL DEFAULT 'men_mental_health',
+    script_key    TEXT        NOT NULL REFERENCES pathways(key),
     title         TEXT        NOT NULL DEFAULT '',
     question_text TEXT        NOT NULL,
     placeholder   TEXT        NOT NULL DEFAULT '',
@@ -220,6 +240,7 @@ GRANT EXECUTE ON FUNCTION backfill_city_visit(TEXT, NUMERIC, NUMERIC, INTEGER, T
 -- The service-role key used by the server bypasses RLS.
 -- ---------------------------------------------------------------------------
 ALTER TABLE locations         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pathways          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE questions         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE responses         ENABLE ROW LEVEL SECURITY;
@@ -233,14 +254,3 @@ ALTER TABLE city_visit_totals ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "public can read locations" ON locations;
 CREATE POLICY "public can read locations"
     ON locations FOR SELECT TO anon, authenticated USING (true);
-
-CREATE TABLE IF NOT EXISTS pathways (
-    key              TEXT PRIMARY KEY CHECK (key ~ '^[a-z0-9_]{1,64}$'),
-    label            TEXT        NOT NULL,
-    description      TEXT        NOT NULL DEFAULT '',
-    ai_system_prompt TEXT        NOT NULL DEFAULT '',
-    active           BOOLEAN     NOT NULL DEFAULT TRUE,
-    sort_order       INTEGER     NOT NULL DEFAULT 0,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-ALTER TABLE pathways ENABLE ROW LEVEL SECURITY;  

@@ -17,6 +17,7 @@ export const RATE_LIMITS = {
   consent: { perIp: 30, windowSeconds: 60 },
   responses: { perIp: 60, perSession: 10, windowSeconds: 60 },
   questions: { perIp: 120, windowSeconds: 60 },
+  pathways: { perIp: 120, windowSeconds: 60 },
   quizQuestions: { perIp: 120, windowSeconds: 60 },
   transcribe: { perIp: 30, perSession: 8, windowSeconds: 60 },
   sessionReflection: { perIp: 30, perSession: 6, windowSeconds: 60 },

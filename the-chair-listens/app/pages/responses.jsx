@@ -25,7 +25,8 @@ export default function ResponsesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
-  const currentScript = script || "men_mental_health";
+  // No silent default pathway (FIX-16): without one, show the fallback summary.
+  const currentScript = typeof script === "string" && script ? script : null;
 
   useEffect(() => {
     if (!router.isReady || !sessionReady) return;
@@ -34,7 +35,7 @@ export default function ResponsesPage() {
       // Answers are kept in sessionStorage, never in the URL (FIX-08).
       const answers = loadAnswers();
 
-      if (answers.length === 0) {
+      if (answers.length === 0 || !currentScript) {
         setSummary(FALLBACK_SUMMARY);
         setLoading(false);
         return;

@@ -2,18 +2,11 @@
 import { methodNotAllowed, badRequest, sendError } from '@/lib/apiErrors';
 import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
 import { parseGroqBody } from '@/lib/validators';
+import { resolvePathway } from '@/lib/pathwayGuard';
+import { buildSystemPrompt } from '@/lib/pathwayShape';
 
 // Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
 export const config = { api: { bodyParser: { sizeLimit: '32kb' } } };
-
-const SYSTEM_PROMPTS = {
-  men_mental_health:
-    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens. Respond in 2-3 sentences, speaking directly to the man who just answered. Do not give medical advice or diagnoses.",
-  ally_support:
-    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens. This response is from someone supporting a man in their life. Respond in 2-3 sentences, acknowledging their care and perspective. Do not give medical advice or diagnoses.",
-  fast_track_activations:
-    "You are a brief, warm, non-clinical reflective voice for a men's mental health campaign called The Chair Listens, responding at a live event. Keep your response to 1-2 short sentences. Do not give medical advice or diagnoses.",
-};
 
 export default async function handler(req, res) {
   // 1. Method check
@@ -32,8 +25,15 @@ export default async function handler(req, res) {
   }
   const { script, question, answer } = parsed.data;
 
-  const systemPrompt =
-    SYSTEM_PROMPTS[script] || SYSTEM_PROMPTS.men_mental_health;
+  // The prompt comes from the `pathways` table (FIX-16). A visitor mid-session
+  // still gets a reflection if an admin has just switched their pathway off.
+  // No script at all is allowed: the default prompt is used.
+  let pathway = null;
+  if (script) {
+    pathway = await resolvePathway(res, script, { includeInactive: true });
+    if (!pathway) return;
+  }
+  const systemPrompt = buildSystemPrompt(pathway);
 
   // 4. Call Groq
   try {

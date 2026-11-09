@@ -18,6 +18,7 @@ import {
 import { methodNotAllowed, badRequest, sendError } from '@/lib/apiErrors';
 import { checkRateLimit } from '@/lib/apiGuard';
 import { isUuid, parseResponseBody } from '@/lib/validators';
+import { resolvePathway } from '@/lib/pathwayGuard';
 
 // Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
 // 15 answers x (4000 + 500) chars, even at 2 bytes per character.
@@ -56,6 +57,10 @@ export default async function handler(req, res) {
     return badRequest(res, parsed.issues);
   }
   const { answers, script } = parsed.data;
+
+  // The pathway must exist (FIX-16). Inactive is fine, so someone who is
+  // mid-session is not rejected when an admin switches their pathway off.
+  if (!(await resolvePathway(res, script, { includeInactive: true }))) return;
 
   // 3b. The session must exist, have consent, and not be expired.
   const { data: session, error: sessionError } = await supabaseAdmin

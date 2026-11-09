@@ -12,12 +12,6 @@ import { useActiveLocationName } from "@/lib/useActiveLocation";
 import QuestionCard from "@/components/QuestionCard";
 import TextResponse from "@/components/TextResponse";
 
-const SCRIPT_TITLES = {
-  men_mental_health: "For Men",
-  ally_support: "Ally & Support",
-  fast_track_activations: "Today's Event",
-};
-
 const CHAIR_BACKGROUND_STYLE = {
   background:
       "radial-gradient(circle at 100% 0%, rgba(141, 207, 148, 0.2), transparent 28%), radial-gradient(circle at 0% 90%, rgba(212, 233, 237, 0.1), transparent 25%), #2D5046",
@@ -38,13 +32,17 @@ export default function QuestionsPage() {
   const [saveError, setSaveError] = useState("");
   const [reflectionLoading, setReflectionLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  // The pathway's title comes back with the questions (FIX-16).
+  const [pathwayLabel, setPathwayLabel] = useState("");
 
   const lastScriptKeyRef = useRef(null);
 
+  // No silent default pathway: with no ?script=, or one the server rejects,
+  // the visitor is sent back to choose one.
   const script =
-      typeof router.query.script === "string" && SCRIPT_TITLES[router.query.script]
+      typeof router.query.script === "string" && router.query.script
           ? router.query.script
-          : "men_mental_health";
+          : null;
 
   // The chair's stop is decided by the server, not the URL (FIX-07).
   const location = useActiveLocationName();
@@ -59,7 +57,13 @@ export default function QuestionsPage() {
   useEffect(() => {
     if (!router.isReady) return;
 
+    if (!script) {
+      router.replace("/select-script");
+      return;
+    }
+
     const fetchQuestions = async () => {
+      let redirecting = false;
       try {
         setLoading(true);
 
@@ -67,11 +71,19 @@ export default function QuestionsPage() {
             `/api/questions?script=${encodeURIComponent(script)}`
         );
 
+        // 400 = not an active pathway (made up, or switched off).
+        if (response.status === 400) {
+          redirecting = true;
+          router.replace("/select-script");
+          return;
+        }
+
         if (!response.ok) {
           throw new Error("Failed to fetch questions");
         }
 
         const data = await response.json();
+        setPathwayLabel(data.pathway?.label || "");
 
         const formattedQuestions = Array.isArray(data.questions)
             ? data.questions.map((item) => ({
@@ -90,11 +102,15 @@ export default function QuestionsPage() {
         console.error("Error loading questions:", error);
         setQuestions([]);
       } finally {
-        setLoading(false);
+        // Keep the loading screen up while redirecting, so nothing flashes.
+        if (!redirecting) setLoading(false);
       }
     };
 
     fetchQuestions();
+    // `router` is left out on purpose: it changes identity on every route
+    // update, which would refetch the questions. Only isReady and script matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady, script]);
 
   // Reset state when switching scripts
@@ -532,7 +548,7 @@ export default function QuestionsPage() {
             <div className="question-inner">
               <div className="intro">
               <span className="eyebrow">
-                {SCRIPT_TITLES[script] || "Reflection"}
+                {pathwayLabel || "Reflection"}
               </span>
 
                 <h1>

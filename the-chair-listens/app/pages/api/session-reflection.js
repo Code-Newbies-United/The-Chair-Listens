@@ -5,6 +5,7 @@ import Groq from 'groq-sdk';
 import { methodNotAllowed, badRequest } from '@/lib/apiErrors';
 import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
 import { parseResponseBody } from '@/lib/validators';
+import { resolvePathway } from '@/lib/pathwayGuard';
 
 // Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
 export const config = { api: { bodyParser: { sizeLimit: '256kb' } } };
@@ -39,6 +40,10 @@ export default async function handler(req, res) {
   }
   const { script, answers } = parsed.data;
 
+  // The pathway must exist (FIX-16). Inactive is fine: see /api/groq.
+  const pathway = await resolvePathway(res, script, { includeInactive: true });
+  if (!pathway) return;
+
   const systemPrompt = `You are "The Chair Listens", an empathetic, grounded AI listener for a community initiative in South Africa.
 Analyze all provided participant answers and create a JSON object containing:
 1. "overallReflection": A warm, validating 2-3 sentence summary of their session journey.
@@ -50,8 +55,10 @@ Your response MUST be a valid JSON object matching this schema:
   "takeaways": ["string", "string"]
 }`;
 
+  // Label and description give the model context for ANY pathway, including
+  // ones added after this code was deployed.
   const userPrompt = `
-Pathway: ${script}
+Pathway: ${pathway.label}${pathway.description ? ` (${pathway.description})` : ''}
 Session Answers:
 ${JSON.stringify(answers, null, 2)}
 `;

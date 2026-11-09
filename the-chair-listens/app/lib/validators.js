@@ -18,12 +18,11 @@ import {
   MAX_MESSAGE_CHARS,
 } from '@/lib/limits';
 
-// TODO(FIX-16): replace with the central pathway config once it exists.
-export const SCRIPT_KEYS = [
-  'men_mental_health',
-  'ally_support',
-  'fast_track_activations',
-];
+// FIX-16: pathways live in the database (see lib/pathways.js), so the list of
+// valid keys is not hardcoded here. This only checks that a key is well-formed;
+// whether the pathway actually exists is checked in the route (lib/pathwayGuard.js).
+// Keep this pattern in sync with the CHECK constraint on pathways.key.
+export const PATHWAY_KEY_PATTERN = /^[a-z0-9_]{1,64}$/;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,9 +31,9 @@ export function isUuid(value) {
   return typeof value === 'string' && UUID_RE.test(value);
 }
 
-const scriptSchema = z.enum(SCRIPT_KEYS, {
-  error: `script must be one of: ${SCRIPT_KEYS.join(', ')}`,
-});
+const scriptSchema = z
+  .string({ error: 'script must be a pathway key' })
+  .regex(PATHWAY_KEY_PATTERN, 'script must be a valid pathway key');
 
 const answerTextSchema = z
   .string()

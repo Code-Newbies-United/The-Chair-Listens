@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useRequireSession } from "@/lib/session";
 import { useActiveLocationName } from "@/lib/useActiveLocation";
+import { usePathways } from "@/lib/usePathways";
 
 /**
  * The Chair Listens — Select Your Path
@@ -9,38 +10,26 @@ import { useActiveLocationName } from "@/lib/useActiveLocation";
  * as the rest of the flow.
  */
 
-const PATHS = [
-  {
-    key: "men_mental_health",
-    label: "For Men",
-    description: "A few quiet questions, just for you.",
-    type: "reflection",
-  },
-  {
-    key: "ally_support",
-    label: "Ally & Support",
-    description: "For anyone supporting a man in their life.",
-    type: "reflection",
-  },
-  {
-    key: "fast_track_activations",
-    label: "Today's Event",
-    description: "Quick reflections made for this activation.",
-    type: "reflection",
-  },
-  {
-    key: "quiz",
-    label: "Knowledge Check",
-    description:
-        "Test what you know about prostate and mental health.",
-    type: "quiz",
-  },
-];
+// The reflection pathways come from the database (FIX-16, /api/pathways).
+// The quiz is not a pathway, so its card stays here and is shown last.
+const QUIZ_PATH = {
+  key: "quiz",
+  label: "Knowledge Check",
+  description: "Test what you know about prostate and mental health.",
+  type: "quiz",
+};
 
 export default function SelectScript() {
   const router = useRouter();
   const sessionReady = useRequireSession(); // redirects to / if no consent session
   const displayLocation = useActiveLocationName();
+  const { pathways, loading: pathwaysLoading, error: pathwaysError } =
+      usePathways();
+
+  const paths = [
+    ...(pathways || []).map((p) => ({ ...p, type: "reflection" })),
+    QUIZ_PATH,
+  ];
 
   function handleSelect(path) {
     if (path.type === "quiz") {
@@ -642,9 +631,22 @@ button {
 
           {/* PATHS */}
 
+          {pathwaysLoading && (
+              <p className="body" role="status">
+                Loading paths...
+              </p>
+          )}
+
+          {pathwaysError && (
+              <p className="body" role="alert">
+                We could not load the reflection paths. Please refresh the page
+                to try again.
+              </p>
+          )}
+
           <div className="card-grid">
 
-            {PATHS.map((path, index) => (
+            {!pathwaysLoading && paths.map((path, index) => (
                 <button
                     key={path.key}
                     type="button"

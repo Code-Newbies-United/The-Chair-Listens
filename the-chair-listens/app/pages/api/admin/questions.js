@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { verifyAdminSession } from "@/lib/adminsession";
+import { getPathway } from "@/lib/pathways";
 
 export default async function handler(req, res) {
     // Verify HMAC-signed session
@@ -41,6 +42,24 @@ export default async function handler(req, res) {
                 return res.status(400).json({ message: "Title and Question Text are required" });
             }
 
+            // No silent default pathway (FIX-16): the key must be sent and must
+            // exist. A draft (inactive) pathway is allowed, so questions can be
+            // prepared before it goes live.
+            if (!script_key) {
+                return res.status(400).json({ message: "A pathway (script_key) is required" });
+            }
+
+            let pathway;
+            try {
+                pathway = await getPathway(script_key, { includeInactive: true });
+            } catch (err) {
+                console.error("Admin question pathway lookup error:", err?.message || err);
+                return res.status(500).json({ message: "Failed to check the pathway" });
+            }
+            if (!pathway) {
+                return res.status(400).json({ message: "Unknown pathway" });
+            }
+
             const { data, error } = await supabase
                 .from("questions")
                 .insert([
@@ -48,7 +67,7 @@ export default async function handler(req, res) {
                         title,
                         question_text,
                         placeholder: placeholder || "",
-                        script_key: script_key || "men_mental_health",
+                        script_key: pathway.key,
                         sort_order: sort_order ?? 0,
                     },
                 ])
