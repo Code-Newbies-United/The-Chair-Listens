@@ -1047,7 +1047,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
           font-size: 11px;
         }
 
-        @media (max-width: 600px) {
+                @media (max-width: 600px) {
           .questions-page {
             padding: 16px 12px 28px;
           }
@@ -1065,12 +1065,29 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
             font-size: 34px;
           }
 
+          .intro h1 .chair-script {
+            font-size: 0.85em;
+          }
+
           .intro p {
             font-size: 14px;
           }
 
+          .action-row {
+            margin-top: 24px;
+          }
+
+          .reflection-button {
+            width: 100%;
+          }
+
+          .reflection-card {
+            margin-top: 28px;
+          }
+
           .navigation-row {
             justify-content: stretch;
+            margin-top: 28px;
           }
 
           .next-button {
@@ -1087,15 +1104,6 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
 
           .location-pill {
             font-size: 11px;
-          }
-          
-          .content-card-scrollable {
-              max-height: 60vh;
-              padding-right: 14px;
-          }
-          
-          .intro h1 .chair-script {
-              font-size: 0.85em;
           }
         }
 
