@@ -44,6 +44,12 @@ export default function TextResponse({
     const [microphoneError, setMicrophoneError] = useState("");
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
+    const valueRef = useRef(value);
+
+    // Always hold the latest text, so a recording that finishes later does not use old text
+    useEffect(() => {
+        valueRef.current = value;
+    }, [value]);
 
     // Monitor value changes for safety triggers and redirect to emergency page
     useEffect(() => {
@@ -55,6 +61,18 @@ export default function TextResponse({
         }
     }, [value, router, onSafetyTrigger]);
 
+    // Release the microphone if the page is left while recording
+    useEffect(() => {
+        return () => {
+            const recorder = mediaRecorderRef.current;
+            if (recorder && recorder.state !== "inactive") {
+                recorder.onstop = null;
+                recorder.stop();
+                recorder.stream?.getTracks().forEach((track) => track.stop());
+            }
+        };
+    }, []);
+
     function handleFocus(e) {
         setTimeout(() => {
             e.target.scrollIntoView({
@@ -64,8 +82,19 @@ export default function TextResponse({
         }, 150);
     }
 
-    // Fallback / Server-side Audio Recording via /api/transcribe.js
+    // Server-side audio recording via /api/transcribe
     const startMediaRecorder = async () => {
+        setMicrophoneError("");
+
+        if (
+            typeof navigator === "undefined" ||
+            !navigator.mediaDevices ||
+            typeof MediaRecorder === "undefined"
+        ) {
+            setMicrophoneError("Voice recording is not supported on this browser. Please type your answer.");
+            return;
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const mediaRecorder = new MediaRecorder(stream);
@@ -79,15 +108,28 @@ export default function TextResponse({
             };
 
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-                await sendAudioToTranscribeApi(audioBlob);
+                setIsFallbackRecording(false);
                 stream.getTracks().forEach((track) => track.stop());
+
+                // Use the real format the browser recorded (webm on Android/desktop, mp4 on iPhone)
+                const mimeType = (mediaRecorder.mimeType || "audio/webm").split(";")[0];
+                const extension = mimeType.includes("mp4") ? "m4a" : mimeType.split("/")[1] || "webm";
+                const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+                if (audioBlob.size === 0) {
+                    setMicrophoneError("Nothing was recorded. Please try again.");
+                    return;
+                }
+
+                await sendAudioToTranscribeApi(audioBlob, `recording.${extension}`);
             };
 
             mediaRecorder.start();
+            setIsFallbackRecording(true);
         } catch (err) {
             console.error("Microphone access error:", err);
-            alert("Unable to access microphone. Please check permissions or type your response.");
+            setIsFallbackRecording(false);
+            setMicrophoneError("Unable to access the microphone. Check your browser permissions, or type your answer.");
         }
     };
 
@@ -97,11 +139,11 @@ export default function TextResponse({
         }
     };
 
-    const sendAudioToTranscribeApi = async (blob) => {
+    const sendAudioToTranscribeApi = async (blob, filename) => {
         try {
             setIsTranscribing(true);
             const formData = new FormData();
-            formData.append("audio", blob, "recording.webm");
+            formData.append("audio", blob, filename);
 
             const response = await fetch("/api/transcribe", {
                 method: "POST",
@@ -109,38 +151,44 @@ export default function TextResponse({
             });
 
             if (!response.ok) {
-                throw new Error("Transcription request failed");
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || "Transcription request failed");
             }
 
             const data = await response.json();
             if (data.text) {
-                const updatedText = value ? `${value} ${data.text}` : data.text;
+                const current = valueRef.current;
+                const updatedText = current ? `${current} ${data.text}` : data.text;
                 onChange(updatedText);
 
-                // Check safety on transcribed text as well
                 if (checkForSafetyTrigger(updatedText)) {
                     if (onSafetyTrigger) {
                         onSafetyTrigger(updatedText);
                     }
                     router.push("/emergency");
                 }
+            } else {
+                setMicrophoneError("We could not hear anything. Please try again.");
             }
         } catch (error) {
             console.error("Audio transcription error:", error);
+            setMicrophoneError("We could not transcribe that recording. Please try again or type your answer.");
         } finally {
             setIsTranscribing(false);
         }
     };
 
+    const listening = isListening || isFallbackRecording;
+
     const handleVoiceToggle = () => {
+        setMicrophoneError("");
+
         if (isSpeechSupported && onToggleListening) {
             onToggleListening();
+        } else if (isFallbackRecording) {
+            stopMediaRecorder();
         } else {
-            if (isListening) {
-                stopMediaRecorder();
-            } else {
-                startMediaRecorder();
-            }
+            startMediaRecorder();
         }
     };
 
@@ -176,13 +224,13 @@ export default function TextResponse({
                 "
             />
 
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-col items-stretch gap-2">
                 <button
                     type="button"
                     onClick={handleVoiceToggle}
                     disabled={disabled || isTranscribing}
-                    aria-pressed={isListening}
-                    aria-label={isListening ? "Stop recording" : "Speak your answer"}
+                    aria-pressed={listening}
+                    aria-label={listening ? "Stop recording" : "Speak your answer"}
                     className={`
                         inline-flex items-center justify-center gap-2
                         min-h-[44px] min-w-[44px]
@@ -197,7 +245,7 @@ export default function TextResponse({
                         disabled:opacity-50
                         disabled:cursor-not-allowed
                         ${
-                        isListening
+                        listening
                             ? "border-[#BC9553] bg-[#BC9553]/15 text-[#8A6935] animate-pulse"
                             : "border-[#526B61]/25 bg-[#D4E9ED]/55 text-[#2D5046] hover:bg-[#D4E9ED] hover:border-[#526B61]/40"
                     }
@@ -216,10 +264,16 @@ export default function TextResponse({
 
                     {isTranscribing
                         ? "Transcribing audio..."
-                        : isListening
+                        : listening
                             ? "Stop Recording..."
                             : "Speak Answer"}
                 </button>
+
+                {microphoneError && (
+                    <p role="alert" className="m-0 text-center text-xs leading-snug text-[#8A3B30]">
+                        {microphoneError}
+                    </p>
+                )}
             </div>
         </div>
     );
