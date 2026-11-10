@@ -45,6 +45,7 @@ export default function TextResponse({
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const valueRef = useRef(value);
+    const mountedRef = useRef(true);
 
     // Always hold the latest text, so a recording that finishes later does not use old text
     useEffect(() => {
@@ -63,7 +64,9 @@ export default function TextResponse({
 
     // Release the microphone if the page is left while recording
     useEffect(() => {
+        mountedRef.current = true;
         return () => {
+            mountedRef.current = false;
             const recorder = mediaRecorderRef.current;
             if (recorder && recorder.state !== "inactive") {
                 recorder.onstop = null;
@@ -156,6 +159,10 @@ export default function TextResponse({
             }
 
             const data = await response.json();
+
+            // The question changed while transcribing: drop the result
+            if (!mountedRef.current) return;
+
             if (data.text) {
                 const current = valueRef.current;
                 const updatedText = current ? `${current} ${data.text}` : data.text;

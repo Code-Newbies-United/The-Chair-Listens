@@ -569,7 +569,8 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
                     question={currentQuestion.question}
                 />
 
-                <TextResponse
+                  <TextResponse
+                    key={currentIndex}
                     value={currentText}
                     onChange={setCurrentText}
                     placeholder={currentQuestion.placeholder}
