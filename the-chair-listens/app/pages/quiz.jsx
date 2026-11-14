@@ -8,6 +8,11 @@ import { useRouter } from "next/router";
 
 const QUESTIONS_PER_ROUND = 5;
 
+// Older questions have "A) " typed into the answer text; the quiz already shows A, B, C
+function cleanOptionText(text) {
+  return String(text ?? "").replace(/^\s*[A-Da-d][).:]\s+/, "");
+}
+
 function shuffle(list) {
   const copy = [...list];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -162,7 +167,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
                             className={`quiz-option ${stateClass}`}
                         >
                           <span className="quiz-option-letter">{String.fromCharCode(65 + idx)}</span>
-                          <span>{option.text}</span>
+                          <span>{cleanOptionText(option.text)}</span>
                         </button>
                     );
                   })}
