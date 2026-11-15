@@ -1,3 +1,4 @@
+// pages/questions.jsx
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { checkForSafetyTrigger } from "@/lib/safety.js";
@@ -67,8 +68,16 @@ export default function QuestionsPage() {
       try {
         setLoading(true);
 
+        // The mood chosen on the check-in page. It is sent only on this API
+        // call, never put in the page URL (same rule as FIX-08).
+        const mood =
+            typeof window !== "undefined"
+                ? sessionStorage.getItem("chair_mood")
+                : null;
+
         const response = await fetch(
-            `/api/questions?script=${encodeURIComponent(script)}`
+            `/api/questions?script=${encodeURIComponent(script)}` +
+            (mood ? `&mood=${encodeURIComponent(mood)}` : "")
         );
 
         // 400 = not an active pathway (made up, or switched off).

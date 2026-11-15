@@ -1,6 +1,8 @@
+// pages/api/admin/questions.js
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 import { verifyAdminSession } from "@/lib/adminsession";
 import { getPathway } from "@/lib/pathways";
+import { MOOD_IDS } from "@/lib/moods";
 
 export default async function handler(req, res) {
     // Verify HMAC-signed session
@@ -16,7 +18,7 @@ export default async function handler(req, res) {
 
             let query = supabase
                 .from("questions")
-                .select("id, script_key, title, question_text, placeholder, sort_order")
+                .select("id, script_key, title, question_text, placeholder, sort_order, mood")
                 .order("sort_order", { ascending: true });
 
             if (script) {
@@ -34,12 +36,19 @@ export default async function handler(req, res) {
         }
 
         case "POST": {
-            // Matches what pages/admin/questions.jsx actually sends:
-            // { script_key, title, question_text, placeholder, sort_order }
-            const { script_key, title, question_text, placeholder, sort_order } = req.body || {};
+            // Matches what pages/admin/questions.jsx sends:
+            // { script_key, title, question_text, placeholder, sort_order, mood }
+            const { script_key, title, question_text, placeholder, sort_order, mood } =
+                req.body || {};
 
             if (!title || !question_text) {
                 return res.status(400).json({ message: "Title and Question Text are required" });
+            }
+
+            // Empty mood means "shown for every mood". Anything else must be
+            // one of the known moods.
+            if (mood && !MOOD_IDS.includes(mood)) {
+                return res.status(400).json({ message: "Unknown mood" });
             }
 
             // No silent default pathway (FIX-16): the key must be sent and must
@@ -69,6 +78,7 @@ export default async function handler(req, res) {
                         placeholder: placeholder || "",
                         script_key: pathway.key,
                         sort_order: sort_order ?? 0,
+                        mood: mood || null,
                     },
                 ])
                 .select();
@@ -79,6 +89,31 @@ export default async function handler(req, res) {
             }
 
             return res.status(201).json({ success: true, question: data[0] });
+        }
+
+        case "PATCH": {
+            // Change which mood a question is shown for (empty = every mood).
+            const { id } = req.query;
+            const { mood } = req.body || {};
+
+            if (!id) {
+                return res.status(400).json({ message: "Question ID is required" });
+            }
+            if (mood && !MOOD_IDS.includes(mood)) {
+                return res.status(400).json({ message: "Unknown mood" });
+            }
+
+            const { error } = await supabase
+                .from("questions")
+                .update({ mood: mood || null })
+                .eq("id", id);
+
+            if (error) {
+                console.error("Admin question update error:", error);
+                return res.status(500).json({ message: "Failed to update question" });
+            }
+
+            return res.status(200).json({ success: true });
         }
 
         case "DELETE": {
@@ -102,7 +137,7 @@ export default async function handler(req, res) {
         }
 
         default:
-            res.setHeader("Allow", ["GET", "POST", "DELETE"]);
+            res.setHeader("Allow", ["GET", "POST", "PATCH", "DELETE"]);
             return res.status(405).json({ message: `Method ${method} Not Allowed` });
     }
 }
