@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 
 /**
@@ -6,9 +6,28 @@ import { useRouter } from "next/router";
  * Questions are fetched from /api/quiz-questions.
  */
 
+const QUESTIONS_PER_ROUND = 5;
+
+// Older questions have "A) " typed into the answer text; the quiz already shows A, B, C
+function cleanOptionText(text) {
+  return String(text ?? "").replace(/^\s*[A-Da-d][).:]\s+/, "");
+}
+
+function shuffle(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export default function QuizPage({ locationName = "Pretoria" }) {
   const router = useRouter();
   const displayLocation = router.query.location || locationName;
+
+  const [pool, setPool] = useState([]);
+  const seenIds = useRef(new Set());
 
   const [questions, setQuestions] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
@@ -24,7 +43,9 @@ export default function QuizPage({ locationName = "Pretoria" }) {
       try {
         const res = await fetch("/api/quiz-questions", { cache: "no-store" });
         const result = await res.json();
-        setQuestions(result.questions || []);
+        const all = result.questions || [];
+        setPool(all);
+        setQuestions(pickRound(all));
       } catch (err) {
         console.error("Failed to fetch quiz questions:", err);
         setQuestions([]);
@@ -34,6 +55,26 @@ export default function QuizPage({ locationName = "Pretoria" }) {
     }
     fetchQuestions();
   }, []);
+
+  function pickRound(all) {
+    let unseen = all.filter((q) => !seenIds.current.has(q.id));
+    if (unseen.length < QUESTIONS_PER_ROUND) {
+      seenIds.current = new Set();
+      unseen = all;
+    }
+    const round = shuffle(unseen).slice(0, QUESTIONS_PER_ROUND);
+    round.forEach((q) => seenIds.current.add(q.id));
+    return round;
+  }
+
+  function handleAnotherRound() {
+    setQuestions(pickRound(pool));
+    setCurrentIndex(0);
+    setSelectedOption(null);
+    setShowExplanation(false);
+    setScore(0);
+    setIsFinished(false);
+  }
 
   function handleBack() {
     router.push("/select-script");
@@ -126,7 +167,7 @@ export default function QuizPage({ locationName = "Pretoria" }) {
                             className={`quiz-option ${stateClass}`}
                         >
                           <span className="quiz-option-letter">{String.fromCharCode(65 + idx)}</span>
-                          <span>{option.text}</span>
+                          <span>{cleanOptionText(option.text)}</span>
                         </button>
                     );
                   })}
@@ -151,7 +192,10 @@ export default function QuizPage({ locationName = "Pretoria" }) {
                   <small className="quiz-score-label">correct answers</small>
                 </div>
                 <p className="quiz-subtext">Understanding prostate and mental health is a critical first step. Share what you learn with brothers, fathers, and friends.</p>
-                <button type="button" onClick={handleBack} className="quiz-cta">Return to pathways</button>
+                {pool.length > QUESTIONS_PER_ROUND && (
+                    <button type="button" onClick={handleAnotherRound} className="quiz-cta">Try {QUESTIONS_PER_ROUND} more questions</button>
+                )}
+                <button type="button" onClick={handleBack} className={pool.length > QUESTIONS_PER_ROUND ? "quiz-outline-button" : "quiz-cta"}>Return to pathways</button>
               </section>
           )}
 
