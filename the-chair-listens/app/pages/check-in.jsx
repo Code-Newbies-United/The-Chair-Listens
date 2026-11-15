@@ -1196,7 +1196,7 @@ button {
                     rel="noopener noreferrer"
                     className="awareness-link"
                   >
-                    Learn more about prostate cancer →
+                    Learn more about prostate cancer ➮
                   </a>
                 </div>
               </div>
@@ -1290,7 +1290,7 @@ button {
                   rel="noopener noreferrer"
                   className="awareness-link"
                 >
-                  Find out more about prostate cancer →
+                  Find out more about prostate cancer ➮
                 </a>
               </div>
 
