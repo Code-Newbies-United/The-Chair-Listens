@@ -1,5 +1,7 @@
+//api/admin-login
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createAdminSessionCookie } from "@/lib/adminsession";
 
 const MAX_FAILURES = 5;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -74,6 +76,13 @@ export default async function handler(req, res) {
 
     failures.delete(key);
     commitCookies();
+
+    // Also issue the admin_session cookie that requireAdminSSR checks.
+    // Append to any Set-Cookie headers commitCookies() just wrote instead of overwriting them.
+    const existing = res.getHeader("Set-Cookie");
+    const cookies = Array.isArray(existing) ? existing : existing ? [String(existing)] : [];
+    res.setHeader("Set-Cookie", [...cookies, createAdminSessionCookie()]);
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Admin login error:", err);
