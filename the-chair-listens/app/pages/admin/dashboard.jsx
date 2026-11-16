@@ -3,14 +3,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { requireAdminSSR } from "@/lib/requireAdminSSR";
 import DidYouKnowModal from "@/components/DidYouKnowModal";
+import { buildAdminQueries } from "@/lib/adminQueries";
 
 export const getServerSideProps = requireAdminSSR();
-
-const SCRIPT_LABELS = {
-  men_mental_health: "For Men",
-  ally_support: "Ally & Support",
-  fast_track_activations: "Today's Event",
-};
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -74,29 +69,7 @@ export default function AdminDashboard() {
   const activeLoc = stats?.activeLocationName || "Active Location";
 
   // Dynamic Queries tailored to current active location
-  const queries = {
-    supabaseJs: `// Fetch all responses for active location
-const { data, error } = await supabase
-  .from('responses')
-  .select('id, script_type, response_type, text_content, audio_url, created_at')
-  .eq('location_name', '${activeLoc}')
-  .order('created_at', { ascending: false });`,
-
-    sqlAggregate: `-- Group responses by script category
-SELECT 
-  location_name,
-  script_type,
-  COUNT(*) AS total_responses
-FROM responses
-WHERE location_name = '${activeLoc}'
-GROUP BY location_name, script_type;`,
-
-    sqlToday: `-- Responses logged today across all sites
-SELECT * 
-FROM responses
-WHERE created_at >= CURRENT_DATE
-ORDER BY created_at DESC;`,
-  };
+  const queries = buildAdminQueries(activeLoc);
 
   return (
       <main className="admin-page">
@@ -622,17 +595,17 @@ ORDER BY created_at DESC;`,
 
                   {activeTab === "overview" ? (
                       <>
-                        {stats.breakdown && Object.keys(stats.breakdown).length > 0 && (
+                        {Array.isArray(stats.breakdown) && stats.breakdown.length > 0 && (
                             <div className="admin-card-box">
                               <h3 className="admin-card-subtitle">Responses by Category</h3>
                               <div className="admin-breakdown-list">
-                                {Object.entries(stats.breakdown).map(([key, count]) => {
-                                  const max = Math.max(...Object.values(stats.breakdown), 1);
+                                {stats.breakdown.map(({ key, label, count }) => {
+                                  const max = Math.max(...stats.breakdown.map((row) => row.count), 1);
                                   const widthPct = Math.round((count / max) * 100);
                                   return (
                                       <div key={key}>
                                         <div className="admin-breakdown-header">
-                                          <span>{SCRIPT_LABELS[key] || key}</span>
+                                          <span>{label}</span>
                                           <span className="admin-breakdown-count">{count}</span>
                                         </div>
                                         <div className="admin-breakdown-track">
@@ -784,8 +757,17 @@ ORDER BY created_at DESC;`,
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: "middle" }}><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/></svg>
                 Invite Admin
               </Link>
+              <Link href="/admin/messages" className="admin-link-card"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: "middle" }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 
+                Moderate Messages 
+              </Link>
+              <Link href="/admin/pathways" className="admin-link-card">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, verticalAlign: "middle" }}><path d="M3 12h18"/><path d="m15 6 6 6-6 6"/><path d="M3 6h6"/><path d="M3 18h6"/></svg>
+                Manage Pathways
+              </Link>
             </div>
           </section>
+
 
           {/* FOOTER */}
           <footer className="admin-footer">

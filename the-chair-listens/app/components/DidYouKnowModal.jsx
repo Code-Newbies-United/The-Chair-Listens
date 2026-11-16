@@ -13,11 +13,6 @@ function pickRandomFacts(list, count) {
 
 const DID_YOU_KNOW_FACTS = [
     {
-        id: 1,
-        tag: "Campaign Impact",
-        fact: "While awareness campaigns are incredibly successful at changing what men know about their health, a \"behavioral gap\" still remains. Public health data shows that up to 40% of men have still never spoken to anyone about their mental health, meaning campaigns must work harder to get men from \"retweeting\" to actually booking an appointment.",
-    },
-    {
         id: 2,
         tag: "Early Detection",
         fact: "About 1 in 17 South African men will be diagnosed with prostate cancer in their lifetime, according to the 2024 National Cancer Registry. The real number is likely higher.",

@@ -1,6 +1,8 @@
 import formidable from "formidable";
 import fs from "fs/promises";
 import Groq, { toFile } from "groq-sdk";
+import { checkRateLimit, getSessionIdFromHeader } from "@/lib/apiGuard";
+import { sendError } from "@/lib/apiErrors";
 
 export const config = {
   api: {
@@ -38,14 +40,9 @@ export default async function handler(req, res) {
     });
   }
 
-  // Check that the API key is configured.
-  if (!process.env.GROQ_API_KEY) {
-    console.error("GROQ_API_KEY is missing.");
-
-    return res.status(500).json({
-      message: "Audio transcription is not configured on the server.",
-    });
-  }
+  // Rate limit: per IP (shared wifi) and per session (one person).
+  const sessionId = getSessionIdFromHeader(req);
+  if (!(await checkRateLimit(req, res, "transcribe", { sessionId }))) return;
 
   let uploadedFile;
 
@@ -69,8 +66,14 @@ export default async function handler(req, res) {
       : audio;
 
     if (!uploadedFile) {
-      return res.status(400).json({
-        message: "No audio file was uploaded.",
+      return sendError(res, 400, "Bad Request", "No audio file uploaded");
+    }
+
+    // Check that the API key is configured (after the cheap request checks).
+    if (!process.env.GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is missing.");
+      return res.status(500).json({
+        message: "Audio transcription is not configured on the server.",
       });
     }
 

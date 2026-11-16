@@ -1,17 +1,104 @@
-// Destination: pages/index.jsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
 import AboutFactorOfTen from "@/components/AboutFactorOfTen";
 import AdminGestureLogo from "@/components/AdminGestureLogo";
+import { CONSENT_VERSION } from "@/lib/consentVersion";
+import { setSessionId } from "@/lib/session";
+import { useActiveLocationName } from "@/lib/useActiveLocation";
 
 const POPIA_TERMS_URL = "/consent-terms";
 
-export default function Home({ locationName = "Pretoria" }) {
+// Awareness-ribbon path: one continuous strand with a loop on top and two crossing tails.
+const RIBBON_PATH =
+    "M24 118 L50 70 C58 55 70 40 66 22 C62 4 36 6 34 22 C32 38 42 56 50 70 L76 118";
+// The piece of the first strand that passes OVER the second at the crossing.
+const RIBBON_OVER = "M37 94 L50 70 C54 63 58 57 61 51";
+
+/* Ochre circle with the blue prostate cancer awareness ribbon and sparkle rays */
+function RibbonBadge() {
+  return (
+      <div
+          className="art-badge"
+          role="img"
+          aria-label="Blue prostate cancer awareness ribbon"
+      >
+        <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <radialGradient id="badge-gold" cx="35%" cy="30%" r="85%">
+              <stop offset="0%" stopColor="#dcb676" />
+              <stop offset="100%" stopColor="#bc9553" />
+            </radialGradient>
+          </defs>
+
+          <g stroke="#bc9553" strokeWidth="4.5" strokeLinecap="round">
+            <line className="badge-ray ray-a" x1="134.5" y1="62.2" x2="145.8" y2="58.1" />
+            <line className="badge-ray ray-b" x1="121" y1="41" x2="129.5" y2="32.5" />
+            <line className="badge-ray ray-a" x1="25.5" y1="62.2" x2="14.2" y2="58.1" />
+            <line className="badge-ray ray-b" x1="39" y1="41" x2="30.5" y2="32.5" />
+          </g>
+
+          <circle cx="80" cy="82" r="44" fill="url(#badge-gold)" />
+
+          <g transform="translate(60 57) scale(0.4)" fill="none" strokeLinejoin="round">
+            <path d={RIBBON_PATH} stroke="#0b4f99" strokeWidth="18" strokeLinecap="round" />
+            <path d={RIBBON_PATH} stroke="#1f82dc" strokeWidth="12" strokeLinecap="round" />
+            <path d={RIBBON_OVER} stroke="#0b4f99" strokeWidth="18" />
+            <path d={RIBBON_OVER} stroke="#2a8fe8" strokeWidth="12" />
+          </g>
+        </svg>
+      </div>
+  );
+}
+
+/* Matching ochre circle with a quotation mark, used by the community messages */
+function QuoteBadge() {
+  return (
+      <span className="voices-badge" aria-hidden="true">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="quote-gold" cx="35%" cy="30%" r="85%">
+            <stop offset="0%" stopColor="#dcb676" />
+            <stop offset="100%" stopColor="#bc9553" />
+          </radialGradient>
+        </defs>
+        <g stroke="#d1b071" strokeWidth="3.5" strokeLinecap="round">
+          <line className="badge-ray ray-a" x1="71" y1="30.7" x2="77.6" y2="28.3" />
+          <line className="badge-ray ray-b" x1="63.3" y1="18.7" x2="68.3" y2="13.7" />
+          <line className="badge-ray ray-a" x1="9" y1="30.7" x2="2.4" y2="28.3" />
+          <line className="badge-ray ray-b" x1="16.7" y1="18.7" x2="11.7" y2="13.7" />
+        </g>
+        <circle cx="40" cy="42" r="26" fill="url(#quote-gold)" />
+        <text
+            x="40"
+            y="67"
+            textAnchor="middle"
+            fontFamily="Georgia, serif"
+            fontSize="48"
+            fill="#19362f"
+        >
+          “
+        </text>
+      </svg>
+    </span>
+  );
+}
+
+function FourPointStar({ className }) {
+  return (
+      <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 0 C13 8 16 11 24 12 C16 13 13 16 12 24 C11 16 8 13 0 12 C8 11 11 8 12 0 Z" fill="currentColor" />
+      </svg>
+  );
+}
+
+export default function Home() {
+
   const router = useRouter();
 
   const [consented, setConsented] = useState(false);
-  const [detectedLocation, setDetectedLocation] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [consentError, setConsentError] = useState(null);
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [messagesPaused, setMessagesPaused] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -32,98 +119,87 @@ export default function Home({ locationName = "Pretoria" }) {
       try {
         const res = await fetch("/api/messages");
         const data = await res.json();
+
         if (data.messages && data.messages.length > 0) {
-          // Map the database rows to just the text content string
           setParticipantMessages(data.messages.map((m) => m.message));
         }
       } catch (err) {
         console.error("Failed to load community messages:", err);
       }
     }
+
     fetchMessages();
   }, []);
 
   useEffect(() => {
     if (messagesPaused || participantMessages.length === 0) return;
+
     const interval = setInterval(() => {
-      setActiveMessageIndex((current) => (current + 1) % participantMessages.length);
+      setActiveMessageIndex(
+          (current) => (current + 1) % participantMessages.length
+      );
     }, 4500);
+
     return () => clearInterval(interval);
   }, [messagesPaused, participantMessages.length]);
 
-  // --------------------------------------------------
-  // Detect visitor location
-  // --------------------------------------------------
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-
-          try {
-            const res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
-            );
-
-            const data = await res.json();
-
-            const place =
-                data?.address?.city ||
-                data?.address?.town ||
-                data?.address?.village ||
-                data?.address?.suburb ||
-                null;
-
-            if (place) {
-              setDetectedLocation(place);
-            }
-          } catch (err) {
-            console.error("Reverse geocoding failed:", err);
-          }
-        },
-        (err) => {
-          console.error("Geolocation unavailable:", err);
-        }
-    );
-  }, []);
-
-  const displayLocation = detectedLocation || locationName;
+  // The chair's stop is resolved by the server; the visitor's own GPS is never
+  // read and nothing goes to third-party geocoders (FIX-07).
+  const displayLocation = useActiveLocationName();
 
   // --------------------------------------------------
   // Continue
   // --------------------------------------------------
 
   async function handleContinue() {
-    if (!consented) return;
+    if (!consented || submitting) return;
+
+    setSubmitting(true);
+    setConsentError(null);
 
     try {
-      await fetch("/api/consent", {
+      // The server records the consent and returns an opaque session ID.
+      const res = await fetch("/api/consent", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          location_id: displayLocation,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consent_version: CONSENT_VERSION }),
       });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.sessionId) {
+        setConsentError(
+          res.status === 409
+            ? "The privacy terms have been updated. Please refresh this page and read them again."
+            : res.status === 503
+              ? "The chair isn't set up for a stop right now. Please try again later."
+              : "We couldn't record your consent. Please check your connection and try again."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      if (!setSessionId(data.sessionId)) {
+        setConsentError(
+          "Your browser is blocking the storage this page needs. If you're in private browsing, please switch to a normal tab and try again."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      router.push("/check-in");
     } catch (error) {
       console.error("Consent request failed:", error);
+      setConsentError(
+        "We couldn't record your consent. Please check your connection and try again."
+      );
+      setSubmitting(false);
     }
-
-    router.push({
-      pathname: "/check-in",
-      query: {
-        location: displayLocation,
-      },
-    });
   }
 
   return (
       <main className="chair-page">
         <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap");
 
         :root {
           /* -----------------------------------------
@@ -133,17 +209,23 @@ export default function Home({ locationName = "Pretoria" }) {
           --forest: #2d5046;
           --forest-dark: #203f36;
           --forest-deep: #19362f;
+          --forest-ink: #1d4538;
 
           --mint: #8dcf94;
           --mint-bright: #a5dfa9;
+          --mint-pale: #c9e6cb;
 
           --powder-blue: #d4e9ed;
           --powder-blue-dark: #b8dbe0;
+          --powder-pale: #dcedef;
 
           /* ACTUAL CHAIR */
           --chair-blue: #315da8;
           --chair-blue-dark: #24498c;
           --chair-blue-light: #4775c5;
+
+          --wood-light: #d9a062;
+          --wood-dark: #b07334;
 
           --cream: #f5f2e8;
           --white: #fbfaf5;
@@ -221,7 +303,7 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================== */
 
         .topbar {
-          min-height: 48px;
+          min-height: 56px;
 
           display: flex;
           align-items: center;
@@ -229,36 +311,36 @@ export default function Home({ locationName = "Pretoria" }) {
 
           gap: 12px;
 
-          padding: 4px 3px 14px;
+          padding: 6px 3px 16px;
         }
 
         .brand {
           display: flex;
           align-items: center;
 
-          gap: 8px;
+          gap: 9px;
 
           color: var(--white);
 
-          font-size: 10px;
-          font-weight: 800;
+          font-family: "Plus Jakarta Sans", "Benton Sans", "Helvetica Neue", Arial, sans-serif;
+          font-size: 14px;
+          font-weight: 700;
 
-          letter-spacing: 0.13em;
-          text-transform: uppercase;
+          letter-spacing: 0.005em;
         }
 
         .brand-logo {
-          width: 34px;
-          height: 34px;
-          flex: 0 0 34px;
+          width: 40px;
+          height: 40px;
+          flex: 0 0 40px;
           border-radius: 50%;
           object-fit: cover;
-          border: 1px solid rgba(245, 242, 232, 0.55);
+          border: 1.5px solid rgba(245, 242, 232, 0.7);
         }
 
         .brand-mark {
-          width: 9px;
-          height: 9px;
+          width: 10px;
+          height: 10px;
 
           flex: 0 0 auto;
 
@@ -267,38 +349,64 @@ export default function Home({ locationName = "Pretoria" }) {
           background: var(--mint);
 
           box-shadow:
-            0 0 0 4px rgba(141, 207, 148, 0.12),
-            0 0 18px rgba(141, 207, 148, 0.25);
+            0 0 0 4px rgba(141, 207, 148, 0.14),
+            0 0 18px rgba(141, 207, 148, 0.4);
         }
 
         .location-pill {
           display: inline-flex;
           align-items: center;
 
-          gap: 6px;
+          gap: 8px;
 
           flex-shrink: 0;
 
           color: var(--forest-dark);
-          background: var(--mint);
+          background: #b9e2bf;
 
           border-radius: 100px;
 
-          padding: 7px 10px;
+          padding: 9px 16px;
 
-          font-size: 9px;
-          font-weight: 800;
+          font-size: 12px;
+          font-weight: 700;
 
-          letter-spacing: 0.04em;
+          letter-spacing: 0.01em;
+
+          box-shadow: 0 6px 16px rgba(10, 30, 24, 0.18);
         }
 
-        .location-pill-dot {
-          width: 5px;
-          height: 5px;
+        .header-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 420px) {
+          .topbar {
+            gap: 8px;
+          }
+
+          .brand {
+            gap: 7px;
+            font-size: 12px;
+          }
+
+          .brand-logo {
+            width: 34px;
+            height: 34px;
+            flex-basis: 34px;
+          }
+
+          .location-pill-dot {
+          width: 7px;
+          height: 7px;
 
           border-radius: 50%;
 
-          background: var(--forest);
+          background: #1c2b25;
         }
 
         /* ==================================================
@@ -315,11 +423,15 @@ export default function Home({ locationName = "Pretoria" }) {
 
           overflow: hidden;
 
-          border-radius: 27px;
+          border-radius: 38px;
 
-          background: var(--cream);
+          background: linear-gradient(180deg, #fbf7ea 0%, var(--cream) 100%);
 
           color: var(--forest);
+
+          box-shadow:
+            0 26px 54px rgba(8, 24, 19, 0.38),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
 
           isolation: isolate;
         }
@@ -329,15 +441,15 @@ export default function Home({ locationName = "Pretoria" }) {
 
           position: absolute;
 
-          width: 300px;
-          height: 300px;
+          width: 360px;
+          height: 360px;
 
           border-radius: 50%;
 
-          background: var(--powder-blue);
+          background: var(--powder-pale);
 
-          top: -170px;
-          right: -130px;
+          top: -190px;
+          right: -150px;
 
           z-index: -1;
         }
@@ -347,15 +459,17 @@ export default function Home({ locationName = "Pretoria" }) {
 
           position: absolute;
 
-          width: 230px;
-          height: 230px;
+          width: 300px;
+          height: 300px;
 
           border-radius: 50%;
 
-          background: var(--mint);
+          background: #cfe6ea;
 
-          bottom: -160px;
-          left: -120px;
+          bottom: -170px;
+          right: -120px;
+
+          opacity: 0.9;
 
           z-index: -1;
         }
@@ -365,7 +479,7 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================== */
 
         .hero-copy {
-          padding: 34px 23px 0;
+          padding: 36px 23px 0;
 
           display: flex;
           flex-direction: column;
@@ -378,27 +492,52 @@ export default function Home({ locationName = "Pretoria" }) {
           z-index: 2;
         }
 
+        .hero-copy > * {
+          animation: hero-rise 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+        }
+
+        .hero-copy > *:nth-child(1) { animation-delay: 40ms; }
+        .hero-copy > *:nth-child(2) { animation-delay: 120ms; }
+        .hero-copy > *:nth-child(3) { animation-delay: 200ms; }
+        .hero-copy > *:nth-child(4) { animation-delay: 280ms; }
+        .hero-copy > *:nth-child(5) { animation-delay: 360ms; }
+        .hero-copy > *:nth-child(6) { animation-delay: 440ms; }
+
+        @keyframes hero-rise {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         .eyebrow {
           display: flex;
           align-items: center;
           justify-content: center;
 
-          gap: 9px;
+          gap: 11px;
 
           margin-bottom: 18px;
 
-          color: var(--sage);
+          color: var(--forest-ink);
 
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 800;
 
-          letter-spacing: 0.16em;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
         }
 
         .eyebrow-line {
-          width: 25px;
-          height: 1px;
+          width: 28px;
+          height: 2px;
+
+          border-radius: 2px;
 
           background: var(--ochre);
         }
@@ -406,31 +545,34 @@ export default function Home({ locationName = "Pretoria" }) {
         .hero-title {
           margin: 0;
 
-          font-size: clamp(55px, 17vw, 76px);
+          font-family: "Plus Jakarta Sans", "Benton Sans", "Helvetica Neue", Arial, sans-serif;
+          font-size: clamp(58px, 18vw, 80px);
 
-          line-height: 0.82;
+          line-height: 0.86;
 
-          letter-spacing: -0.065em;
+          letter-spacing: -0.06em;
 
-          font-weight: 900;
+          font-weight: 800;
 
-          color: var(--forest);
+          color: var(--forest-ink);
         }
 
-        .hero-title span {
+        .hero-line {
           display: block;
+        }
 
+        .hero-line.accent {
           color: var(--mint);
         }
 
         .script-line {
-          margin: 20px 0 10px;
+          margin: 18px 0 12px;
 
           color: var(--ochre);
 
           font-family: "Pinyon Script", cursive;
 
-          font-size: 40px;
+          font-size: 44px;
 
           line-height: 1;
 
@@ -438,38 +580,66 @@ export default function Home({ locationName = "Pretoria" }) {
         }
 
         .hero-description {
-          max-width: 300px;
+          max-width: 320px;
 
-          margin: 8px 0 0;
+          margin: 6px 0 0;
 
-          color: #52645e;
+          color: #234a3f;
 
-          font-size: 14px;
+          font-size: 15px;
+          font-weight: 500;
 
           line-height: 1.5;
         }
-        
-        .about-link {
-          margin: 14px 0 6px;
-          padding: 10px 18px;
-          border: 1.5px solid var(--ochre);
-          border-radius: 100px;
-          background: transparent;
-          color: var(--forest);
-          font-size: 13px;
+
+        .hero-description strong {
+          color: var(--forest-ink);
           font-weight: 800;
-          cursor: pointer;
-          transition: background 160ms ease, color 160ms ease;
         }
+
+        .hero-subtext {
+          max-width: 300px;
+
+          margin: 16px 0 0;
+
+          color: #5d6f68;
+
+          font-size: 13px;
+
+          line-height: 1.55;
+        }
+
+        .about-link {
+          margin: 20px 0 0;
+          padding: 13px 26px;
+          border: 2px solid var(--ochre);
+          border-radius: 100px;
+          background: #fcf8ec;
+          color: #1f2a25;
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: -0.005em;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(188, 149, 83, 0.2);
+          transition:
+            background 160ms ease,
+            color 160ms ease,
+            transform 160ms ease,
+            box-shadow 160ms ease;
+        }
+
         .about-link:hover {
           background: var(--ochre);
           color: var(--white);
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(188, 149, 83, 0.32);
         }
+
         .about-link:focus-visible {
           outline: 3px solid var(--forest);
           outline-offset: 3px;
         }
-        
+
         /* ==================================================
            HERO ART
         ================================================== */
@@ -477,8 +647,8 @@ export default function Home({ locationName = "Pretoria" }) {
         .hero-art {
           position: relative;
 
-          height: 310px;
-          min-height: 310px;
+          height: 345px;
+          min-height: 345px;
 
           display: flex;
           align-items: center;
@@ -486,47 +656,141 @@ export default function Home({ locationName = "Pretoria" }) {
 
           overflow: hidden;
 
-          margin-top: -5px;
+          margin-top: 0;
         }
 
         .art-circle {
           position: absolute;
 
-          width: 260px;
-          height: 260px;
+          width: 270px;
+          height: 270px;
 
           border-radius: 50%;
 
-          background: var(--mint);
+          background: var(--mint-pale);
 
-          opacity: 0.92;
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
         }
 
-        .art-circle-small {
+        /* Ribbon badge */
+        .art-badge {
           position: absolute;
 
-          width: 65px;
-          height: 65px;
+          width: 124px;
+          height: 124px;
+
+          right: 4px;
+          top: 6px;
+
+          z-index: 3;
+
+          filter: drop-shadow(0 10px 14px rgba(25, 54, 47, 0.2));
+
+          animation: badge-bob 5s ease-in-out infinite;
+        }
+
+        .art-badge svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+          overflow: visible;
+        }
+
+        .badge-ray {
+          animation: ray-twinkle 2.6s ease-in-out infinite;
+        }
+
+        .badge-ray.ray-b {
+          animation-delay: 0.7s;
+        }
+
+        @keyframes badge-bob {
+          0%,
+          100% {
+            translate: 0 0;
+          }
+
+          50% {
+            translate: 0 -7px;
+          }
+        }
+
+        @keyframes ray-twinkle {
+          0%,
+          100% {
+            opacity: 1;
+          }
+
+          50% {
+            opacity: 0.35;
+          }
+        }
+
+        /* Sparkles and dots */
+        .art-star {
+          position: absolute;
+
+          left: 26px;
+          bottom: 62px;
+
+          width: 26px;
+          height: 26px;
+
+          color: var(--forest);
+
+          animation: star-twinkle 3.2s ease-in-out infinite;
+        }
+
+        .art-star-2 {
+          position: absolute;
+
+          left: 58px;
+          top: 62px;
+
+          width: 15px;
+          height: 15px;
+
+          color: var(--mint);
+
+          animation: star-twinkle 3.2s ease-in-out 1.1s infinite;
+        }
+
+        .art-dot {
+          position: absolute;
 
           border-radius: 50%;
 
           background: var(--ochre);
-
-          right: 22px;
-          top: 45px;
+          opacity: 0.55;
         }
 
-        .art-star {
-          position: absolute;
+        .art-dot.one {
+          width: 8px;
+          height: 8px;
+          left: 90px;
+          bottom: 38px;
+        }
 
-          left: 28px;
-          bottom: 55px;
+        .art-dot.two {
+          width: 6px;
+          height: 6px;
+          right: 74px;
+          bottom: 78px;
+          background: var(--chair-blue);
+          opacity: 0.35;
+        }
 
-          color: var(--forest);
+        @keyframes star-twinkle {
+          0%,
+          100% {
+            opacity: 1;
+            scale: 1;
+          }
 
-          font-size: 26px;
-
-          transform: none;
+          50% {
+            opacity: 0.5;
+            scale: 0.82;
+          }
         }
 
         /* ==================================================
@@ -545,8 +809,28 @@ export default function Home({ locationName = "Pretoria" }) {
 
           filter:
             drop-shadow(
-              0 20px 18px rgba(35, 66, 100, 0.22)
+              0 18px 16px rgba(35, 66, 100, 0.2)
             );
+        }
+
+        .chair-floor {
+          position: absolute;
+
+          left: 22px;
+          top: 300px;
+
+          width: 206px;
+          height: 22px;
+
+          border-radius: 50%;
+
+          background: radial-gradient(
+            ellipse at center,
+            rgba(25, 54, 47, 0.3),
+            transparent 70%
+          );
+
+          z-index: -1;
         }
 
         .chair-back {
@@ -558,7 +842,7 @@ export default function Home({ locationName = "Pretoria" }) {
           width: 155px;
           height: 190px;
 
-          border-radius: 60px 60px 20px 20px;
+          border-radius: 62px 62px 22px 22px;
 
           background:
             linear-gradient(
@@ -573,100 +857,164 @@ export default function Home({ locationName = "Pretoria" }) {
             inset -9px 0 0 rgba(0, 25, 70, 0.12);
         }
 
+        /* Two buttons side by side, like the artwork */
         .chair-back::before,
         .chair-back::after {
           content: "";
 
           position: absolute;
 
-          width: 8px;
-          height: 8px;
+          top: 62px;
+
+          width: 11px;
+          height: 11px;
 
           border-radius: 50%;
 
-          background: #8eb0e7;
+          background: radial-gradient(circle at 35% 30%, #5d88cf, #1f4c92);
 
-          opacity: 0.85;
-
-          left: 73px;
+          box-shadow:
+            0 1px 2px rgba(0, 20, 60, 0.3),
+            inset 0 -1px 1px rgba(0, 20, 60, 0.25);
         }
 
         .chair-back::before {
-          top: 68px;
+          left: 43px;
         }
 
         .chair-back::after {
-          top: 116px;
+          left: 101px;
         }
 
         .chair-seat {
           position: absolute;
 
-          left: 32px;
-          top: 190px;
+          left: 30px;
+          top: 188px;
 
-          width: 190px;
-          height: 58px;
+          width: 194px;
+          height: 60px;
 
-          border-radius: 19px;
+          border-radius: 20px;
 
           background:
             linear-gradient(
               180deg,
-              var(--chair-blue-light),
+              #5583cc,
+              var(--chair-blue) 55%,
               var(--chair-blue-dark)
             );
 
           box-shadow:
-            inset 0 6px 0 rgba(255, 255, 255, 0.1),
+            inset 0 7px 0 rgba(255, 255, 255, 0.12),
+            inset 0 -10px 0 rgba(0, 20, 60, 0.1),
             0 8px 0 #1d3c75;
+        }
+
+        .chair-seat::after {
+          content: "";
+
+          position: absolute;
+
+          left: 12px;
+          right: 12px;
+          top: 26px;
+
+          height: 2px;
+
+          border-radius: 2px;
+
+          background: rgba(0, 25, 70, 0.22);
         }
 
         .chair-arm-left,
         .chair-arm-right {
           position: absolute;
 
-          top: 165px;
+          top: 150px;
 
-          width: 34px;
-          height: 85px;
+          width: 36px;
+          height: 100px;
 
-          border-radius: 18px;
-
-          background: var(--chair-blue);
+          border-radius: 22px 22px 14px 14px;
         }
 
         .chair-arm-left {
-          left: 18px;
+          left: 14px;
+
+          transform: rotate(-4deg);
+
+          background: linear-gradient(
+            90deg,
+            var(--chair-blue-light),
+            var(--chair-blue) 60%,
+            var(--chair-blue-dark)
+          );
         }
 
         .chair-arm-right {
-          right: 18px;
+          right: 14px;
+
+          transform: rotate(4deg);
+
+          background: linear-gradient(
+            270deg,
+            var(--chair-blue-light),
+            var(--chair-blue) 60%,
+            var(--chair-blue-dark)
+          );
         }
 
+        /* Wooden, tapered legs: two at the back, two splayed at the front */
         .chair-leg {
           position: absolute;
 
-          width: 9px;
-          height: 65px;
+          width: 13px;
+          height: 68px;
 
-          background: var(--ochre);
+          top: 244px;
 
-          border-radius: 7px;
+          background: linear-gradient(90deg, var(--wood-light), var(--wood-dark));
 
-          top: 240px;
+          clip-path: polygon(0 0, 100% 0, 76% 100%, 24% 100%);
+
+          border-radius: 3px 3px 0 0;
+
+          transform-origin: top center;
         }
 
         .chair-leg.left {
-          left: 54px;
+          left: 50px;
 
-          transform: rotate(8deg);
+          transform: rotate(10deg);
         }
 
         .chair-leg.right {
-          right: 54px;
+          right: 50px;
 
-          transform: rotate(-8deg);
+          transform: rotate(-10deg);
+        }
+
+        .chair-leg.back-left {
+          left: 80px;
+
+          top: 236px;
+          height: 58px;
+
+          transform: rotate(5deg);
+
+          filter: brightness(0.86);
+        }
+
+        .chair-leg.back-right {
+          right: 80px;
+
+          top: 236px;
+          height: 58px;
+
+          transform: rotate(-5deg);
+
+          filter: brightness(0.86);
         }
 
         /* ==================================================
@@ -695,6 +1043,18 @@ export default function Home({ locationName = "Pretoria" }) {
 
           box-shadow:
             0 14px 35px rgba(17, 45, 37, 0.28);
+        }
+
+        .consent-message {
+          margin: 12px 0 0;
+          text-align: center;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          color: #c9d2ec;
+        }
+
+        .consent-message-error {
+          color: #ffb4b4;
         }
 
         .consent {
@@ -881,6 +1241,7 @@ export default function Home({ locationName = "Pretoria" }) {
           box-shadow: 0 15px 34px rgba(17, 45, 37, 0.12);
           overflow: hidden;
         }
+
         .voices-heading {
           display: flex;
           align-items: flex-start;
@@ -888,6 +1249,7 @@ export default function Home({ locationName = "Pretoria" }) {
           gap: 16px;
           margin-bottom: 18px;
         }
+
         .voices-kicker {
           margin-bottom: 7px;
           color: var(--mint);
@@ -896,6 +1258,7 @@ export default function Home({ locationName = "Pretoria" }) {
           letter-spacing: 0.15em;
           text-transform: uppercase;
         }
+
         .voices-title {
           margin: 0;
           color: var(--white);
@@ -903,18 +1266,24 @@ export default function Home({ locationName = "Pretoria" }) {
           line-height: 1.05;
           letter-spacing: -0.045em;
         }
-        .voices-symbol {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 38px;
-          height: 38px;
-          flex: 0 0 38px;
-          border-radius: 50%;
-          background: var(--ochre);
-          color: var(--forest-deep);
-          font-size: 17px;
+
+        .voices-badge {
+          display: block;
+          width: 58px;
+          height: 58px;
+          flex: 0 0 58px;
+          margin: -4px -2px 0 0;
+          filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.22));
+          animation: badge-bob 5s ease-in-out infinite;
         }
+
+        .voices-badge svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+
         .message-window {
           position: relative;
           display: flex;
@@ -932,8 +1301,17 @@ export default function Home({ locationName = "Pretoria" }) {
           overflow: hidden;
           transition: transform 180ms ease, background 180ms ease;
         }
-        .message-window:hover { transform: translateY(-2px); background: var(--white); }
-        .message-window:focus-visible { outline: 3px solid var(--ochre-light); outline-offset: 4px; }
+
+        .message-window:hover {
+          transform: translateY(-2px);
+          background: var(--white);
+        }
+
+        .message-window:focus-visible {
+          outline: 3px solid var(--ochre-light);
+          outline-offset: 4px;
+        }
+
         .message-quote-mark {
           height: 31px;
           color: var(--ochre);
@@ -941,6 +1319,7 @@ export default function Home({ locationName = "Pretoria" }) {
           font-size: 54px;
           line-height: 0.9;
         }
+
         .participant-message {
           display: block;
           flex: 1;
@@ -953,6 +1332,7 @@ export default function Home({ locationName = "Pretoria" }) {
           overflow-wrap: anywhere;
           animation: message-arrive 420ms ease both;
         }
+
         .message-bottom-row {
           display: flex;
           align-items: center;
@@ -961,7 +1341,9 @@ export default function Home({ locationName = "Pretoria" }) {
           padding-top: 13px;
           border-top: 1px solid rgba(45, 80, 70, 0.12);
         }
-        .message-attribution, .message-control {
+
+        .message-attribution,
+        .message-control {
           display: inline-flex;
           align-items: center;
           gap: 7px;
@@ -971,6 +1353,7 @@ export default function Home({ locationName = "Pretoria" }) {
           letter-spacing: 0.04em;
           text-transform: uppercase;
         }
+
         .message-anonymous-dot {
           width: 7px;
           height: 7px;
@@ -979,7 +1362,12 @@ export default function Home({ locationName = "Pretoria" }) {
           background: var(--mint);
           box-shadow: 0 0 0 3px rgba(141, 207, 148, 0.2);
         }
-        .message-control { color: var(--forest); white-space: nowrap; }
+
+        .message-control {
+          color: var(--forest);
+          white-space: nowrap;
+        }
+
         .message-progress {
           position: absolute;
           right: 0;
@@ -988,6 +1376,7 @@ export default function Home({ locationName = "Pretoria" }) {
           height: 3px;
           background: rgba(45, 80, 70, 0.08);
         }
+
         .message-progress-bar {
           display: block;
           width: 100%;
@@ -997,7 +1386,11 @@ export default function Home({ locationName = "Pretoria" }) {
           background: var(--ochre);
           animation: message-progress 4.5s linear forwards;
         }
-        .message-progress-bar.paused { animation-play-state: paused; }
+
+        .message-progress-bar.paused {
+          animation-play-state: paused;
+        }
+
         .voices-note {
           margin: 13px 3px 0;
           color: rgba(255, 255, 255, 0.58);
@@ -1005,13 +1398,27 @@ export default function Home({ locationName = "Pretoria" }) {
           line-height: 1.6;
           text-align: center;
         }
+
         @keyframes message-arrive {
-          from { opacity: 0; transform: translateY(7px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(7px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
+
         @keyframes message-progress {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
+          from {
+            transform: scaleX(0);
+          }
+
+          to {
+            transform: scaleX(1);
+          }
         }
 
         /* ==================================================
@@ -1119,7 +1526,6 @@ export default function Home({ locationName = "Pretoria" }) {
           font-size: 11px;
         }
 
-        /* NEW: footer disclaimer */
         .footer-disclaimer {
           max-width: 520px;
           margin: 10px 0 0;
@@ -1144,9 +1550,9 @@ export default function Home({ locationName = "Pretoria" }) {
 
         @media (max-width: 360px) {
           .brand-logo {
-            width: 29px;
-            height: 29px;
-            flex-basis: 29px;
+            width: 30px;
+            height: 30px;
+            flex-basis: 30px;
           }
 
           .hero-copy {
@@ -1155,16 +1561,16 @@ export default function Home({ locationName = "Pretoria" }) {
           }
 
           .hero-title {
-            font-size: 52px;
+            font-size: 54px;
           }
 
           .script-line {
-            font-size: 35px;
+            font-size: 38px;
           }
 
           .hero-art {
-            height: 280px;
-            min-height: 280px;
+            height: 310px;
+            min-height: 310px;
           }
 
           .art-circle {
@@ -1172,8 +1578,15 @@ export default function Home({ locationName = "Pretoria" }) {
             height: 235px;
           }
 
+          .art-badge {
+            width: 100px;
+            height: 100px;
+            right: 0;
+            top: 4px;
+          }
+
           .chair {
-            transform: scale(0.88);
+            transform: scale(0.86);
           }
 
           .journey-title {
@@ -1190,16 +1603,48 @@ export default function Home({ locationName = "Pretoria" }) {
             padding: 18px;
           }
 
+          .brand {
+            gap: 12px;
+            font-size: 22px;
+          }
+
+          .brand-logo {
+            width: 54px;
+            height: 54px;
+            flex-basis: 54px;
+          }
+
+          .location-pill {
+            padding: 10px 22px;
+            font-size: 14px;
+          }
+
           .hero {
             display: grid;
 
             grid-template-columns: 1fr 0.9fr;
 
             min-height: 620px;
+
+            border-radius: 44px;
+          }
+
+          .hero::before {
+            width: 440px;
+            height: 440px;
+            top: -210px;
+            right: -150px;
+          }
+
+          .hero::after {
+            width: 360px;
+            height: 360px;
+            bottom: -190px;
+            right: -130px;
           }
 
           .hero-copy {
-            padding: 65px 30px 55px 60px;
+            padding: 62px 30px 55px 60px;
 
             align-items: flex-start;
 
@@ -1208,20 +1653,38 @@ export default function Home({ locationName = "Pretoria" }) {
 
           .eyebrow {
             justify-content: flex-start;
+
+            font-size: 12px;
+          }
+
+          .eyebrow-line {
+            width: 40px;
           }
 
           .hero-title {
-            font-size: clamp(65px, 8vw, 100px);
+            font-size: clamp(70px, 8.5vw, 108px);
           }
 
           .script-line {
-            font-size: 52px;
+            font-size: 58px;
           }
 
           .hero-description {
-            font-size: 16px;
+            font-size: 18px;
+
+            max-width: 440px;
+          }
+
+          .hero-subtext {
+            font-size: 14px;
 
             max-width: 420px;
+          }
+
+          .about-link {
+            font-size: 16px;
+
+            padding: 15px 32px;
           }
 
           .hero-art {
@@ -1231,8 +1694,42 @@ export default function Home({ locationName = "Pretoria" }) {
           }
 
           .art-circle {
-            width: 430px;
-            height: 430px;
+            width: 440px;
+            height: 440px;
+          }
+
+          .art-badge {
+            width: 176px;
+            height: 176px;
+
+            right: 26px;
+            top: 26px;
+          }
+
+          .art-star {
+            left: 50px;
+            bottom: 100px;
+
+            width: 34px;
+            height: 34px;
+          }
+
+          .art-star-2 {
+            left: 90px;
+            top: 120px;
+
+            width: 20px;
+            height: 20px;
+          }
+
+          .art-dot.one {
+            left: 130px;
+            bottom: 70px;
+          }
+
+          .art-dot.two {
+            right: 120px;
+            bottom: 130px;
           }
 
           .chair {
@@ -1240,6 +1737,14 @@ export default function Home({ locationName = "Pretoria" }) {
             height: 400px;
 
             transform: none;
+          }
+
+          .chair-floor {
+            left: 30px;
+            top: 410px;
+
+            width: 270px;
+            height: 26px;
           }
 
           .chair-back {
@@ -1252,54 +1757,76 @@ export default function Home({ locationName = "Pretoria" }) {
 
           .chair-back::before,
           .chair-back::after {
-            left: 97px;
+            top: 86px;
+
+            width: 14px;
+            height: 14px;
           }
 
           .chair-back::before {
-            top: 92px;
+            left: 58px;
           }
 
           .chair-back::after {
-            top: 155px;
+            left: 133px;
           }
 
           .chair-seat {
-            left: 42px;
+            left: 40px;
             top: 255px;
 
-            width: 250px;
-            height: 74px;
+            width: 254px;
+            height: 76px;
+          }
+
+          .chair-seat::after {
+            top: 34px;
           }
 
           .chair-arm-left,
           .chair-arm-right {
-            top: 222px;
+            top: 205px;
 
-            width: 45px;
-            height: 110px;
+            width: 48px;
+            height: 132px;
           }
 
           .chair-arm-left {
-            left: 25px;
+            left: 18px;
           }
 
           .chair-arm-right {
-            right: 25px;
+            right: 18px;
           }
 
           .chair-leg {
-            top: 318px;
+            top: 326px;
 
-            width: 12px;
-            height: 90px;
+            width: 17px;
+            height: 92px;
           }
 
           .chair-leg.left {
-            left: 70px;
+            left: 66px;
           }
 
           .chair-leg.right {
-            right: 70px;
+            right: 66px;
+          }
+
+          .chair-leg.back-left,
+          .chair-leg.back-right {
+            top: 318px;
+
+            height: 76px;
+          }
+
+          .chair-leg.back-left {
+            left: 106px;
+          }
+
+          .chair-leg.back-right {
+            right: 106px;
           }
 
           .action-card {
@@ -1350,6 +1877,12 @@ export default function Home({ locationName = "Pretoria" }) {
             font-size: 42px;
           }
 
+          .voices-badge {
+            width: 72px;
+            height: 72px;
+            flex-basis: 72px;
+          }
+
           .footer {
             flex-direction: column;
             justify-content: center;
@@ -1358,14 +1891,29 @@ export default function Home({ locationName = "Pretoria" }) {
         }
 
         /* ==================================================
-           REDUCE MOTION
+           SMALL PHONES: COMMUNITY CARD
         ================================================== */
 
         @media (max-width: 420px) {
-          .community-voices { padding: 21px 13px 15px; }
-          .message-window { min-height: 205px; padding: 20px 16px 17px; }
-          .message-bottom-row { align-items: flex-start; flex-direction: column; gap: 9px; }
+          .community-voices {
+            padding: 21px 13px 15px;
+          }
+
+          .message-window {
+            min-height: 205px;
+            padding: 20px 16px 17px;
+          }
+
+          .message-bottom-row {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 9px;
+          }
         }
+
+        /* ==================================================
+           REDUCE MOTION
+        ================================================== */
 
         @media (prefers-reduced-motion: reduce) {
           *,
@@ -1380,7 +1928,6 @@ export default function Home({ locationName = "Pretoria" }) {
       `}</style>
 
         <div className="chair-shell">
-
           {/* ================================================
             HEADER
         ================================================= */}
@@ -1392,13 +1939,17 @@ export default function Home({ locationName = "Pretoria" }) {
                   src="/logos/factor-of-ten-logo.jpg"
                   alt="Factor of Ten Foundation logo"
               />
+
               <span className="brand-mark" aria-hidden="true" />
+
               The Chair Listens
             </div>
 
-            <div className="location-pill">
-              <span className="location-pill-dot" />
-              {displayLocation}
+            <div className="header-actions">
+              <div className="location-pill">
+                <span className="location-pill-dot" />
+                {displayLocation}
+              </div>
             </div>
           </header>
 
@@ -1407,28 +1958,29 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <section className="hero">
-
             <div className="hero-copy">
-
               <div className="eyebrow">
                 <span className="eyebrow-line" />
                 A space to pause
+                <span className="eyebrow-line" />
               </div>
 
               <h1 className="hero-title">
-                The
-                <span>Chair</span>
-                Listens.
+                <span className="hero-line">The</span>
+                <span className="hero-line">Chair</span>
+                <span className="hero-line accent">Listens.</span>
               </h1>
 
-              {/* STRAIGHT */}
               <div className="script-line">
                 Take a seat
               </div>
 
               <p className="hero-description">
-                The Chair gives men a quiet, anonymous place to be heard and to learn about prostate health, so that talking and getting checked feel a little easier.
+                The <strong>Chair</strong> gives men a quiet, anonymous place to
+                be heard and to learn about prostate health, so that talking and
+                getting checked feel a little easier.
               </p>
+
               <button
                   type="button"
                   className="about-link"
@@ -1437,36 +1989,28 @@ export default function Home({ locationName = "Pretoria" }) {
                 Small Acts. Tenfold Impact.
               </button>
 
-              <p className="hero-description">
-
-              </p>
-
-              <p className="hero-description">
-
-              </p>
-
-              <p className="hero-description">
+              <p className="hero-subtext">
                 Sit for a minute. Say what’s on your mind.
                 No names. No judgement. Just a moment to be heard.
               </p>
-
             </div>
 
             {/* ==============================================
-              CHAIR
+              CHAIR + PROSTATE CANCER AWARENESS RIBBON
           ============================================== */}
 
             <div className="hero-art">
-
               <div className="art-circle" />
 
-              <div className="art-circle-small" />
+              <RibbonBadge />
 
-              <div className="art-star">
-                ✦
-              </div>
+              <FourPointStar className="art-star" />
+              <FourPointStar className="art-star-2" />
+              <span className="art-dot one" aria-hidden="true" />
+              <span className="art-dot two" aria-hidden="true" />
 
               <div className="chair">
+                <div className="chair-floor" />
 
                 <div className="chair-back" />
 
@@ -1474,16 +2018,17 @@ export default function Home({ locationName = "Pretoria" }) {
 
                 <div className="chair-arm-right" />
 
+                <div className="chair-leg back-left" />
+
+                <div className="chair-leg back-right" />
+
                 <div className="chair-seat" />
 
                 <div className="chair-leg left" />
 
                 <div className="chair-leg right" />
-
               </div>
-
             </div>
-
           </section>
 
           {/* ================================================
@@ -1491,19 +2036,15 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <section className="action-card">
-
             <label
                 className="consent"
                 htmlFor="popia-consent"
             >
-
               <input
                   id="popia-consent"
                   type="checkbox"
                   checked={consented}
-                  onChange={(e) =>
-                      setConsented(e.target.checked)
-                  }
+                  onChange={(e) => setConsented(e.target.checked)}
               />
 
               <span>
@@ -1521,17 +2062,27 @@ export default function Home({ locationName = "Pretoria" }) {
               </a>
               .
             </span>
-
             </label>
 
             <button
                 type="button"
                 className="continue-button"
                 onClick={handleContinue}
-                disabled={!consented}
+                disabled={!consented || submitting}
             >
-              Take a seat
+              {submitting ? "Please wait..." : "Take a seat"}
             </button>
+
+            {consentError && (
+              <p role="alert" className="consent-message consent-message-error">
+                {consentError}
+              </p>
+            )}
+            {!consentError && router.query.consent === "required" && (
+              <p role="status" className="consent-message">
+                Please confirm your consent to continue.
+              </p>
+            )}
 
           </section>
 
@@ -1540,9 +2091,7 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <section className="intro-strip">
-
             <div className="intro-item">
-
             <span className="intro-number">
               01 / PAUSE
             </span>
@@ -1555,11 +2104,9 @@ export default function Home({ locationName = "Pretoria" }) {
                 Step away from the noise and give
                 yourself a minute.
               </p>
-
             </div>
 
             <div className="intro-item">
-
             <span className="intro-number">
               02 / SPEAK
             </span>
@@ -1572,11 +2119,9 @@ export default function Home({ locationName = "Pretoria" }) {
                 Type it out or speak naturally.
                 There is no right answer.
               </p>
-
             </div>
 
             <div className="intro-item">
-
             <span className="intro-number">
               03 / LISTEN
             </span>
@@ -1589,22 +2134,29 @@ export default function Home({ locationName = "Pretoria" }) {
                 Your words become part of something
                 bigger, anonymously.
               </p>
-
             </div>
-
           </section>
 
           {/* ================================================
             COMMUNITY VOICES
         ================================================= */}
 
-          <section className="community-voices" aria-label="Messages from the community">
+          <section
+              className="community-voices"
+              aria-label="Messages from the community"
+          >
             <div className="voices-heading">
               <div>
-                <div className="voices-kicker">A few words from the community</div>
-                <h2 className="voices-title">You are not sitting alone.</h2>
+                <div className="voices-kicker">
+                  A few words from the community
+                </div>
+
+                <h2 className="voices-title">
+                  You are not sitting alone.
+                </h2>
               </div>
-              <span className="voices-symbol" aria-hidden="true">🗨️</span>
+
+              <QuoteBadge />
             </div>
 
             <button
@@ -1612,20 +2164,44 @@ export default function Home({ locationName = "Pretoria" }) {
                 className="message-window"
                 onClick={() => setMessagesPaused((paused) => !paused)}
                 aria-pressed={messagesPaused}
-                aria-label={messagesPaused ? "Resume rotating messages" : "Pause rotating messages to read"}
+                aria-label={
+                  messagesPaused
+                      ? "Resume rotating messages"
+                      : "Pause rotating messages to read"
+                }
             >
-              <span className="message-quote-mark" aria-hidden="true">“</span>
-              <span key={activeMessageIndex} className="participant-message">
-                {participantMessages[activeMessageIndex]}
-              </span>
+            <span className="message-quote-mark" aria-hidden="true">
+              “
+            </span>
+
+              <span
+                  key={activeMessageIndex}
+                  className="participant-message"
+              >
+              {participantMessages[activeMessageIndex]}
+            </span>
+
               <span className="message-bottom-row">
-                <span className="message-control">{messagesPaused ? "Paused · tap to play ▷" : "Tap to pause Ⅱ"}</span>
+              <span className="message-control">
+                {messagesPaused
+                    ? "Paused · tap to play ▷"
+                    : "Tap to pause Ⅱ"}
               </span>
+            </span>
+
               <span className="message-progress" aria-hidden="true">
-                <span key={`${activeMessageIndex}-${messagesPaused}`} className={`message-progress-bar${messagesPaused ? " paused" : ""}`} />
-              </span>
+              <span
+                  key={`${activeMessageIndex}-${messagesPaused}`}
+                  className={`message-progress-bar${
+                      messagesPaused ? " paused" : ""
+                  }`}
+              />
+            </span>
             </button>
-            <p className="voices-note">Anonymous words shared by our community members.</p>
+
+            <p className="voices-note">
+              Anonymous words shared by our community members.
+            </p>
           </section>
 
           {/* ================================================
@@ -1633,11 +2209,8 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <section className="journey">
-
             <div className="journey-header">
-
               <div>
-
                 <div className="journey-kicker">
                   The Chair's journey
                 </div>
@@ -1647,20 +2220,16 @@ export default function Home({ locationName = "Pretoria" }) {
                   <br />
                   been sitting.
                 </h2>
-
               </div>
 
-              {/* STRAIGHT */}
               <div className="journey-script">
                 Come sit with us.
               </div>
-
             </div>
 
             <div className="journey-map">
               <ChairJourneyMap />
             </div>
-
           </section>
 
           {/* ================================================
@@ -1668,20 +2237,31 @@ export default function Home({ locationName = "Pretoria" }) {
         ================================================= */}
 
           <footer className="footer">
-            <span className="footer-brand">FACTOR OF TEN</span>
-            <span className="footer-tagline">Know more. Ask more. Check sooner.</span>
+          <span className="footer-brand">
+            FACTOR OF TEN
+          </span>
 
-            {/* NEW: disclaimer */}
+            <span className="footer-tagline">
+            Know more. Ask more. Check sooner.
+          </span>
+
             <p className="footer-disclaimer">
               The Chair Listens offers awareness and reflection, not medical
               advice, diagnosis or crisis care. If you have symptoms or
               concerns, speak to a doctor or clinic. If you are in danger or
-              distress, use the <a href="/emergency">emergency resources</a>.
+              distress, use the{" "}
+              <a href="/emergency">
+                emergency resources
+              </a>
+              .
             </p>
           </footer>
-
         </div>
-        <AboutFactorOfTen open={aboutOpen} onClose={() => setAboutOpen(false)} />
+
+        <AboutFactorOfTen
+            open={aboutOpen}
+            onClose={() => setAboutOpen(false)}
+        />
       </main>
   );
 }

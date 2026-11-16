@@ -16,14 +16,52 @@ export default function ChairJourneyMap() {
     const [visitors, setVisitors] = useState([]);
 
     useEffect(() => {
-        fetch("/api/locations")
-            .then((res) => res.json())
-            .then((data) => setLocations(data.locations || []))
-            .catch((err) => {
+        let cancelled = false;
+
+        async function loadLocations() {
+            try {
+                const res = await fetch("/api/locations", {
+                    cache: "no-store",
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Locations request failed: ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                if (!cancelled) {
+                    setLocations(
+                        Array.isArray(data.locations) ? data.locations : []
+                    );
+                }
+            } catch (err) {
                 console.error("Failed to load chair locations:", err);
-                setError(true);
-            })
-            .finally(() => setLoading(false));
+
+                if (!cancelled) {
+                    setError(true);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadLocations();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        fetch("/api/visitor-pins")
+            .then((res) => res.json())
+            .then((data) => setVisitors(data.visitors || []))
+            .catch((err) => {
+                console.error("Failed to load recent visitors:", err);
+            });
     }, []);
 
     useEffect(() => {

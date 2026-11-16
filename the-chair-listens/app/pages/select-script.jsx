@@ -1,4 +1,8 @@
 import { useRouter } from "next/router";
+import { useState, useEffect } from "react";
+import { useRequireSession } from "@/lib/session";
+import { useActiveLocationName } from "@/lib/useActiveLocation";
+import { usePathways } from "@/lib/usePathways";
 
 /**
  * The Chair Listens — Select Your Path
@@ -7,62 +11,83 @@ import { useRouter } from "next/router";
  * as the rest of the flow.
  */
 
-const PATHS = [
-  {
-    key: "men_mental_health",
-    label: "For Men",
-    description: "A few quiet questions, just for you.",
-    type: "reflection",
-  },
-  {
-    key: "ally_support",
-    label: "Ally & Support",
-    description: "For anyone supporting a man in their life.",
-    type: "reflection",
-  },
-  {
-    key: "fast_track_activations",
-    label: "Today's Event",
-    description: "Quick reflections made for this activation.",
-    type: "reflection",
-  },
-  {
-    key: "quiz",
-    label: "Knowledge Check",
-    description:
-        "Test what you know about prostate and mental health.",
-    type: "quiz",
-  },
+const PROSTATE_FACTS = [
+  "Prostate cancer can develop without noticeable symptoms in its early stages.",
+
+  "The risk of prostate cancer increases as men get older.",
+
+  "Having a father or brother who had prostate cancer can increase your risk.",
+
+  "A PSA blood test can help assess prostate health. A raised PSA does not automatically mean cancer.",
+
+  "Knowing your family history can help you have more informed conversations with your healthcare professional.",
+
+  "You do not have to wait for symptoms to start a conversation about prostate health.",
 ];
+// The reflection pathways come from the database (FIX-16, /api/pathways).
+// The quiz is not a pathway, so its card stays here and is shown last.
+const QUIZ_PATH = {
+  key: "quiz",
+  label: "Knowledge Check",
+  description: "Test what you know about prostate and mental health.",
+  type: "quiz",
+};
 
-export default function SelectScript({
-                                       locationName = "Pretoria",
-                                     }) {
+export default function SelectScript() {
   const router = useRouter();
+  const sessionReady = useRequireSession(); // redirects to / if no consent session
+  const displayLocation = useActiveLocationName();
+  const { pathways, loading: pathwaysLoading, error: pathwaysError } =
+      usePathways();
 
-  const { location } = router.query;
+  const paths = [
+    ...(pathways || []).map((p) => ({ ...p, type: "reflection" })),
+    QUIZ_PATH,
+  ];
 
-  const displayLocation =
-      location || locationName;
+  // Rotating prostate-health facts (client-test): show for 10s, hide for 15s.
+  const [showChairThought, setShowChairThought] = useState(true);
+  const [factIndex, setFactIndex] = useState(0);
+
+  useEffect(() => {
+    let hideTimer;
+    let showTimer;
+
+    function startCycle() {
+      hideTimer = setTimeout(() => {
+        setShowChairThought(false);
+
+        showTimer = setTimeout(() => {
+          setFactIndex((current) => (current + 1) % PROSTATE_FACTS.length);
+
+          setShowChairThought(true);
+          startCycle();
+        }, 15000);
+      }, 10000);
+    }
+
+    startCycle();
+
+    return () => {
+      clearTimeout(hideTimer);
+      clearTimeout(showTimer);
+    };
+  }, []);
 
   function handleSelect(path) {
     if (path.type === "quiz") {
-      router.push({
-        pathname: "/quiz",
-        query: {
-          location: displayLocation,
-        },
-      });
+      router.push("/quiz");
     } else {
       router.push({
         pathname: "/questions",
         query: {
           script: path.key,
-          location: displayLocation,
         },
       });
     }
   }
+
+  if (!sessionReady) return null;
 
   return (
       <main className="path-page">
@@ -609,6 +634,231 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+/* ==========================================
+   BLUE CHAIR THOUGHT BUBBLE
+========================================== */
+
+.chair-thought-container {
+  position: fixed;
+  right: 20px;
+  bottom: 18px;
+  z-index: 1000;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+
+  pointer-events: none;
+}
+
+/* Thought bubble */
+
+.chair-thought-bubble {
+  position: relative;
+  width: min(250px, calc(100vw - 85px));
+  padding: 12px 15px;
+  border-radius: 14px 14px 4px 14px;
+
+  background: #E7F1F7;
+  color: #245B83;
+
+  border: 1px solid #D3E0E8;
+  box-shadow: 0 5px 16px rgba(36, 91, 131, 0.12);
+
+  font-family: Arial, Helvetica, sans-serif;
+  animation: chair-thought-appear 350ms ease-out;
+}
+
+/* Small heading */
+
+.thought-label {
+  display: block;
+  margin-bottom: 6px;
+
+  color: #2877B8;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.chair-thought-bubble p {
+  margin: 0;
+
+  color: #477B9A;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+/* Fact text */
+
+.chair-thought-bubble p {
+  margin: 0;
+
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+
+  color: var(--forest-dark);
+}
+
+/* Thought dots connecting bubble to chair */
+
+.thought-dot {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+
+  background: #E7F1F7;
+  border: 1px solid #D3E0E8;
+}
+
+.thought-dot-one {
+  width: 9px;
+  height: 9px;
+
+  right: 17px;
+  bottom: -11px;
+}
+
+.thought-dot-two {
+  width: 5px;
+  height: 5px;
+
+  right: 9px;
+  bottom: -19px;
+}
+
+/* Blue chair avatar */
+
+.thought-chair-avatar {
+  position: relative;
+
+  width: 43px;
+  height: 48px;
+
+  margin-right: 4px;
+  pointer-events: auto;
+}
+
+/* Chair back */
+
+.thought-chair-back {
+  position: absolute;
+
+  width: 31px;
+  height: 29px;
+
+  left: 6px;
+  top: 0;
+
+  border-radius: 11px 11px 5px 5px;
+
+  background: #315da8;
+
+  border: 2px solid #24498c;
+
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 5px;
+}
+
+/* Chair tufting */
+
+.thought-chair-tuft {
+  width: 4px;
+  height: 4px;
+
+  border-radius: 50%;
+
+  background: #8eabe0;
+}
+
+/* Chair seat */
+
+.thought-chair-seat {
+  position: absolute;
+
+  width: 39px;
+  height: 10px;
+
+  left: 2px;
+  top: 27px;
+
+  border-radius: 5px;
+
+  background: #4775c5;
+
+  border: 1px solid #24498c;
+}
+
+/* Chair legs */
+
+.thought-chair-leg {
+  position: absolute;
+
+  width: 4px;
+  height: 12px;
+
+  top: 35px;
+
+  border-radius: 2px;
+
+  background: #24498c;
+}
+
+.thought-chair-leg.left {
+  left: 9px;
+}
+
+.thought-chair-leg.right {
+  right: 9px;
+}
+
+/* Bubble animation */
+
+@keyframes chair-thought-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile sizing */
+
+@media (max-width: 480px) {
+  .chair-thought-container {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .chair-thought-bubble {
+    width: min(205px, calc(100vw - 75px));
+    padding: 9px 11px;
+  }
+
+  .chair-thought-bubble p {
+    font-size: 10px;
+  }
+
+  .thought-chair-avatar {
+    transform: scale(0.4);
+    transform-origin: bottom right;
+  }
+}
 `}</style>
 
         <div className="path-frame">
@@ -649,9 +899,22 @@ button {
 
           {/* PATHS */}
 
+          {pathwaysLoading && (
+              <p className="body" role="status">
+                Loading paths...
+              </p>
+          )}
+
+          {pathwaysError && (
+              <p className="body" role="alert">
+                We could not load the reflection paths. Please refresh the page
+                to try again.
+              </p>
+          )}
+
           <div className="card-grid">
 
-            {PATHS.map((path, index) => (
+            {!pathwaysLoading && paths.map((path, index) => (
                 <button
                     key={path.key}
                     type="button"
@@ -692,6 +955,47 @@ button {
             <span className="path-footer-brand">FACTOR OF TEN</span>
             <span className="path-footer-tagline">Know more. Ask more. Check sooner.</span>
           </footer>
+
+        </div>
+        {/* CHAIR THOUGHT BUBBLE */}
+
+        <div className="chair-thought-container">
+
+          {showChairThought && (
+              <div
+                  className="chair-thought-bubble"
+                  role="status"
+                  aria-live="polite"
+              >
+      <span className="thought-label">
+        A THOUGHT FROM THE CHAIR
+      </span>
+
+                <p>{PROSTATE_FACTS[factIndex]}</p>
+
+                {/* Small thought dots */}
+                <span className="thought-dot thought-dot-one" />
+                <span className="thought-dot thought-dot-two" />
+              </div>
+          )}
+
+          {/* BLUE CHAIR AVATAR */}
+          <div
+              className="thought-chair-avatar"
+              role="img"
+              aria-label="The blue chair"
+          >
+            <div className="thought-chair-back">
+              <span className="thought-chair-tuft" />
+              <span className="thought-chair-tuft" />
+              <span className="thought-chair-tuft" />
+            </div>
+
+            <div className="thought-chair-seat" />
+
+            <div className="thought-chair-leg left" />
+            <div className="thought-chair-leg right" />
+          </div>
 
         </div>
       </main>

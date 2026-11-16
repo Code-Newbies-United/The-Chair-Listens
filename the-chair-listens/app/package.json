@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "description": "",
-  "main": "jest.config.js",
   "directories": {
     "lib": "lib"
   },
@@ -11,7 +10,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "jest"
+    "test": "jest --config jest.config.cjs",
+    "test:watch": "jest --config jest.config.cjs --watch",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:rls": "node --env-file=.env.local scripts/test-rls.mjs"
   },
   "keywords": [],
   "author": "",
@@ -19,25 +23,31 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
+    "@upstash/redis": "^1.41.0",
+    "cookie": "^2.0.1",
     "formidable": "^3.5.4",
     "groq-sdk": "^1.6.0",
     "leaflet": "^1.9.4",
     "next": "^16.3.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.6",
-    "@babel/preset-env": "^8.0.6",
-    "@babel/preset-react": "^8.0.1",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "autoprefixer": "^10.5.5",
-    "babel-jest": "^30.5.2",
     "dotenv": "^18.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.0",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
     "postcss": "^8.5.28",
+    "prettier": "^3.9.9",
     "tailwindcss": "^4.3.3"
   }
 }

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
+import { useRequireSession } from "@/lib/session";
+import { useActiveLocationName } from "@/lib/useActiveLocation";
 
 /**
  * The Chair Listens — Prostate & Mental Health Knowledge Check Quiz
@@ -22,9 +24,10 @@ function shuffle(list) {
   return copy;
 }
 
-export default function QuizPage({ locationName = "Pretoria" }) {
+export default function QuizPage() {
   const router = useRouter();
-  const displayLocation = router.query.location || locationName;
+  const sessionReady = useRequireSession(); // redirects to / if no consent session
+  const displayLocation = useActiveLocationName();
 
   const [pool, setPool] = useState([]);
   const seenIds = useRef(new Set());
@@ -100,6 +103,8 @@ export default function QuizPage({ locationName = "Pretoria" }) {
       setIsFinished(true);
     }
   }
+
+  if (!sessionReady) return null;
 
   if (questionsLoading) {
     return (

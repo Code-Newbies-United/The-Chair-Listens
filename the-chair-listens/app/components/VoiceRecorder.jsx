@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { sessionHeaders } from '@/lib/session';
 
 export default function VoiceRecorder({ onTranscriptionComplete, disabled }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -85,6 +86,7 @@ export default function VoiceRecorder({ onTranscriptionComplete, disabled }) {
 
       const res = await fetch('/api/transcribe', {
         method: 'POST',
+        headers: sessionHeaders(),
         body: formData,
       });
 

@@ -1,81 +1,29 @@
-import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
+// pages/api/visitor-pins.js
+//
+// GET /api/visitor-pins : visitors per stop in the last 24 hours (aggregate
+// counts only), for the live map. Read-only: pins are written by the server
+// when someone consents (see lib/visitorPins.js).
+import { methodNotAllowed, sendError } from '@/lib/apiErrors';
+import { checkRateLimit } from '@/lib/apiGuard';
+import { recentVisitorsByCity } from '@/lib/visitorPins';
 
 export default async function handler(req, res) {
-  if (req.method === "POST") {
-    return handlePost(req, res);
-  }
-  if (req.method === "GET") {
-    return handleGet(req, res);
-  }
-  return res.status(405).json({ message: "Method not allowed" });
-}
-
-// Records a single visit: inserts a raw pin row, and atomically increments
-// that city's lifetime total in the same request.
-async function handlePost(req, res) {
-  const { city, lat, lng } = req.body;
-
-  if (!city) {
-    return res.status(400).json({ message: "Missing city" });
+  if (req.method !== 'GET') {
+    return methodNotAllowed(res, 'GET');
   }
 
-  const { error: pinError } = await supabase.from("visitor_pins").insert({
-    city,
-    lat: lat ?? null,
-    lng: lng ?? null,
-  });
+  if (!(await checkRateLimit(req, res, 'visitorPins'))) return;
 
-  if (pinError) {
-    return res.status(500).json({
-      error: "Connection failed",
-      message: "Failed to record visitor pin",
-    });
-  }
-
-  const { error: incrementError } = await supabase.rpc("increment_city_visit", {
-    p_city: city,
-    p_lat: lat ?? null,
-    p_lng: lng ?? null,
-  });
-
-  if (incrementError) {
-    return res.status(500).json({
-      error: "Connection failed",
-      message: "Failed to update lifetime totals",
-    });
-  }
-
-  res.status(200).json({ success: true });
-}
-
-// Returns pins grouped by city, counted within the last 24 hours, for the live map.
-async function handleGet(req, res) {
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-  const { data, error } = await supabase
-    .from("visitor_pins")
-    .select("city, lat, lng, created_at")
-    .gte("created_at", twentyFourHoursAgo)
-    .order("created_at", { ascending: true });
-
+  const { visitors, error } = await recentVisitorsByCity();
   if (error) {
-    return res.status(500).json({
-      error: "Connection failed",
-      message: "Failed to fetch visitor pins",
-    });
+    console.error('Failed to fetch visitor pins:', error);
+    return sendError(
+      res,
+      500,
+      'Connection failed',
+      'Failed to fetch visitor pins',
+    );
   }
 
-  // Group by city: count visits, and use the most recent row's coordinates
-  const grouped = {};
-  for (const row of data) {
-    if (!grouped[row.city]) {
-      grouped[row.city] = { location: row.city, visitor_count: 0, lat: row.lat, lng: row.lng };
-    }
-    grouped[row.city].visitor_count += 1;
-    // Keep updating lat/lng so the latest row in the window "wins"
-    grouped[row.city].lat = row.lat;
-    grouped[row.city].lng = row.lng;
-  }
-
-  res.status(200).json({ visitors: Object.values(grouped) });
+  return res.status(200).json({ visitors });
 }

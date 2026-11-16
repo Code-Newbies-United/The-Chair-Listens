@@ -1,6 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import TextResponse from "@/components/TextResponse";
 
+// The component uses next/router to send people to /emergency.
+jest.mock("next/router", () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}));
+
 describe("TextResponse", () => {
   it("renders the current value in the textarea", () => {
     render(<TextResponse value="hello" onChange={() => {}} placeholder="Type here" />);
@@ -18,9 +23,14 @@ describe("TextResponse", () => {
     expect(handleChange).toHaveBeenCalledWith("new text");
   });
 
-  it("does not render the mic button when speech is unsupported", () => {
+  it("still offers the mic button when browser speech is unsupported (falls back to server transcription)", () => {
     render(<TextResponse value="" onChange={() => {}} isSpeechSupported={false} />);
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speak your answer" })).toBeInTheDocument();
+  });
+
+  it("limits the answer to the server's maximum length", () => {
+    render(<TextResponse value="" onChange={() => {}} />);
+    expect(screen.getByLabelText("Your answer")).toHaveAttribute("maxlength", "4000");
   });
 
   it("renders the mic button when speech is supported", () => {

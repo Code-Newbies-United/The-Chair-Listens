@@ -1,19 +1,23 @@
-// Destination: pages/admin/questions.jsx
+// pages/admin/questions.jsx
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { requireAdminSSR } from "@/lib/requireAdminSSR";
+import { usePathways } from "@/lib/usePathways";
+import { MOODS, moodLabel } from "@/lib/moods";
 
 export const getServerSideProps = requireAdminSSR();
 
-const SCRIPTS = [
-    { key: "men_mental_health", label: "For Men" },
-    { key: "ally_support", label: "Ally & Support" },
-    { key: "fast_track_activations", label: "Today's Event" },
-];
-
 export default function Questions() {
     const [tab, setTab] = useState("reflection"); // "reflection" | "quiz"
-    const [activeScript, setActiveScript] = useState(SCRIPTS[0].key);
+    // Pathway tabs come from the database (FIX-16), including inactive ones,
+    // so questions can be prepared before a pathway goes live.
+    const { pathways, loading: pathwaysLoading, error: pathwaysError } =
+        usePathways({ admin: true });
+    const [selectedScript, setSelectedScript] = useState(null);
+    const activeScript =
+        selectedScript && pathways?.some((p) => p.key === selectedScript)
+            ? selectedScript
+            : pathways?.[0]?.key ?? null;
 
     async function handleLogout() {
         await fetch("/api/admin-logout", { method: "POST" });
@@ -57,7 +61,7 @@ export default function Questions() {
                     overflow-x: hidden;
                 }
 
-                button, a, input, textarea {
+                button, a, input, textarea, select {
                     font: inherit;
                 }
 
@@ -212,6 +216,15 @@ export default function Questions() {
                     cursor: pointer;
                 }
 
+                .admin-filter-label {
+                    margin: 0 0 8px 0;
+                    color: var(--sage);
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                }
+
                 .admin-muted {
                     color: var(--text-muted);
                     font-size: 13.5px;
@@ -256,8 +269,35 @@ export default function Questions() {
                 .admin-list-item-explanation {
                     color: var(--text-muted);
                     font-size: 12.5px;
-                    marginTop: 6px;
+                    margin-top: 6px;
                     line-height: 1.4;
+                }
+
+                .admin-mood-badge {
+                    display: inline-block;
+                    margin-left: 8px;
+                    padding: 2px 8px;
+                    border-radius: 100px;
+                    background: rgba(141, 207, 148, 0.35);
+                    color: var(--forest-dark);
+                    font-size: 9px;
+                    font-weight: 800;
+                    letter-spacing: 0.08em;
+                }
+
+                .admin-mood-badge-shared {
+                    background: rgba(82, 107, 97, 0.12);
+                    color: var(--text-muted);
+                }
+
+                .admin-mood-select {
+                    margin-top: 8px;
+                    padding: 6px 10px;
+                    border-radius: 10px;
+                    border: 1.5px solid rgba(82, 107, 97, 0.25);
+                    background: rgba(255, 255, 255, 0.9);
+                    color: var(--forest);
+                    font-size: 12px;
                 }
 
                 .admin-option-preview-list {
@@ -499,19 +539,26 @@ export default function Questions() {
 
                 {tab === "reflection" ? (
                     <>
+                        <p className="admin-filter-label">Pathway</p>
                         <div className="admin-script-row">
-                            {SCRIPTS.map((s) => (
+                            {(pathways || []).map((s) => (
                                 <button
                                     key={s.key}
                                     type="button"
-                                    onClick={() => setActiveScript(s.key)}
+                                    onClick={() => setSelectedScript(s.key)}
                                     className={activeScript === s.key ? "admin-script-pill-active" : "admin-script-pill"}
                                 >
-                                    {s.label}
+                                    {s.label}{s.active ? "" : " (inactive)"}
                                 </button>
                             ))}
                         </div>
-                        <ReflectionQuestions scriptKey={activeScript} />
+                        {pathwaysLoading && <p className="admin-muted">Loading pathways...</p>}
+                        {pathwaysError && (
+                            <p className="admin-muted" role="alert">
+                                Failed to load pathways. Refresh the page to try again.
+                            </p>
+                        )}
+                        {activeScript && <ReflectionQuestions scriptKey={activeScript} />}
                     </>
                 ) : (
                     <QuizQuestions />
@@ -537,14 +584,18 @@ function ReflectionQuestions({ scriptKey }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    // "all" = everything, "shared" = untagged only, otherwise a mood id
+    const [moodFilter, setMoodFilter] = useState("all");
+
     const [title, setTitle] = useState("");
     const [questionText, setQuestionText] = useState("");
     const [placeholder, setPlaceholder] = useState("");
+    const [mood, setMood] = useState(""); // "" = shown for every mood
     const [saving, setSaving] = useState(false);
 
     function load() {
         setLoading(true);
-        fetch(`/api/admin/questions?script=${scriptKey}`)
+        fetch(`/api/admin/questions?script=${encodeURIComponent(scriptKey)}`)
             .then((res) => res.json())
             .then((data) => setQuestions(data.questions || []))
             .catch((err) => {
@@ -556,6 +607,20 @@ function ReflectionQuestions({ scriptKey }) {
 
     useEffect(load, [scriptKey]);
 
+    const visible = questions.filter((q) =>
+        moodFilter === "all"
+            ? true
+            : moodFilter === "shared"
+              ? !q.mood
+              : q.mood === moodFilter
+    );
+
+    function pickFilter(value) {
+        setMoodFilter(value);
+        // New questions default to whatever the admin is looking at.
+        setMood(value === "all" || value === "shared" ? "" : value);
+    }
+
     async function handleAdd(e) {
         e.preventDefault();
         setError("");
@@ -563,6 +628,11 @@ function ReflectionQuestions({ scriptKey }) {
             setError("Question text is required.");
             return;
         }
+
+        // sort_order runs across the whole pathway (not just the filtered
+        // list), because students see shared and mood questions interleaved.
+        const nextOrder =
+            questions.reduce((max, q) => Math.max(max, q.sort_order ?? 0), -1) + 1;
 
         setSaving(true);
         try {
@@ -574,19 +644,39 @@ function ReflectionQuestions({ scriptKey }) {
                     title,
                     question_text: questionText,
                     placeholder,
-                    sort_order: questions.length,
+                    mood: mood || null,
+                    sort_order: nextOrder,
                 }),
             });
-            if (!res.ok) throw new Error("Failed to add question");
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || "Failed to add question");
+            }
             setTitle("");
             setQuestionText("");
             setPlaceholder("");
             load();
         } catch (err) {
             console.error(err);
-            setError("Failed to add question.");
+            setError(err.message || "Failed to add question.");
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function handleMoodChange(id, newMood) {
+        setError("");
+        try {
+            const res = await fetch(`/api/admin/questions?id=${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mood: newMood || null }),
+            });
+            if (!res.ok) throw new Error("Failed to update");
+            load();
+        } catch (err) {
+            console.error(err);
+            setError("Failed to change the mood for this question.");
         }
     }
 
@@ -602,19 +692,65 @@ function ReflectionQuestions({ scriptKey }) {
         }
     }
 
+    const filterOptions = [
+        { value: "all", label: "All" },
+        { value: "shared", label: "Every mood" },
+        ...MOODS.map((m) => ({ value: m.id, label: m.label })),
+    ];
+
     return (
         <div>
+            <p className="admin-filter-label">Show questions for</p>
+            <div className="admin-script-row">
+                {filterOptions.map((f) => (
+                    <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => pickFilter(f.value)}
+                        className={
+                            moodFilter === f.value
+                                ? "admin-script-pill-active"
+                                : "admin-script-pill"
+                        }
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+
             {loading ? (
                 <p className="admin-muted">Loading...</p>
-            ) : questions.length === 0 ? (
-                <p className="admin-muted">No questions yet for this category.</p>
+            ) : visible.length === 0 ? (
+                <p className="admin-muted">No questions here yet.</p>
             ) : (
                 <ul className="admin-list">
-                    {questions.map((q) => (
+                    {visible.map((q) => (
                         <li key={q.id} className="admin-list-item">
                             <div>
-                                <div className="admin-list-item-title">{q.title || "Untitled"}</div>
+                                <div className="admin-list-item-title">
+                                    {q.title || "Untitled"}
+                                    <span
+                                        className={`admin-mood-badge ${
+                                            q.mood ? "" : "admin-mood-badge-shared"
+                                        }`}
+                                    >
+                                        {q.mood ? moodLabel(q.mood) : "Every mood"}
+                                    </span>
+                                </div>
                                 <div className="admin-list-item-text">{q.question_text}</div>
+                                <select
+                                    className="admin-mood-select"
+                                    value={q.mood || ""}
+                                    onChange={(e) => handleMoodChange(q.id, e.target.value)}
+                                    aria-label="Show this question for"
+                                >
+                                    <option value="">Every mood</option>
+                                    {MOODS.map((m) => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <button
                                 type="button"
@@ -651,6 +787,19 @@ function ReflectionQuestions({ scriptKey }) {
                     onChange={(e) => setPlaceholder(e.target.value)}
                     className="admin-input"
                 />
+                <select
+                    value={mood}
+                    onChange={(e) => setMood(e.target.value)}
+                    className="admin-input"
+                    aria-label="Show this question for"
+                >
+                    <option value="">Show for every mood</option>
+                    {MOODS.map((m) => (
+                        <option key={m.id} value={m.id}>
+                            Only for: {m.label}
+                        </option>
+                    ))}
+                </select>
                 {error && <p className="admin-error">{error}</p>}
                 <button type="submit" disabled={saving} className="admin-add-btn">
                     {saving ? "Adding..." : "Add Question"}

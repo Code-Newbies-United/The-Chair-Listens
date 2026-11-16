@@ -1,27 +1,33 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAdmin } from "@/lib/requireAdmin";
+// pages/api/visit-totals.js
+//
+// GET /api/visit-totals : lifetime visits per stop. Admin only (dashboard).
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { requireAdmin } from '@/lib/requireAdmin';
+import { methodNotAllowed, sendError } from '@/lib/apiErrors';
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
+  if (req.method !== 'GET') {
+    return methodNotAllowed(res, 'GET');
   }
 
-  const admin = await requireAdmin(req, res);
-  if (!admin) {
-    return res.status(401).json({ message: "Unauthorized" });
+  if (!(await requireAdmin(req, res))) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Admin login required.' });
   }
 
   const { data, error } = await supabaseAdmin
-    .from("city_visit_totals")
-    .select("city, total_visits, first_seen, last_seen")
-    .order("total_visits", { ascending: false });
+    .from('city_visit_totals')
+    .select('city, total_visits, first_seen, last_seen')
+    .order('total_visits', { ascending: false });
 
   if (error) {
-    return res.status(500).json({
-      error: "Connection failed",
-      message: "Failed to fetch visit totals",
-    });
+    console.error('Failed to fetch visit totals:', error);
+    return sendError(
+      res,
+      500,
+      'Connection failed',
+      'Failed to fetch visit totals',
+    );
   }
 
-  res.status(200).json({ totals: data });
+  return res.status(200).json({ totals: data });
 }

@@ -1,15 +1,48 @@
-import Groq from "groq-sdk";
+// pages/api/session-reflection.js
+//
+// POST /api/session-reflection : one warm summary of a whole session.
+import Groq from 'groq-sdk';
+import { methodNotAllowed, badRequest } from '@/lib/apiErrors';
+import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
+import { parseResponseBody } from '@/lib/validators';
+import { resolvePathway } from '@/lib/pathwayGuard';
+
+// Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
+export const config = { api: { bodyParser: { sizeLimit: '256kb' } } };
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+const FALLBACK = {
+  overallReflection:
+    'Thank you for taking the time to pause and share your thoughts today.',
+  takeaways: [
+    'Your experiences and feelings are valid.',
+    'Taking time for self-reflection is an important step forward.',
+  ],
+};
+
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return methodNotAllowed(res, 'POST');
   }
 
-  const { script, answers } = req.body;
+  // Rate limit INSIDE the handler: per IP (shared wifi) and per session (one person).
+  const sessionId = getSessionIdFromHeader(req);
+  if (!(await checkRateLimit(req, res, 'sessionReflection', { sessionId })))
+    return;
+
+  // Validate before spending a paid API call.
+  const parsed = parseResponseBody(req.body);
+  if (!parsed.ok) {
+    return badRequest(res, parsed.issues);
+  }
+  const { script, answers } = parsed.data;
+
+  // The pathway must exist (FIX-16). Inactive is fine: see /api/groq.
+  const pathway = await resolvePathway(res, script, { includeInactive: true });
+  if (!pathway) return;
 
   const systemPrompt = `You are "The Chair Listens", an empathetic, grounded AI listener for a community initiative in South Africa.
 Analyze all provided participant answers and create a JSON object containing:
@@ -22,42 +55,38 @@ Your response MUST be a valid JSON object matching this schema:
   "takeaways": ["string", "string"]
 }`;
 
+  // Label and description give the model context for ANY pathway, including
+  // ones added after this code was deployed.
   const userPrompt = `
-Pathway: ${script || "men_mental_health"}
+Pathway: ${pathway.label}${pathway.description ? ` (${pathway.description})` : ''}
 Session Answers:
-${JSON.stringify(answers || [], null, 2)}
+${JSON.stringify(answers, null, 2)}
 `;
 
   try {
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
       ],
-      model: "openai/gpt-oss-120b",
+      model: 'openai/gpt-oss-120b',
       temperature: 0.7,
       max_tokens: 400,
-      response_format: { type: "json_object" },
+      response_format: { type: 'json_object' },
     });
 
-    const content = completion.choices[0]?.message?.content || "{}";
+    const content = completion.choices[0]?.message?.content || '{}';
     const parsedData = JSON.parse(content);
 
     return res.status(200).json({
-      overallReflection: parsedData.overallReflection || "Thank you for taking the time to pause and share your thoughts today.",
-      takeaways: parsedData.takeaways || [
-        "Your experiences and feelings are valid.",
-        "Taking time for self-reflection is an important step forward.",
-      ],
+      overallReflection:
+        parsedData.overallReflection || FALLBACK.overallReflection,
+      takeaways: parsedData.takeaways || FALLBACK.takeaways,
     });
   } catch (error) {
-    console.error("Session Reflection API Error:", error);
-    return res.status(500).json({
-      overallReflection: "Thank you for taking the time to pause and share your thoughts today.",
-      takeaways: [
-        "Your experiences and feelings are valid.",
-        "Taking time for self-reflection is an important step forward.",
-      ],
-    });
+    // Don't log the answers; they are sensitive.
+    console.error('Session Reflection API Error:', error?.message || error);
+    // The reflection page can still show something kind if the AI is down.
+    return res.status(500).json(FALLBACK);
   }
 }
