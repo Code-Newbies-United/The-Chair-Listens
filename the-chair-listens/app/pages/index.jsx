@@ -1,11 +1,9 @@
+// Destination: pages/index.jsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import ChairJourneyMap from "@/components/ChairJourneyMap";
 import AboutFactorOfTen from "@/components/AboutFactorOfTen";
 import AdminGestureLogo from "@/components/AdminGestureLogo";
-import { CONSENT_VERSION } from "@/lib/consentVersion";
-import { setSessionId } from "@/lib/session";
-import { useActiveLocationName } from "@/lib/useActiveLocation";
 
 const POPIA_TERMS_URL = "/consent-terms";
 
@@ -92,13 +90,11 @@ function FourPointStar({ className }) {
   );
 }
 
-export default function Home() {
-
+export default function Home({ locationName = "Pretoria" }) {
   const router = useRouter();
 
   const [consented, setConsented] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [consentError, setConsentError] = useState(null);
+  const [detectedLocation, setDetectedLocation] = useState(null);
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [messagesPaused, setMessagesPaused] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -143,57 +139,73 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [messagesPaused, participantMessages.length]);
 
-  // The chair's stop is resolved by the server; the visitor's own GPS is never
-  // read and nothing goes to third-party geocoders (FIX-07).
-  const displayLocation = useActiveLocationName();
+  // --------------------------------------------------
+  // Detect visitor location
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+
+          try {
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
+            );
+
+            const data = await res.json();
+
+            const place =
+                data?.address?.city ||
+                data?.address?.town ||
+                data?.address?.village ||
+                data?.address?.suburb ||
+                null;
+
+            if (place) {
+              setDetectedLocation(place);
+            }
+          } catch (err) {
+            console.error("Reverse geocoding failed:", err);
+          }
+        },
+        (err) => {
+          console.error("Geolocation unavailable:", err);
+        }
+    );
+  }, []);
+
+  const displayLocation = detectedLocation || locationName;
 
   // --------------------------------------------------
   // Continue
   // --------------------------------------------------
 
   async function handleContinue() {
-    if (!consented || submitting) return;
-
-    setSubmitting(true);
-    setConsentError(null);
+    if (!consented) return;
 
     try {
-      // The server records the consent and returns an opaque session ID.
-      const res = await fetch("/api/consent", {
+      await fetch("/api/consent", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consent_version: CONSENT_VERSION }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          location_id: displayLocation,
+        }),
       });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !data.sessionId) {
-        setConsentError(
-          res.status === 409
-            ? "The privacy terms have been updated. Please refresh this page and read them again."
-            : res.status === 503
-              ? "The chair isn't set up for a stop right now. Please try again later."
-              : "We couldn't record your consent. Please check your connection and try again."
-        );
-        setSubmitting(false);
-        return;
-      }
-
-      if (!setSessionId(data.sessionId)) {
-        setConsentError(
-          "Your browser is blocking the storage this page needs. If you're in private browsing, please switch to a normal tab and try again."
-        );
-        setSubmitting(false);
-        return;
-      }
-
-      router.push("/check-in");
     } catch (error) {
       console.error("Consent request failed:", error);
-      setConsentError(
-        "We couldn't record your consent. Please check your connection and try again."
-      );
-      setSubmitting(false);
     }
+
+    router.push({
+      pathname: "/check-in",
+      query: {
+        location: displayLocation,
+      },
+    });
   }
 
   return (
@@ -400,7 +412,17 @@ export default function Home() {
             flex-basis: 34px;
           }
 
-          .location-pill-dot {
+          .header-actions {
+            gap: 5px;
+          }
+
+          .location-pill {
+            padding: 8px 12px;
+            font-size: 11px;
+          }
+        }
+
+        .location-pill-dot {
           width: 7px;
           height: 7px;
 
@@ -1043,18 +1065,6 @@ export default function Home() {
 
           box-shadow:
             0 14px 35px rgba(17, 45, 37, 0.28);
-        }
-
-        .consent-message {
-          margin: 12px 0 0;
-          text-align: center;
-          font-size: 0.9rem;
-          line-height: 1.5;
-          color: #c9d2ec;
-        }
-
-        .consent-message-error {
-          color: #ffb4b4;
         }
 
         .consent {
@@ -2068,22 +2078,10 @@ export default function Home() {
                 type="button"
                 className="continue-button"
                 onClick={handleContinue}
-                disabled={!consented || submitting}
+                disabled={!consented}
             >
-              {submitting ? "Please wait..." : "Take a seat"}
+              Take a seat
             </button>
-
-            {consentError && (
-              <p role="alert" className="consent-message consent-message-error">
-                {consentError}
-              </p>
-            )}
-            {!consentError && router.query.consent === "required" && (
-              <p role="status" className="consent-message">
-                Please confirm your consent to continue.
-              </p>
-            )}
-
           </section>
 
           {/* ================================================
