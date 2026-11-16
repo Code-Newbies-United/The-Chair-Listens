@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+// Destination: pages/thank-you.jsx
+import { useRouter } from "next/router";
 import { LINKS } from "@/lib/campaignLinks";
-import { clearAnswers } from "@/lib/session";
-import { useActiveLocationName } from "@/lib/useActiveLocation";
 
 // Add real partner Logo files to /public/logos/ and update these paths before launch.
 const PARTNERS = [
@@ -29,12 +28,8 @@ const PARTNERS = [
 ];
 
 export default function ThankYou() {
-    const displayLocation = useActiveLocationName();
-
-    // FIX-08: answers only live in sessionStorage; wipe them at the end of the flow.
-    useEffect(() => {
-        clearAnswers();
-    }, []);
+    const router = useRouter();
+    const displayLocation = router.query.location || "Pretoria";
 
     function handleDone() {
         // A normal browser tab usually cannot be closed by script; return to the start instead.

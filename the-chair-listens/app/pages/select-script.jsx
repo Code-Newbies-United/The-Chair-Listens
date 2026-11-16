@@ -1,8 +1,5 @@
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
-import { useRequireSession } from "@/lib/session";
-import { useActiveLocationName } from "@/lib/useActiveLocation";
-import { usePathways } from "@/lib/usePathways";
 
 /**
  * The Chair Listens — Select Your Path
@@ -11,6 +8,33 @@ import { usePathways } from "@/lib/usePathways";
  * as the rest of the flow.
  */
 
+const PATHS = [
+  {
+    key: "men_mental_health",
+    label: "For Men",
+    description: "A few quiet questions, just for you.",
+    type: "reflection",
+  },
+  {
+    key: "ally_support",
+    label: "Ally & Support",
+    description: "For anyone supporting a man in their life.",
+    type: "reflection",
+  },
+  {
+    key: "fast_track_activations",
+    label: "Today's Event",
+    description: "Quick reflections made for this activation.",
+    type: "reflection",
+  },
+  {
+    key: "quiz",
+    label: "Knowledge Check",
+    description:
+        "Test what you know about prostate and mental health.",
+    type: "quiz",
+  },
+];
 const PROSTATE_FACTS = [
   "Prostate cancer can develop without noticeable symptoms in its early stages.",
 
@@ -24,28 +48,10 @@ const PROSTATE_FACTS = [
 
   "You do not have to wait for symptoms to start a conversation about prostate health.",
 ];
-// The reflection pathways come from the database (FIX-16, /api/pathways).
-// The quiz is not a pathway, so its card stays here and is shown last.
-const QUIZ_PATH = {
-  key: "quiz",
-  label: "Knowledge Check",
-  description: "Test what you know about prostate and mental health.",
-  type: "quiz",
-};
-
-export default function SelectScript() {
+export default function SelectScript({
+                                       locationName = "Pretoria",
+                                     }) {
   const router = useRouter();
-  const sessionReady = useRequireSession(); // redirects to / if no consent session
-  const displayLocation = useActiveLocationName();
-  const { pathways, loading: pathwaysLoading, error: pathwaysError } =
-      usePathways();
-
-  const paths = [
-    ...(pathways || []).map((p) => ({ ...p, type: "reflection" })),
-    QUIZ_PATH,
-  ];
-
-  // Rotating prostate-health facts (client-test): show for 10s, hide for 15s.
   const [showChairThought, setShowChairThought] = useState(true);
   const [factIndex, setFactIndex] = useState(0);
 
@@ -54,11 +60,15 @@ export default function SelectScript() {
     let showTimer;
 
     function startCycle() {
+      // Show the thought for 10 seconds
       hideTimer = setTimeout(() => {
         setShowChairThought(false);
 
+        // Keep it hidden for 15 seconds
         showTimer = setTimeout(() => {
-          setFactIndex((current) => (current + 1) % PROSTATE_FACTS.length);
+          setFactIndex((current) =>
+              (current + 1) % PROSTATE_FACTS.length
+          );
 
           setShowChairThought(true);
           startCycle();
@@ -74,20 +84,29 @@ export default function SelectScript() {
     };
   }, []);
 
+  const { location } = router.query;
+
+  const displayLocation =
+      location || locationName;
+
   function handleSelect(path) {
     if (path.type === "quiz") {
-      router.push("/quiz");
+      router.push({
+        pathname: "/quiz",
+        query: {
+          location: displayLocation,
+        },
+      });
     } else {
       router.push({
         pathname: "/questions",
         query: {
           script: path.key,
+          location: displayLocation,
         },
       });
     }
   }
-
-  if (!sessionReady) return null;
 
   return (
       <main className="path-page">
@@ -899,22 +918,9 @@ button {
 
           {/* PATHS */}
 
-          {pathwaysLoading && (
-              <p className="body" role="status">
-                Loading paths...
-              </p>
-          )}
-
-          {pathwaysError && (
-              <p className="body" role="alert">
-                We could not load the reflection paths. Please refresh the page
-                to try again.
-              </p>
-          )}
-
           <div className="card-grid">
 
-            {!pathwaysLoading && paths.map((path, index) => (
+            {PATHS.map((path, index) => (
                 <button
                     key={path.key}
                     type="button"

@@ -3,8 +3,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { useRequireSession } from "@/lib/session";
-import { useActiveLocationName } from "@/lib/useActiveLocation";
 
 const MOOD_OPTIONS = [
   {
@@ -72,8 +70,6 @@ function BlueCancerRibbon({ size = 42 }) {
 
 export default function CheckInPage() {
   const router = useRouter();
-  const sessionReady = useRequireSession(); // redirects to / if no consent session
-  const displayLocation = useActiveLocationName();
 
   const [selectedMood, setSelectedMood] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -88,10 +84,13 @@ export default function CheckInPage() {
   }
 
   function handleProceedToScripts() {
-    router.push("/select-script");
+    router.push({
+      pathname: "/select-script",
+      query: {
+        location: router.query.location,
+      },
+    });
   }
-
-  if (!sessionReady) return null;
 
   return (
     <main className="checkin-page">
@@ -1134,7 +1133,7 @@ button {
 
           <div className="location-pill">
             <span className="location-pill-dot" />
-            {displayLocation}
+            {router.query.location || "Your location"}
           </div>
         </header>
 

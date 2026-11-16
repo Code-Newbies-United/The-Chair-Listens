@@ -1,17 +1,14 @@
-// pages/questions.jsx
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { checkForSafetyTrigger } from "@/lib/safety.js";
-import {
-  useRequireSession,
-  getSessionId,
-  clearSessionId,
-  sessionHeaders,
-  saveAnswers,
-} from "@/lib/session";
-import { useActiveLocationName } from "@/lib/useActiveLocation";
+import { checkForSafetyTrigger } from "@/lib/safety";
 import QuestionCard from "@/components/QuestionCard";
 import TextResponse from "@/components/TextResponse";
+
+const SCRIPT_TITLES = {
+  men_mental_health: "For Men",
+  ally_support: "Ally & Support System",
+  fast_track_activations: "Today's Event",
+};
 
 const CHAIR_BACKGROUND_STYLE = {
   background:
@@ -19,9 +16,8 @@ const CHAIR_BACKGROUND_STYLE = {
   backgroundColor: "#2D5046",
 };
 
-export default function QuestionsPage() {
+export default function QuestionsPage({ locationName = "Pretoria" }) {
   const router = useRouter();
-  const sessionReady = useRequireSession(); // redirects to / if no consent session
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -30,23 +26,20 @@ export default function QuestionsPage() {
   const [reflection, setReflection] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingSession, setSavingSession] = useState(false);
-  const [saveError, setSaveError] = useState("");
   const [reflectionLoading, setReflectionLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  // The pathway's title comes back with the questions (FIX-16).
-  const [pathwayLabel, setPathwayLabel] = useState("");
 
   const lastScriptKeyRef = useRef(null);
 
-  // No silent default pathway: with no ?script=, or one the server rejects,
-  // the visitor is sent back to choose one.
   const script =
-      typeof router.query.script === "string" && router.query.script
+      typeof router.query.script === "string" && SCRIPT_TITLES[router.query.script]
           ? router.query.script
-          : null;
+          : "men_mental_health";
 
-  // The chair's stop is decided by the server, not the URL (FIX-07).
-  const location = useActiveLocationName();
+  const location =
+      typeof router.query.location === "string"
+          ? router.query.location
+          : locationName;
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
@@ -58,41 +51,19 @@ export default function QuestionsPage() {
   useEffect(() => {
     if (!router.isReady) return;
 
-    if (!script) {
-      router.replace("/select-script");
-      return;
-    }
-
     const fetchQuestions = async () => {
-      let redirecting = false;
       try {
         setLoading(true);
 
-        // The mood chosen on the check-in page. It is sent only on this API
-        // call, never put in the page URL (same rule as FIX-08).
-        const mood =
-            typeof window !== "undefined"
-                ? sessionStorage.getItem("chair_mood")
-                : null;
-
         const response = await fetch(
-            `/api/questions?script=${encodeURIComponent(script)}` +
-            (mood ? `&mood=${encodeURIComponent(mood)}` : "")
+            `/api/questions?script=${encodeURIComponent(script)}`
         );
-
-        // 400 = not an active pathway (made up, or switched off).
-        if (response.status === 400) {
-          redirecting = true;
-          router.replace("/select-script");
-          return;
-        }
 
         if (!response.ok) {
           throw new Error("Failed to fetch questions");
         }
 
         const data = await response.json();
-        setPathwayLabel(data.pathway?.label || "");
 
         const formattedQuestions = Array.isArray(data.questions)
             ? data.questions.map((item) => ({
@@ -111,15 +82,11 @@ export default function QuestionsPage() {
         console.error("Error loading questions:", error);
         setQuestions([]);
       } finally {
-        // Keep the loading screen up while redirecting, so nothing flashes.
-        if (!redirecting) setLoading(false);
+        setLoading(false);
       }
     };
 
     fetchQuestions();
-    // `router` is left out on purpose: it changes identity on every route
-    // update, which would refetch the questions. Only isReady and script matter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady, script]);
 
 
@@ -199,7 +166,6 @@ export default function QuestionsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...sessionHeaders(),
         },
         body: JSON.stringify({
           script,
@@ -234,50 +200,58 @@ export default function QuestionsPage() {
   const finishSession = async (finalAnswers) => {
     if (savingSession) return;
 
-    setSavingSession(true);
-    setSaveError("");
-
     try {
-      // Save the answers. The server checks the consent session (FIX-04).
-      const res = await fetch("/api/responses", {
+      setSavingSession(true);
+
+      
+      await fetch("/api/responses", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...sessionHeaders() },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           script,
+          location,
           answers: finalAnswers,
-          session_id: getSessionId(),
         }),
       });
 
-      // 403 = no valid consent for this session (missing or expired):
-      // send the person back to give consent again.
-      if (res.status === 403) {
-        clearSessionId();
-        router.replace("/?consent=required");
-        return;
+      
+      let summaryData = null;
+      try {
+        const summaryRes = await fetch("/api/session-reflection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ script, answers: finalAnswers }),
+        });
+
+        if (summaryRes.ok) {
+          summaryData = await summaryRes.json();
+        }
+      } catch (sumErr) {
+        console.error("Session summary generation error:", sumErr);
       }
 
-      // Don't say thank you if nothing was saved (FIX-10): keep the answers on
-      // screen and let the person try again.
-      if (!res.ok) {
-        setSaveError(
-          res.status === 429
-            ? "Too many attempts. Please wait a moment and try again."
-            : "We couldn't save your reflection just yet. Please check your connection and try again."
-        );
-        setSavingSession(false);
-        return;
+      const encodedData = encodeURIComponent(
+          JSON.stringify(finalAnswers)
+      );
+
+      const queryParams = {
+        script: encodeURIComponent(script),
+        data: encodedData,
+        location: encodeURIComponent(location),
+      };
+
+      if (summaryData) {
+        queryParams.summary = encodeURIComponent(JSON.stringify(summaryData));
       }
 
-      // Answers travel in sessionStorage, never in the URL (FIX-08).
-      saveAnswers(finalAnswers);
-      await router.push(`/responses?script=${encodeURIComponent(script)}`);
+      const queryString = new URLSearchParams(queryParams).toString();
+      await router.push(`/responses?${queryString}`);
     } catch (error) {
       console.error("Unable to save responses:", error);
-      setSaveError(
-        "We couldn't save your reflection just yet. Please check your connection and try again."
-      );
       setSavingSession(false);
+      alert("We couldn't save your responses just yet. Please try again.");
     }
   };
 
@@ -325,7 +299,9 @@ export default function QuestionsPage() {
       return;
     }
 
-    router.push("/select-script");
+    router.push(
+        `/select-script?location=${encodeURIComponent(location)}`
+    );
   };
 
   useEffect(() => {
@@ -339,8 +315,6 @@ export default function QuestionsPage() {
       }
     };
   }, []);
-
-  if (!sessionReady) return null;
 
   if (loading) {
     return (
@@ -458,7 +432,11 @@ export default function QuestionsPage() {
 
             <button
                 type="button"
-                onClick={() => router.push("/select-script")}
+                onClick={() =>
+                    router.push(
+                        `/select-script?location=${encodeURIComponent(location)}`
+                    )
+                }
             >
               Choose another path
             </button>
@@ -555,7 +533,7 @@ export default function QuestionsPage() {
             <div className="question-inner">
               <div className="intro">
               <span className="eyebrow">
-                {pathwayLabel || "Reflection"}
+                {SCRIPT_TITLES[script] || "Reflection"}
               </span>
 
                 <h1>
@@ -655,11 +633,6 @@ export default function QuestionsPage() {
               </div>
 
               <div className="navigation-row">
-                {saveError && (
-                  <p role="alert" className="save-error">
-                    {saveError}
-                  </p>
-                )}
                 <button
                     type="button"
                     className="next-button"
@@ -686,14 +659,6 @@ export default function QuestionsPage() {
         </div>
 
         <style jsx>{`
-        .save-error {
-          margin: 0 0 12px;
-          text-align: center;
-          font-size: 14px;
-          line-height: 1.5;
-          color: #ffb4b4;
-        }
-
         .questions-page {
           min-height: 100vh;
           padding: 26px 20px 42px;

@@ -2,23 +2,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { moderateMessage } from "@/lib/messageModeration";
-import { useRequireSession, loadAnswers, sessionHeaders } from "@/lib/session";
-import { useActiveLocationName } from "@/lib/useActiveLocation";
 
-const FALLBACK_SUMMARY = {
-  overallReflection:
-    "Thank you for taking the time to share your perspective today.",
-  takeaways: [
-    "Acknowledging your journey is an important step forward.",
-    "Your voice contributes meaningfully to our collective healing.",
-  ],
-};
-
-export default function ResponsesPage() {
+export default function ResponsesPage({ locationName = "Pretoria" }) {
   const router = useRouter();
-  const sessionReady = useRequireSession(); // redirects to / if no consent session
-  const { script } = router.query;
-  const displayLocation = useActiveLocationName();
+  const { script, data } = router.query;
+  const displayLocation = router.query.location || locationName;
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,45 +19,50 @@ export default function ResponsesPage() {
   const [moderation, setModeration] = useState(null);
   const [nudgedText, setNudgedText] = useState("");
 
-  // No silent default pathway (FIX-16): without one, show the fallback summary.
-  const currentScript = typeof script === "string" && script ? script : null;
+  const currentScript = script || "men_mental_health";
 
   useEffect(() => {
-    if (!router.isReady || !sessionReady) return;
+    if (!router.isReady) return;
 
     async function fetchSessionSummary() {
-      // Answers are kept in sessionStorage, never in the URL (FIX-08).
-      const answers = loadAnswers();
-
-      if (answers.length === 0 || !currentScript) {
-        setSummary(FALLBACK_SUMMARY);
-        setLoading(false);
-        return;
+      let parsedAnswers = [];
+      if (data) {
+        try {
+          parsedAnswers = JSON.parse(decodeURIComponent(data));
+        } catch (e) {
+          console.error("Failed to parse answers", e);
+        }
       }
 
       try {
         const res = await fetch("/api/session-reflection", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...sessionHeaders() },
-          body: JSON.stringify({ script: currentScript, answers }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            script: currentScript,
+            answers: parsedAnswers,
+          }),
         });
 
         const result = await res.json();
-        setSummary(
-          result?.overallReflection && Array.isArray(result?.takeaways)
-            ? result
-            : FALLBACK_SUMMARY
-        );
+        setSummary(result);
       } catch (err) {
         console.error("Error fetching summary:", err);
-        setSummary(FALLBACK_SUMMARY);
+        setSummary({
+          overallReflection:
+              "Thank you for taking the time to share your perspective today.",
+          takeaways: [
+            "Acknowledging your journey is an important step forward.",
+            "Your voice contributes meaningfully to our collective healing.",
+          ],
+        });
       } finally {
         setLoading(false);
       }
     }
 
     fetchSessionSummary();
-  }, [router.isReady, sessionReady, currentScript]);
+  }, [router.isReady, script, data]);
 
   const handleMessageSubmit = async (e) => {
     e.preventDefault();
@@ -97,7 +90,7 @@ export default function ResponsesPage() {
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...sessionHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: message.trim() }),
       });
 
@@ -110,7 +103,7 @@ export default function ResponsesPage() {
           return;
         }
 
-        throw new Error(errData.message || errData.error || "Failed to send message");
+        throw new Error(errData.error || "Failed to send message");
       }
 
       setSubmitStatus("success");
@@ -123,8 +116,6 @@ export default function ResponsesPage() {
       setIsSubmitting(false);
     }
   };
-
-  if (!sessionReady) return null;
 
   return (
       <main className="responses-page">
