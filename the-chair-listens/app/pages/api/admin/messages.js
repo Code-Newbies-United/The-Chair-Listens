@@ -4,18 +4,18 @@
 //   GET    /api/admin/messages          -> every message, newest first
 //   DELETE /api/admin/messages?id=<uuid> -> permanently delete one message
 //
-// Admin session required (signed cookie). Once a message is deleted it is gone
+// Admin session required (Supabase admin login). Once a message is deleted it is gone
 // from the public list immediately: /api/messages reads straight from the table.
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { verifyAdminSession } from '@/lib/adminsession';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { methodNotAllowed, sendError } from '@/lib/apiErrors';
 import { isUuid } from '@/lib/validators';
 
 const MAX_MESSAGES_FOR_ADMIN = 200;
 
 export default async function handler(req, res) {
-  if (!verifyAdminSession(req)) {
-    return sendError(res, 401, 'Unauthorized', 'Admin login required.');
+  if (!(await requireAdmin(req, res))) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Admin login required.' });
   }
 
   if (req.method === 'GET') {

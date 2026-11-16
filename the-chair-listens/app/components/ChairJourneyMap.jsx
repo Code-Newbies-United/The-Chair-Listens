@@ -64,6 +64,15 @@ export default function ChairJourneyMap() {
             });
     }, []);
 
+    useEffect(() => {
+        fetch("/api/visitor-pins")
+            .then((res) => res.json())
+            .then((data) => setVisitors(data.visitors || []))
+            .catch((err) => {
+                console.error("Failed to load recent visitors:", err);
+            });
+    }, []);
+
     const activeLocation = locations.find((loc) => loc.active);
     const pastCount = locations.filter((loc) => !loc.active).length;
 
@@ -146,7 +155,7 @@ const styles = {
     },
     statusText: {
         fontSize: "13.5px",
-        color: "#F5F6FA",
+        color: "#7E88AC",
     },
     statusTextMuted: {
         fontSize: "13.5px",

@@ -54,7 +54,7 @@ export default function QuestionsPage() {
   const progress =
       totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
-  // 1. Fetch Questions from API
+  
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -122,7 +122,7 @@ export default function QuestionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady, script]);
 
-  // Reset state when switching scripts
+
   useEffect(() => {
     if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== script) {
       setCurrentIndex(0);
@@ -133,7 +133,7 @@ export default function QuestionsPage() {
     lastScriptKeyRef.current = script;
   }, [script]);
 
-  // Speech Synthesis Controls for AI Reflection
+ 
   const speakText = (text) => {
     if (typeof window === "undefined" || !text) return;
 
@@ -187,7 +187,6 @@ export default function QuestionsPage() {
     return true;
   };
 
-  // 2. Fetch Single Question AI Reflection via /api/groq
   const handleGetReflection = async () => {
     if (!currentText.trim() || !currentQuestion) return;
 
@@ -232,7 +231,6 @@ export default function QuestionsPage() {
     }
   };
 
-  // 3. Complete Session: Save to /api/responses & Fetch /api/session-reflection
   const finishSession = async (finalAnswers) => {
     if (savingSession) return;
 
@@ -561,8 +559,8 @@ export default function QuestionsPage() {
               </span>
 
                 <h1>
-                  Take a moment.
-                  <span className="chair-script">Tell the Chair.</span>
+                  Take a moment
+                  <span className="chair-script">Tell the Chair</span>
                 </h1>
 
                 <p>
@@ -587,13 +585,14 @@ export default function QuestionsPage() {
                 </div>
               </div>
 
-              <div className="content-card">
+              <div className={`content-card ${reflection && !reflectionLoading ? "content-card-scrollable" : ""}`}>
                 <QuestionCard
                     category={currentQuestion.category}
                     question={currentQuestion.question}
                 />
 
-                <TextResponse
+                  <TextResponse
+                    key={currentIndex}
                     value={currentText}
                     onChange={setCurrentText}
                     placeholder={currentQuestion.placeholder}
@@ -800,7 +799,7 @@ export default function QuestionsPage() {
         .intro {
           position: relative;
           z-index: 2;
-          max-width: 540px;
+          max-width: 500px;
           margin: 0 auto;
           text-align: center;
         }
@@ -810,7 +809,7 @@ export default function QuestionsPage() {
           margin-bottom: 8px;
           color: #bc9553;
           font-family: "Pinyon Script", cursive;
-          font-size: 31px;
+          font-size: 40px;
           line-height: 1;
         }
 
@@ -827,7 +826,7 @@ export default function QuestionsPage() {
           margin-top: 5px;
           color: #2d5046;
           font-family: "Pinyon Script", cursive;
-          font-size: 1.18em;
+          font-size: 0.85em;
           font-weight: 400;
           letter-spacing: 0;
         }
@@ -885,6 +884,19 @@ export default function QuestionsPage() {
           border-radius: 21px;
           background: rgba(251, 250, 245, 0.8);
           box-shadow: 0 12px 30px rgba(17, 45, 37, 0.08);
+        }
+        
+        .content-card-scrollable::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .content-card-scrollable::-webkit-scrollbar-thumb {
+            background: #8dcf94;
+            border-radius: 999px;
+        }
+        
+        .content-card-scrollable::-webkit-scrollbar-thumb:hover {
+            background: #2d5046;
         }
 
         .action-row {
@@ -1071,7 +1083,7 @@ export default function QuestionsPage() {
           font-size: 11px;
         }
 
-        @media (max-width: 600px) {
+                @media (max-width: 600px) {
           .questions-page {
             padding: 16px 12px 28px;
           }
@@ -1089,12 +1101,29 @@ export default function QuestionsPage() {
             font-size: 34px;
           }
 
+          .intro h1 .chair-script {
+            font-size: 0.85em;
+          }
+
           .intro p {
             font-size: 14px;
           }
 
+          .action-row {
+            margin-top: 24px;
+          }
+
+          .reflection-button {
+            width: 100%;
+          }
+
+          .reflection-card {
+            margin-top: 28px;
+          }
+
           .navigation-row {
             justify-content: stretch;
+            margin-top: 28px;
           }
 
           .next-button {

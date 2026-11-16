@@ -1,3 +1,4 @@
+//pages/admin/messages
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { requireAdminSSR } from "@/lib/requireAdminSSR";

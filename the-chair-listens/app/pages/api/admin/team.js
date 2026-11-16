@@ -1,4 +1,3 @@
-//team.js
 import { requireAdmin } from "@/lib/requireAdmin";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hasAdminInviteFlag } from "@/lib/adminInvite";

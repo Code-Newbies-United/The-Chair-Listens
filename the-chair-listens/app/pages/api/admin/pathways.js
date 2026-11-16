@@ -9,7 +9,7 @@
 // There is no DELETE on purpose: questions and saved responses point at a
 // pathway key, so a pathway is switched off (active = false) instead.
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
-import { verifyAdminSession } from "@/lib/adminsession";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getAllPathways, clearPathwaysCache } from "@/lib/pathways";
 import { toAdmin } from "@/lib/pathwayShape";
 import { parseScriptKey } from "@/lib/validators";
@@ -23,8 +23,8 @@ function cleanText(value) {
 }
 
 export default async function handler(req, res) {
-    // Verify HMAC-signed session
-    if (!verifyAdminSession(req)) {
+    // Verify the Supabase admin session
+    if (!(await requireAdmin(req, res))) {
         return res.status(401).json({ message: "Unauthorized" });
     }
 

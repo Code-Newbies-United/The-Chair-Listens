@@ -1,4 +1,3 @@
-//set-admin-active.js
 import { requireAdmin } from "@/lib/requireAdmin";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 

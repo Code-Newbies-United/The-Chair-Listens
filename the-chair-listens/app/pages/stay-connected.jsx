@@ -29,6 +29,15 @@ function FacebookIcon() {
     );
 }
 
+function EmailIcon() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="3" />
+            <path d="m4 7.5 8 6 8-6" />
+        </svg>
+    );
+}
+
 export default function StayConnected() {
     const router = useRouter();
     const displayLocation = router.query.location || "Pretoria";
@@ -108,6 +117,51 @@ export default function StayConnected() {
         .stay-icon-row { display:flex; justify-content:center; gap:13px; margin:0 0 24px; }
         .stay-social-icon { display:flex; align-items:center; justify-content:center; width:49px; height:49px; border:1px solid rgba(45,80,70,.22); border-radius:50%; background:rgba(141,207,148,.18); color:var(--stay-forest); text-decoration:none; transition:transform 160ms ease, background 160ms ease, border-color 160ms ease; }
         .stay-social-icon:hover { transform:translateY(-3px); background:rgba(141,207,148,.4); border-color:var(--stay-mint); }
+
+        /* Tooltips */
+        .stay-social-icon { position: relative; }
+        .stay-social-icon::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          bottom: calc(100% + 10px);
+          left: 50%;
+          transform: translate(-50%, 4px);
+          padding: 7px 11px;
+          border-radius: 8px;
+          background: var(--stay-dark);
+          color: var(--stay-white);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 150ms ease, transform 150ms ease;
+          box-shadow: 0 6px 16px rgba(17, 45, 37, 0.25);
+          z-index: 10;
+        }
+        .stay-social-icon::before {
+          content: "";
+          position: absolute;
+          bottom: calc(100% + 4px);
+          left: 50%;
+          transform: translate(-50%, 4px);
+          border: 6px solid transparent;
+          border-top-color: var(--stay-dark);
+          border-bottom: 0;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 150ms ease, transform 150ms ease;
+          z-index: 10;
+        }
+        .stay-social-icon:hover::after,
+        .stay-social-icon:focus-visible::after,
+        .stay-social-icon:hover::before,
+        .stay-social-icon:focus-visible::before {
+          opacity: 1;
+          transform: translate(-50%, 0);
+        }
+
         .stay-share { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; padding:14px 18px; border:0; border-radius:999px; background:var(--stay-mint); color:var(--stay-dark); font:inherit; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 7px 0 rgba(32,63,54,.1), 0 10px 22px rgba(45,80,70,.1); transition:transform 160ms ease, background 160ms ease, box-shadow 160ms ease; }
         .stay-share:hover { transform:translateY(-2px); background:var(--stay-bright); box-shadow:0 9px 0 rgba(32,63,54,.1), 0 15px 28px rgba(45,80,70,.13); }
         .stay-feedback { margin:12px 0 0; color:var(--stay-sage); font-size:12px; text-align:center; }
@@ -120,7 +174,7 @@ export default function StayConnected() {
         .stay-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
         @media (max-width:390px) { .stay-brand-logo { width:29px; height:29px; flex-basis:29px; } }
         @media (max-width:600px) { .stay-content { padding:32px 20px 24px; } .stay-social-panel { padding:21px 17px; } .stay-title { font-size:clamp(38px, 10vw, 54px); } .stay-script { font-size:34px; } .stay-body { font-size:14px; } }
-        @media (prefers-reduced-motion:reduce) { .stay-back, .stay-whatsapp-pill, .stay-social-icon, .stay-share, .stay-continue { transition:none; } }
+        @media (prefers-reduced-motion:reduce) { .stay-back, .stay-whatsapp-pill, .stay-social-icon, .stay-share, .stay-continue, .stay-social-icon::after, .stay-social-icon::before { transition:none; } }
       `}</style>
 
             <div className="stay-shell">
@@ -164,9 +218,10 @@ export default function StayConnected() {
                             </a>
                             <h2 id="stay-follow-title" className="stay-follow-label">Follow Factor of Ten</h2>
                             <div className="stay-icon-row">
-                                <a href={LINKS.instagram} aria-label="Factor of Ten on Instagram" className="stay-social-icon"><InstagramIcon /></a>
-                                <a href={LINKS.facebook} aria-label="Factor of Ten on Facebook" className="stay-social-icon"><FacebookIcon /></a>
-                                <a href={LINKS.linkedin} aria-label="Factor of Ten on LinkedIn" className="stay-social-icon"><LinkedInIcon /></a>
+                                <a href={LINKS.instagram} aria-label="Factor of Ten on Instagram" data-tooltip="Follow us on Instagram" className="stay-social-icon"><InstagramIcon /></a>
+                                <a href={LINKS.facebook} aria-label="Factor of Ten on Facebook" data-tooltip="Follow us on Facebook" className="stay-social-icon"><FacebookIcon /></a>
+                                <a href={LINKS.linkedin} aria-label="Factor of Ten on LinkedIn" data-tooltip="Connect on LinkedIn" className="stay-social-icon"><LinkedInIcon /></a>
+                                <a href={LINKS.email} aria-label="Factor of Ten email" data-tooltip="Send us an email" className="stay-social-icon"><EmailIcon /></a>
                             </div>
                             <button type="button" onClick={handleShare} className="stay-share">Share the Campaign</button>
                             {shareFeedback && <p role="status" className="stay-feedback">{shareFeedback}</p>}

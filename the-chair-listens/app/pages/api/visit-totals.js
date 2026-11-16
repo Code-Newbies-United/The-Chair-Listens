@@ -2,7 +2,7 @@
 //
 // GET /api/visit-totals : lifetime visits per stop. Admin only (dashboard).
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { verifyAdminSession } from '@/lib/adminsession';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { methodNotAllowed, sendError } from '@/lib/apiErrors';
 
 export default async function handler(req, res) {
@@ -10,8 +10,8 @@ export default async function handler(req, res) {
     return methodNotAllowed(res, 'GET');
   }
 
-  if (!verifyAdminSession(req)) {
-    return sendError(res, 401, 'Unauthorized', 'Admin login required.');
+  if (!(await requireAdmin(req, res))) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Admin login required.' });
   }
 
   const { data, error } = await supabaseAdmin

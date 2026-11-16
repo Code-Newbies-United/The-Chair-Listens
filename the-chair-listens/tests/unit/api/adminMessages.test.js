@@ -1,9 +1,9 @@
 import handler from '@/pages/api/admin/messages';
-import { verifyAdminSession } from '@/lib/adminsession';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { mockReq, mockRes, SESSION_ID } from '../helpers/http';
 
-jest.mock('@/lib/adminsession', () => ({ verifyAdminSession: jest.fn() }));
+jest.mock('@/lib/requireAdmin', () => ({ requireAdmin: jest.fn() }));
 jest.mock('@/lib/supabaseAdmin', () => ({
   supabaseAdmin: { from: jest.fn() },
 }));
@@ -12,7 +12,7 @@ let table;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  verifyAdminSession.mockReturnValue(true);
+  requireAdmin.mockResolvedValue({ id: 'admin-1' });
   table = {
     select: jest.fn(() => table),
     order: jest.fn(() => table),
@@ -34,7 +34,7 @@ const call = async (opts) => {
 
 describe('/api/admin/messages', () => {
   test.each(['GET', 'DELETE'])('%s without an admin session returns 401 and touches nothing', async (method) => {
-    verifyAdminSession.mockReturnValue(false);
+    requireAdmin.mockResolvedValue(null);
     const res = await call({ method, query: { id: SESSION_ID } });
     expect(res.statusCode).toBe(401);
     expect(supabaseAdmin.from).not.toHaveBeenCalled();

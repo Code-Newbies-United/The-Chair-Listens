@@ -13,6 +13,7 @@ import {
 import { checkRateLimit, getSessionIdFromHeader } from '@/lib/apiGuard';
 import { parseMessageBody } from '@/lib/validators';
 import { verifyConsentSession } from '@/lib/consentSession';
+import { moderateMessage } from '@/lib/messageModeration';
 
 // Next.js rejects bigger bodies (413) before this code runs. Must be a literal.
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
@@ -70,11 +71,24 @@ export default async function handler(req, res) {
       );
     }
 
+    // Server-side moderation: the client check can be bypassed, this can't.
+    // "nudge" is allowed through because the person already saw the prompt.
+    const trimmed = parsed.data.message.trim();
+    const moderation = moderateMessage(trimmed);
+    if (moderation.status === 'blocked' || moderation.status === 'crisis') {
+      return res.status(422).json({
+        error: 'Message not shared',
+        code: 'moderation',
+        status: moderation.status,
+        matches: moderation.matches,
+      });
+    }
+
     // The text stored is the trimmed text that was validated.
     const { data, error } = await supabaseAdmin
       .from('messages')
       .insert({
-        message: parsed.data.message.trim(),
+        message: trimmed,
         session_id: consent.session.id,
         is_visible: true,
       })

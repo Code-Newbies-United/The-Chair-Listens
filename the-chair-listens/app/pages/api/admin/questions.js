@@ -1,12 +1,12 @@
 // pages/api/admin/questions.js
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
-import { verifyAdminSession } from "@/lib/adminsession";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getPathway } from "@/lib/pathways";
 import { MOOD_IDS } from "@/lib/moods";
 
 export default async function handler(req, res) {
-    // Verify HMAC-signed session
-    if (!verifyAdminSession(req)) {
+    // Only active admins (Supabase Auth session + admins table) may use this route
+    if (!(await requireAdmin(req, res))) {
         return res.status(401).json({ message: "Unauthorized" });
     }
 

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { verifyAdminSession } from "@/lib/adminsession";
+import { requireAdmin } from "@/lib/requireAdmin";
 
-export async function getServerSideProps({ req }) {
-    if (verifyAdminSession(req)) {
+export async function getServerSideProps({ req, res }) {
+    const admin = await requireAdmin(req, res);
+    if (admin) {
         return { redirect: { destination: "/admin/dashboard", permanent: false } };
     }
     return { props: {} };

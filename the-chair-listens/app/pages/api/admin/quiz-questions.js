@@ -1,8 +1,8 @@
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
-import { verifyAdminSession } from "@/lib/adminsession";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export default async function handler(req, res) {
-    if (!verifyAdminSession(req)) {
+    if (!(await requireAdmin(req, res))) {
         return res.status(401).json({ message: "Unauthorized" });
     }
 

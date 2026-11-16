@@ -254,3 +254,18 @@ ALTER TABLE city_visit_totals ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "public can read locations" ON locations;
 CREATE POLICY "public can read locations"
     ON locations FOR SELECT TO anon, authenticated USING (true);
+
+-- ---------------------------------------------------------------------------
+-- Admins (Supabase Auth invite-only onboarding). Only the server (service
+-- role) reads or writes this table: RLS on, no policy, no anon/authenticated
+-- grants. Same definition as database/admins.sql.
+-- ---------------------------------------------------------------------------
+create table if not exists public.admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  role text not null default 'admin' check (role in ('admin')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.admins enable row level security;
+revoke all on public.admins from anon, authenticated;

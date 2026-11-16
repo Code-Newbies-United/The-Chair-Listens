@@ -1,6 +1,6 @@
 // Destination: pages/api/stats.js
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin"; // server-side key: reads responses, which the public key must never be able to read
-import { verifyAdminSession } from "@/lib/adminsession";
+import { requireAdmin } from "@/lib/requireAdmin";
 import { getAllPathways } from "@/lib/pathways";
 
 const SCRIPT_COLUMN = "script";
@@ -10,9 +10,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ message: "Method not allowed" });
     }
 
-    if (!verifyAdminSession(req)) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
+       const admin = await requireAdmin(req, res);
+   if (!admin) {
+       return res.status(401).json({ message: "Unauthorized" });
+   }
 
     try {
         // Every pathway in the database, including inactive ones, so older
