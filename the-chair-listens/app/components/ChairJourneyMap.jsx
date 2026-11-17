@@ -20,9 +20,8 @@ export default function ChairJourneyMap() {
 
         async function loadLocations() {
             try {
-                const res = await fetch("/api/locations", {
-                    cache: "no-store",
-                });
+                // Deliberately NOT cache: "no-store", so the CDN copy (20 s) can answer.
+                const res = await fetch("/api/locations");
 
                 if (!res.ok) {
                     throw new Error(`Locations request failed: ${res.status}`);
@@ -53,15 +52,6 @@ export default function ChairJourneyMap() {
         return () => {
             cancelled = true;
         };
-    }, []);
-
-    useEffect(() => {
-        fetch("/api/visitor-pins")
-            .then((res) => res.json())
-            .then((data) => setVisitors(data.visitors || []))
-            .catch((err) => {
-                console.error("Failed to load recent visitors:", err);
-            });
     }, []);
 
     useEffect(() => {

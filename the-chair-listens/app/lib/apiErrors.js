@@ -3,8 +3,16 @@
 // One JSON error shape for every API route (FIX-11):
 //   { error: "Short title", message: "Sentence a person can read", ...extra }
 // `extra` is `issues` for 400s and `retryAfterSeconds` for 429s.
+import { reportServerError } from '@/lib/monitor';
 
 export function sendError(res, status, error, message, extra = {}) {
+  // Every 5xx goes to error monitoring (a no-op unless SENTRY_DSN is set).
+  // Only the status and the fixed title/message are sent, never request data.
+  if (status >= 500) {
+    reportServerError(new Error(`API ${status} ${error}: ${message}`), {
+      status: String(status),
+    });
+  }
   return res.status(status).json({ error, message, ...extra });
 }
 

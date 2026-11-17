@@ -7,3 +7,17 @@ env.*.local
 
 # Vercel CLI folder (holds project tokens)
 .vercel
+
+# Build output and caches
+.next/
+.swc/
+out/
+coverage/
+*.log
+
+# Test output
+test-results/
+playwright-report/
+
+# OS / editor
+.DS_Store

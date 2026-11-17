@@ -1,32 +1,41 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { reportServerError } from "@/lib/monitor";
+import {
+  getClientIp,
+  getFailureCount,
+  recordFailure,
+  clearFailures,
+} from "@/lib/rateLimit";
 
-const MAX_FAILURES = 5;
-const WINDOW_MS = 15 * 60 * 1000;
-const failures = new Map();
+// Lockout rules. Failures are counted in Redis (shared by every serverless
+// instance), so an attacker cannot get fresh attempts just by hitting a
+// different instance or waiting for a cold start.
+//   * 5 failures for the same email from the same IP  -> locked for 15 minutes
+//   * 20 failures from one IP across ANY emails        -> locked for 15 minutes
+//     (stops one machine trying many accounts)
+const WINDOW_SECONDS = 15 * 60;
+const MAX_FAILURES_PER_ACCOUNT = 5;
+const MAX_FAILURES_PER_IP = 20;
+const ACCOUNT_NAMESPACE = "admin-login";
+const IP_NAMESPACE = "admin-login-ip";
 
-function keyFor(req, email) {
-  const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown")
-    .split(",")[0]
-    .trim();
-  return `${ip}:${email}`;
+async function isLockedOut(accountId, ip) {
+  const [accountFailures, ipFailures] = await Promise.all([
+    getFailureCount(ACCOUNT_NAMESPACE, accountId),
+    getFailureCount(IP_NAMESPACE, ip),
+  ]);
+  return (
+    accountFailures >= MAX_FAILURES_PER_ACCOUNT ||
+    ipFailures >= MAX_FAILURES_PER_IP
+  );
 }
-function isBlocked(key) {
-  const entry = failures.get(key);
-  if (!entry) return false;
-  if (Date.now() > entry.resetAt) {
-    failures.delete(key);
-    return false;
-  }
-  return entry.count >= MAX_FAILURES;
-}
-function recordFailure(key) {
-  const entry = failures.get(key);
-  if (!entry || Date.now() > entry.resetAt) {
-    failures.set(key, { count: 1, resetAt: Date.now() + WINDOW_MS });
-  } else {
-    entry.count += 1;
-  }
+
+async function recordLoginFailure(accountId, ip) {
+  await Promise.all([
+    recordFailure(ACCOUNT_NAMESPACE, accountId, WINDOW_SECONDS),
+    recordFailure(IP_NAMESPACE, ip, WINDOW_SECONDS),
+  ]);
 }
 
 export default async function handler(req, res) {
@@ -40,8 +49,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, message: "Email and password are required." });
   }
 
-  const key = keyFor(req, email);
-  if (isBlocked(key)) {
+  const ip = getClientIp(req);
+  const accountId = `${ip}:${email}`;
+
+  if (await isLockedOut(accountId, ip)) {
     return res
       .status(429)
       .json({ success: false, message: "Too many failed attempts. Try again in 15 minutes." });
@@ -54,7 +65,7 @@ export default async function handler(req, res) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data?.user || !data?.session) {
-      recordFailure(key);
+      await recordLoginFailure(accountId, ip);
       return res.status(401).json({ success: false, message: "Incorrect email or password." });
     }
 
@@ -68,15 +79,20 @@ export default async function handler(req, res) {
     if (!adminRow?.active) {
       discardCookies();
       await supabaseAdmin.auth.admin.signOut(data.session.access_token, "local").catch(() => {});
-      recordFailure(key);
+      await recordLoginFailure(accountId, ip);
       return res.status(401).json({ success: false, message: "Incorrect email or password." });
     }
 
-    failures.delete(key);
+    // A good login clears this account's failures. The per-IP count is left to
+    // expire on its own, so one valid login cannot be used to reset an attack.
+    await clearFailures(ACCOUNT_NAMESPACE, accountId);
     commitCookies();
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Admin login error:", err);
+    reportServerError(new Error(`admin-login failed: ${err?.name} ${err?.status ?? ""}`), {
+      route: "admin-login",
+    });
     return res.status(500).json({ success: false, message: "Server error, please try again." });
   }
 }

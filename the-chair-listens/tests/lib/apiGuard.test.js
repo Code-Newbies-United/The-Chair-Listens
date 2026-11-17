@@ -157,3 +157,68 @@ describe('RATE_LIMITS configuration', () => {
     },
   );
 });
+
+describe('sized for a busy venue (shared wifi and carrier NAT)', () => {
+  test('a whole venue can start sessions in one minute', () => {
+    // The old limit of 30 consents per minute per IP would have blocked a crowd.
+    expect(RATE_LIMITS.consent.perIp).toBeGreaterThanOrEqual(150);
+  });
+
+  test.each(['transcribe', 'sessionReflection', 'groq', 'messages'])(
+    '%s lets many people on one IP use it, but one person only a few times',
+    (name) => {
+      expect(RATE_LIMITS[name].perIp).toBeGreaterThanOrEqual(100);
+      expect(RATE_LIMITS[name].perSession).toBeLessThanOrEqual(12);
+    },
+  );
+
+  test('the public read endpoints that every page load calls are limited too', () => {
+    for (const name of ['locations', 'visitorPins', 'messages', 'questions', 'pathways']) {
+      expect(RATE_LIMITS[name]).toBeDefined();
+    }
+  });
+});
+
+describe('RATE_LIMIT_MULTIPLIER (staging load tests only)', () => {
+  afterEach(() => {
+    delete process.env.RATE_LIMIT_MULTIPLIER;
+  });
+
+  test('multiplies both the IP and the session limit', async () => {
+    process.env.RATE_LIMIT_MULTIPLIER = '10';
+    await checkRateLimit(mockReq(), mockRes(), 'responses', { sessionId: SESSION_ID });
+
+    const { perIp, perSession, windowSeconds } = RATE_LIMITS.responses;
+    expect(rateLimit).toHaveBeenNthCalledWith(1, 'responses', TEST_IP, perIp * 10, windowSeconds);
+    expect(rateLimit).toHaveBeenNthCalledWith(
+      2,
+      'responses-session',
+      SESSION_ID,
+      perSession * 10,
+      windowSeconds,
+    );
+  });
+
+  test.each(['', 'abc', '0', '-5', '0.5', 'NaN'])(
+    'ignores the unusable value %p and keeps the real limits',
+    async (value) => {
+      process.env.RATE_LIMIT_MULTIPLIER = value;
+      await checkRateLimit(mockReq(), mockRes(), 'groq');
+
+      const { perIp, windowSeconds } = RATE_LIMITS.groq;
+      expect(rateLimit).toHaveBeenCalledWith('groq', TEST_IP, perIp, windowSeconds);
+    },
+  );
+
+  test('is capped at 100 so a typo cannot switch limiting off', async () => {
+    process.env.RATE_LIMIT_MULTIPLIER = '100000';
+    await checkRateLimit(mockReq(), mockRes(), 'groq');
+
+    const { perIp, windowSeconds } = RATE_LIMITS.groq;
+    expect(rateLimit).toHaveBeenCalledWith('groq', TEST_IP, perIp * 100, windowSeconds);
+  });
+
+  test('is not set by default', () => {
+    expect(process.env.RATE_LIMIT_MULTIPLIER).toBeUndefined();
+  });
+});

@@ -25,5 +25,12 @@ export default async function handler(req, res) {
     );
   }
 
+  // Everybody sees the same numbers, so let Vercel's CDN answer for 30 seconds.
+  // Under load that turns thousands of requests into one database query.
+  // (Only successful answers are cached: errors above are never cached.)
+  res.setHeader(
+    'Cache-Control',
+    'public, s-maxage=30, stale-while-revalidate=120',
+  );
   return res.status(200).json({ visitors });
 }

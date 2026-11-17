@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { methodNotAllowed, sendError } from "@/lib/apiErrors";
+import { checkRateLimit } from "@/lib/apiGuard";
 
 /**
  * GET /api/locations
@@ -11,11 +13,18 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
  * public key can't read ANY table directly (see 003_enable_rls.sql); all data
  * reaches the browser through routes like this one, which choose exactly which
  * columns to return. Only explicit, non-sensitive columns are selected below.
+ *
+ * Every page load calls this route, so it is rate limited AND cached by
+ * Vercel's CDN for 20 seconds. After an admin moves the chair, the public
+ * pages may show the old stop for up to ~20 seconds. Consent is NOT affected:
+ * /api/consent reads the active location straight from the database.
  */
 export default async function handler(req, res) {
     if (req.method !== "GET") {
-        return res.status(405).json({ error: "Method not allowed" });
+        return methodNotAllowed(res, "GET");
     }
+
+    if (!(await checkRateLimit(req, res, "locations"))) return;
 
     const { data, error } = await supabaseAdmin
         .from("locations")
@@ -24,7 +33,7 @@ export default async function handler(req, res) {
 
     if (error) {
         console.error("Failed to fetch locations:", error);
-        return res.status(500).json({ error: "Failed to load locations" });
+        return sendError(res, 500, "Connection failed", "Failed to load locations");
     }
 
     const locations = (data || []).map((row) => ({
@@ -41,5 +50,10 @@ export default async function handler(req, res) {
             : null,
     }));
 
+    // Only successful answers are cached (errors return above).
+    res.setHeader(
+        "Cache-Control",
+        "public, s-maxage=20, stale-while-revalidate=60",
+    );
     return res.status(200).json({ locations });
 }

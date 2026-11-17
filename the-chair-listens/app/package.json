@@ -21,6 +21,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/nextjs": "^11.13.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
     "@upstash/redis": "^1.41.0",
@@ -28,9 +29,9 @@
     "formidable": "^3.5.4",
     "groq-sdk": "^1.6.0",
     "leaflet": "^1.9.4",
-    "next": "^16.3.4",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-leaflet": "^5.0.0",
     "zod": "^4.6.7"
   },

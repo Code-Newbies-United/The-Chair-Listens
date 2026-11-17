@@ -19,6 +19,16 @@ export const MAX_CONSENT_VERSION_CHARS = 50;
 // Community message left on the reflection page.
 export const MAX_MESSAGE_CHARS = 1000;
 
+// Voice answers: the browser records, /api/transcribe sends the audio to Whisper.
+//   * MAX_RECORDING_SECONDS: the recorder stops by itself after this long.
+//   * AUDIO_BITS_PER_SECOND: 32 kbps is plenty for speech. 90 s is about 360 KB.
+//   * MAX_AUDIO_BYTES: hard ceiling on one upload. Vercel rejects any request
+//     body over 4.5 MB before our code runs, so this stays safely below that.
+//     The recorder settings above keep honest recordings far under it.
+export const MAX_RECORDING_SECONDS = 90;
+export const AUDIO_BITS_PER_SECOND = 32000;
+export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
+
 // Whole-request limits live in each API route as
 //   export const config = { api: { bodyParser: { sizeLimit: "..." } } };
 // Next.js only accepts literal values there, so they cannot be imported.

@@ -1,6 +1,7 @@
 import handler from '@/pages/api/responses';
 import { rateLimit } from '@/lib/rateLimit';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getPathway } from '@/lib/pathways';
 import { RATE_LIMITS } from '@/lib/apiGuard';
 import { MAX_ANSWERS, MAX_ANSWER_CHARS } from '@/lib/limits';
 import { MAX_RESPONSES_PER_SESSION } from '@/lib/consentVersion';
@@ -19,6 +20,16 @@ jest.mock('@/lib/rateLimit', () => ({
 jest.mock('@/lib/supabaseAdmin', () => ({
   supabaseAdmin: { from: jest.fn() },
 }));
+// Pathways live in the database (FIX-16). The route looks the pathway up first,
+// so tests answer that lookup here instead of letting it hit the mocked tables.
+jest.mock('@/lib/pathways', () => ({ getPathway: jest.fn() }));
+
+const KNOWN_PATHWAY = {
+  key: 'men_mental_health',
+  label: 'For Men',
+  description: 'Reflections for men',
+  active: true,
+};
 
 const CHAIR_ID = '7a6b5c4d-3e2f-4a1b-8c9d-0e1f2a3b4c5d';
 
@@ -30,6 +41,9 @@ let responsesTable;
 beforeEach(() => {
   jest.clearAllMocks();
   rateLimit.mockResolvedValue({ allowed: true, remaining: 5, count: 1 });
+  getPathway.mockImplementation(async (key) =>
+    key === KNOWN_PATHWAY.key ? KNOWN_PATHWAY : null,
+  );
 
   sessionRow = {
     id: SESSION_ID,
@@ -189,7 +203,9 @@ describe('/api/responses: payload validation (no database access on a bad payloa
       validResponseBody({ answers: [answer({ hack: 1 })] }),
     ],
     ['script missing', validResponseBody({ script: undefined })],
-    ['an unknown script', validResponseBody({ script: 'made_up' })],
+    // Well-formed but no such pathway: the lookup finds nothing, so 400.
+    ['a pathway that does not exist', validResponseBody({ script: 'made_up' })],
+    ['a malformed script key', validResponseBody({ script: 'Not A Key!' })],
   ])('returns 400 for %s', async (_label, body) => {
     const res = await post(body);
 

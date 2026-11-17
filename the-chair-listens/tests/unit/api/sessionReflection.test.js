@@ -1,7 +1,9 @@
 import handler from '@/pages/api/session-reflection';
 import { rateLimit } from '@/lib/rateLimit';
+import { getPathway } from '@/lib/pathways';
 import { RATE_LIMITS } from '@/lib/apiGuard';
 import { MAX_ANSWERS, MAX_ANSWER_CHARS } from '@/lib/limits';
+import { CRISIS_REFLECTION, CRISIS_TAKEAWAYS } from '@/lib/safety';
 import {
   mockReq,
   mockRes,
@@ -21,6 +23,15 @@ jest.mock('@/lib/rateLimit', () => ({
   rateLimit: jest.fn(),
   getClientIp: jest.fn(() => '203.0.113.7'),
 }));
+// Pathways live in the database (FIX-16): never hit it from a unit test.
+jest.mock('@/lib/pathways', () => ({ getPathway: jest.fn() }));
+
+const KNOWN_PATHWAY = {
+  key: 'men_mental_health',
+  label: 'For Men',
+  description: 'Reflections for men',
+  active: true,
+};
 
 // This route only needs script + answers.
 const body = (overrides = {}) => {
@@ -32,6 +43,9 @@ describe('/api/session-reflection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     rateLimit.mockResolvedValue({ allowed: true, remaining: 5, count: 1 });
+    getPathway.mockImplementation(async (key) =>
+      key === KNOWN_PATHWAY.key ? KNOWN_PATHWAY : null,
+    );
     mockCreate.mockResolvedValue({
       choices: [
         {
@@ -77,7 +91,7 @@ describe('/api/session-reflection', () => {
   });
 
   test('returns 429 in the standard shape, without calling Groq, when over the limit', async () => {
-    rateLimit.mockResolvedValue({ allowed: false, remaining: 0, count: 31 });
+    rateLimit.mockResolvedValue({ allowed: false, remaining: 0, count: 121 });
     const res = mockRes();
     await handler(mockReq({ body: body() }), res);
 
@@ -101,7 +115,10 @@ describe('/api/session-reflection', () => {
       'an answer that is too long',
       body({ answers: [{ answer: 'a'.repeat(MAX_ANSWER_CHARS + 1) }] }),
     ],
-    ['an unknown script', body({ script: 'made_up' })],
+    // A well-formed key passes the validator; the route then asks the
+    // database, finds no such pathway, and answers 400.
+    ['a pathway that does not exist', body({ script: 'made_up' })],
+    ['a malformed script key', body({ script: 'Not A Key!' })],
   ])('returns 400 for %s, without calling Groq', async (_label, payload) => {
     const res = mockRes();
     await handler(mockReq({ body: payload }), res);
@@ -120,5 +137,52 @@ describe('/api/session-reflection', () => {
       overallReflection: 'You showed up.',
       takeaways: ['One', 'Two'],
     });
+  });
+
+  test('falls back to a kind generic reflection (HTTP 500) if the AI call fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockCreate.mockRejectedValue(new Error('Groq is down'));
+    const res = mockRes();
+    await handler(mockReq({ body: body() }), res);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.overallReflection).toEqual(expect.any(String));
+    expect(res.body.takeaways.length).toBeGreaterThan(0);
+    console.error.mockRestore();
+  });
+});
+
+describe('/api/session-reflection: safety backstop', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    rateLimit.mockResolvedValue({ allowed: true, remaining: 5, count: 1 });
+    getPathway.mockResolvedValue(KNOWN_PATHWAY);
+  });
+
+  test.each([
+    'I want to end it all',
+    'ngifuna ukufa',
+    'selfmoord',
+  ])('any crisis answer (%s) gets fixed human text, never an AI summary', async (crisisAnswer) => {
+    const res = mockRes();
+    await handler(
+      mockReq({
+        body: body({
+          answers: [
+            { question: 'Q1', answer: 'Work has been heavy.' },
+            { question: 'Q2', answer: crisisAnswer },
+          ],
+        }),
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      overallReflection: CRISIS_REFLECTION,
+      takeaways: CRISIS_TAKEAWAYS,
+      crisis: true,
+    });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

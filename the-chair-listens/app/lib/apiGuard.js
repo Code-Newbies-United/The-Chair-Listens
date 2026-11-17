@@ -4,27 +4,43 @@
 //
 // Every request is counted against its IP address AND, when the browser sends
 // its session ID, against that session too. Why both: at an activation many
-// people share one IP (venue wifi, mobile carrier NAT), so the IP limit has to
-// be generous. The per-session limit is what stops one person flooding an
-// endpoint. The IP limit is the backstop against someone inventing session IDs.
+// people share one IP (venue wifi, and South African mobile networks that put
+// many phones behind one address), so the IP limit has to be generous. The
+// per-session limit is what stops one person flooding an endpoint. The IP
+// limit is only the backstop against someone inventing session IDs.
 import { getClientIp, rateLimit } from '@/lib/rateLimit';
 import { tooManyRequests } from '@/lib/apiErrors';
 import { isUuid } from '@/lib/validators';
 
-// Starting points: tune after the first real activation.
-// perIp is high on purpose (shared wifi). perSession is what limits a person.
+// perIp is high on purpose (shared wifi, carrier NAT). perSession is what
+// limits one person. Tune with real numbers after the first activation.
+//
+// Rough sizing for perIp: how many people on ONE network might do this in one
+// minute at a busy event? Then add headroom. The previous values (30 consents
+// per minute, 30 transcriptions per minute) would have blocked a busy venue.
 export const RATE_LIMITS = {
-  consent: { perIp: 30, windowSeconds: 60 },
-  responses: { perIp: 60, perSession: 10, windowSeconds: 60 },
-  questions: { perIp: 120, windowSeconds: 60 },
-  pathways: { perIp: 120, windowSeconds: 60 },
-  quizQuestions: { perIp: 120, windowSeconds: 60 },
-  transcribe: { perIp: 30, perSession: 8, windowSeconds: 60 },
-  sessionReflection: { perIp: 30, perSession: 6, windowSeconds: 60 },
-  groq: { perIp: 60, perSession: 12, windowSeconds: 60 },
-  messages: { perIp: 60, perSession: 5, windowSeconds: 60 },
-  visitorPins: { perIp: 120, windowSeconds: 60 },
+  consent: { perIp: 200, windowSeconds: 60 },
+  responses: { perIp: 300, perSession: 10, windowSeconds: 60 },
+  questions: { perIp: 600, windowSeconds: 60 },
+  pathways: { perIp: 600, windowSeconds: 60 },
+  quizQuestions: { perIp: 600, windowSeconds: 60 },
+  transcribe: { perIp: 120, perSession: 8, windowSeconds: 60 },
+  sessionReflection: { perIp: 120, perSession: 6, windowSeconds: 60 },
+  groq: { perIp: 240, perSession: 12, windowSeconds: 60 },
+  messages: { perIp: 120, perSession: 5, windowSeconds: 60 },
+  visitorPins: { perIp: 600, windowSeconds: 60 },
+  locations: { perIp: 600, windowSeconds: 60 },
+  health: { perIp: 120, windowSeconds: 60 },
 };
+
+// STAGING ONLY. A load test sends every request from one machine, so it would
+// hit the per-IP limits instantly. Setting RATE_LIMIT_MULTIPLIER=50 on the
+// staging deployment multiplies every limit. Leave it unset in production.
+function limitMultiplier() {
+  const value = Number(process.env.RATE_LIMIT_MULTIPLIER);
+  if (!Number.isFinite(value) || value < 1) return 1;
+  return Math.min(value, 100);
+}
 
 // Browsers send the consent session ID in this header on endpoints that have
 // no session in their body (see sessionHeaders() in lib/session.js).
@@ -43,8 +59,14 @@ export function getSessionIdFromHeader(req) {
 export async function checkRateLimit(req, res, name, { sessionId } = {}) {
   const config = RATE_LIMITS[name];
   const ip = getClientIp(req);
+  const multiplier = limitMultiplier();
 
-  const byIp = await rateLimit(name, ip, config.perIp, config.windowSeconds);
+  const byIp = await rateLimit(
+    name,
+    ip,
+    Math.round(config.perIp * multiplier),
+    config.windowSeconds,
+  );
   if (!byIp.allowed) {
     tooManyRequests(res, config.windowSeconds);
     return false;
@@ -54,7 +76,7 @@ export async function checkRateLimit(req, res, name, { sessionId } = {}) {
     const bySession = await rateLimit(
       `${name}-session`,
       sessionId,
-      config.perSession,
+      Math.round(config.perSession * multiplier),
       config.windowSeconds,
     );
     if (!bySession.allowed) {

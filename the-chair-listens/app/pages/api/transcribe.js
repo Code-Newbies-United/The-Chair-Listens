@@ -3,18 +3,34 @@ import fs from "fs/promises";
 import Groq, { toFile } from "groq-sdk";
 import { checkRateLimit, getSessionIdFromHeader } from "@/lib/apiGuard";
 import { sendError } from "@/lib/apiErrors";
+import { MAX_AUDIO_BYTES } from "@/lib/limits";
 
+// bodyParser must be off: formidable reads the multipart upload itself.
+// maxDuration stops a stuck request from running for minutes (Vercel).
 export const config = {
   api: {
     bodyParser: false,
   },
+  maxDuration: 30,
 };
 
+// Whisper on a clip of up to 90 seconds takes a few seconds. If Groq has not
+// answered in 20 s something is wrong, so give up and let the person retry
+// or type instead. One retry only: the default of 2 retries could triple the wait.
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
+  timeout: 20_000,
+  maxRetries: 1,
 });
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+// Vercel refuses request bodies over 4.5 MB before this code even runs, so
+// MAX_AUDIO_BYTES (4 MB) is the real ceiling. See lib/limits.js.
+const MAX_FILE_SIZE = MAX_AUDIO_BYTES;
+// Multipart overhead (boundaries, headers) on top of the audio itself.
+const MULTIPART_OVERHEAD_BYTES = 256 * 1024;
+
+const TOO_LARGE_MESSAGE =
+  "The recording is too large. Please record a shorter answer.";
 
 const ALLOWED_MIME_TYPES = new Set([
   "audio/webm",
@@ -44,6 +60,15 @@ export default async function handler(req, res) {
   const sessionId = getSessionIdFromHeader(req);
   if (!(await checkRateLimit(req, res, "transcribe", { sessionId }))) return;
 
+  // Refuse an oversized upload straight away, before reading any of it.
+  const declaredLength = Number(req.headers["content-length"]);
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_FILE_SIZE + MULTIPART_OVERHEAD_BYTES
+  ) {
+    return sendError(res, 413, "Payload Too Large", TOO_LARGE_MESSAGE);
+  }
+
   let uploadedFile;
 
   try {
@@ -72,9 +97,12 @@ export default async function handler(req, res) {
     // Check that the API key is configured (after the cheap request checks).
     if (!process.env.GROQ_API_KEY) {
       console.error("GROQ_API_KEY is missing.");
-      return res.status(500).json({
-        message: "Audio transcription is not configured on the server.",
-      });
+      return sendError(
+        res,
+        500,
+        "Server error",
+        "Audio transcription is not configured on the server.",
+      );
     }
 
     // Validate the reported MIME type when available.
@@ -127,18 +155,43 @@ export default async function handler(req, res) {
       text: transcription.text || "",
     });
   } catch (error) {
+    // Never log the audio or the transcript: both are sensitive.
     console.error("Transcription Handler Error:", {
       name: error?.name,
       status: error?.status,
       message: error?.message,
     });
 
+    // Upload too big (formidable: code 1009 / httpCode 413).
+    if (
+      error?.code === "LIMIT_FILE_SIZE" ||
+      error?.code === 1009 ||
+      error?.httpCode === 413
+    ) {
+      return sendError(res, 413, "Payload Too Large", TOO_LARGE_MESSAGE);
+    }
+
+    // Groq did not answer in time.
+    if (
+      error?.name === "APIConnectionTimeoutError" ||
+      error?.name === "AbortError"
+    ) {
+      return sendError(
+        res,
+        504,
+        "Gateway Timeout",
+        "Transcription took too long. Please try again, or type your answer.",
+      );
+    }
+
     // Handle common API errors.
     if (error?.status === 401) {
-      return res.status(500).json({
-        message:
-          "The transcription service credentials are invalid. Check your GROQ_API_KEY.",
-      });
+      return sendError(
+        res,
+        500,
+        "Server error",
+        "The transcription service credentials are invalid. Check your GROQ_API_KEY.",
+      );
     }
 
     if (error?.status === 429) {
@@ -148,20 +201,12 @@ export default async function handler(req, res) {
       });
     }
 
-    if (
-      error?.code === "LIMIT_FILE_SIZE" ||
-      error?.httpCode === 413
-    ) {
-      return res.status(413).json({
-        message:
-          "The recording is too large. Please record a shorter answer.",
-      });
-    }
-
-    return res.status(500).json({
-      message:
-        "Failed to transcribe audio. Please try again.",
-    });
+    return sendError(
+      res,
+      500,
+      "Server error",
+      "Failed to transcribe audio. Please try again.",
+    );
   } finally {
     // Remove the temporary uploaded file.
     if (uploadedFile?.filepath) {

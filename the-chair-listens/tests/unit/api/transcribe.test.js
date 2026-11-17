@@ -73,3 +73,38 @@ describe('/api/transcribe rate limiting', () => {
     expect(mockTranscribe).not.toHaveBeenCalled();
   });
 });
+
+describe('/api/transcribe upload size and failures', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    rateLimit.mockResolvedValue({ allowed: true, remaining: 5, count: 1 });
+  });
+
+  test('refuses a huge upload straight away with 413, before reading any of it', async () => {
+    const res = mockRes();
+    await handler(
+      mockReq({ headers: { 'content-length': String(25 * 1024 * 1024) } }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(413);
+    expect(res.body.error).toBe('Payload Too Large');
+    expect(res.body.message).toMatch(/shorter/i);
+    expect(mockTranscribe).not.toHaveBeenCalled();
+  });
+
+  test('the size limit is below the 4.5 MB Vercel itself enforces', () => {
+    const { MAX_AUDIO_BYTES } = require('@/lib/limits');
+    expect(MAX_AUDIO_BYTES).toBeLessThan(4.5 * 1024 * 1024);
+  });
+
+  test('a normal-sized upload is not refused for its size', async () => {
+    const res = mockRes();
+    await handler(
+      mockReq({ headers: { 'content-length': String(300 * 1024) } }),
+      res,
+    );
+    // The mocked form has no audio in it, so this reaches the "no file" answer.
+    expect(res.statusCode).toBe(400);
+  });
+});

@@ -15,7 +15,8 @@ export function useActiveLocationName() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch('/api/locations', { cache: 'no-store' });
+        // Not "no-store": /api/locations is cached by the CDN for 20 s on purpose.
+        const res = await fetch('/api/locations');
         const data = await res.json();
         const active = (data.locations || []).find((loc) => loc.active);
         cached = active ? active.name : '';

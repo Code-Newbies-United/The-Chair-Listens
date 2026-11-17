@@ -1,5 +1,5 @@
 import {
-  SCRIPT_KEYS,
+  PATHWAY_KEY_PATTERN,
   isUuid,
   parseResponseBody,
   parseConsentBody,
@@ -13,6 +13,24 @@ import {
   MAX_CONSENT_VERSION_CHARS,
 } from '@/lib/limits';
 import { validResponseBody } from '../unit/helpers/http';
+
+// Pathways live in the database now (FIX-16), so the validator only checks that
+// a key is WELL-FORMED. Whether it exists is checked in the route.
+const WELL_FORMED_KEYS = [
+  'men_mental_health',
+  'ally_support',
+  'a',
+  'pathway_2',
+  'x'.repeat(64),
+];
+const MALFORMED_KEYS = [
+  'Not A Key!',
+  'UPPER_CASE',
+  'has-dash',
+  'has space',
+  'x'.repeat(65),
+  '',
+];
 
 const answer = (overrides = {}) => ({
   questionId: 'q-1',
@@ -54,8 +72,12 @@ describe('parseResponseBody', () => {
     expect(result.data.answers).toHaveLength(1);
   });
 
-  test.each(SCRIPT_KEYS)('accepts script %s', (script) => {
+  test.each(WELL_FORMED_KEYS)('accepts the well-formed script %s', (script) => {
     expect(parseResponseBody(validResponseBody({ script })).ok).toBe(true);
+  });
+
+  test('accepts a well-formed key even if no such pathway exists (the route checks that)', () => {
+    expect(parseResponseBody(validResponseBody({ script: 'made_up' })).ok).toBe(true);
   });
 
   test('strips unknown top-level keys (session_id, junk) from the result', () => {
@@ -86,7 +108,7 @@ describe('parseResponseBody', () => {
     ['a string body', 'hello'],
     ['an array body', []],
     ['missing script', validResponseBody({ script: undefined })],
-    ['unknown script', validResponseBody({ script: 'made_up' })],
+    ['a malformed script', validResponseBody({ script: 'Not A Key!' })],
     ['script of the wrong type', validResponseBody({ script: 7 })],
     ['missing answers', validResponseBody({ answers: undefined })],
     ['answers that are not an array', validResponseBody({ answers: 'yes' })],
@@ -199,7 +221,7 @@ describe('parseGroqBody', () => {
       'an answer that is too long',
       { answer: 'a'.repeat(MAX_ANSWER_CHARS + 1) },
     ],
-    ['an unknown script', { script: 'nope', answer: 'A' }],
+    ['a malformed script', { script: 'Not A Key!', answer: 'A' }],
     [
       'a question that is too long',
       { question: 'q'.repeat(MAX_QUESTION_CHARS + 1), answer: 'A' },
@@ -210,18 +232,27 @@ describe('parseGroqBody', () => {
 });
 
 describe('parseScriptKey', () => {
-  test.each(SCRIPT_KEYS)('accepts %s', (key) => {
+  test.each(WELL_FORMED_KEYS)('accepts %s', (key) => {
     expect(parseScriptKey(key)).toEqual({ ok: true, data: key });
   });
 
   test.each([
     undefined,
     null,
-    '',
-    'made_up',
+    ...MALFORMED_KEYS,
     ['men_mental_health'],
     ['a', 'b'],
   ])('rejects %p', (value) => {
     expect(parseScriptKey(value).ok).toBe(false);
+  });
+});
+
+describe('PATHWAY_KEY_PATTERN', () => {
+  test.each(WELL_FORMED_KEYS)('matches %s', (key) => {
+    expect(PATHWAY_KEY_PATTERN.test(key)).toBe(true);
+  });
+
+  test.each(MALFORMED_KEYS)('does not match %p', (key) => {
+    expect(PATHWAY_KEY_PATTERN.test(key)).toBe(false);
   });
 });

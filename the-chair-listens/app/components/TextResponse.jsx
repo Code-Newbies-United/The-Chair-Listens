@@ -1,33 +1,39 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { sessionHeaders } from "@/lib/session";
-import { MAX_ANSWER_CHARS } from "@/lib/limits";
+import {
+    MAX_ANSWER_CHARS,
+    MAX_RECORDING_SECONDS,
+    MAX_AUDIO_BYTES,
+    AUDIO_BITS_PER_SECOND,
+} from "@/lib/limits";
+import { checkForSafetyTrigger, EMERGENCY_KEYWORDS } from "@/lib/safety";
 
-export const EMERGENCY_KEYWORDS = [
-    'suicide',
-    'kill myself',
-    'end my life',
-    'want to die',
-    'self harm',
-    'cutting myself',
-    'overdose',
-    'hurt myself',
-    'no reason to live',
-    'kill someone',
-    'shoot myself',
-    'I want to die',
-    'gun',
-    'end my life'
-];
+// There used to be a second, weaker copy of the crisis check in this file.
+// It now lives ONLY in lib/safety.js. These re-exports keep old imports working.
+export { checkForSafetyTrigger, EMERGENCY_KEYWORDS };
 
-export function checkForSafetyTrigger(text) {
-    if (!text || typeof text !== 'string') return false;
+function formatSeconds(total) {
+    const safe = Math.max(0, total);
+    const minutes = Math.floor(safe / 60);
+    const seconds = String(safe % 60).padStart(2, "0");
+    return `${minutes}:${seconds}`;
+}
 
-    const normalizedText = text.toLowerCase().trim();
-
-    return EMERGENCY_KEYWORDS.some((keyword) =>
-        normalizedText.includes(keyword)
-    );
+// A friendly sentence for each way voice transcription can fail.
+function transcribeErrorMessage(error) {
+    switch (error?.status) {
+        case 413:
+            return `That recording was too long. Please keep it under ${MAX_RECORDING_SECONDS} seconds, or type your answer.`;
+        case 429:
+            return "Lots of people are using the chair right now. Please wait a moment and try again, or type your answer.";
+        case 502:
+        case 503:
+        case 504:
+            return "Voice transcription is slow right now. Please try again, or type your answer.";
+        default:
+            return "We could not transcribe that recording. Please try again or type your answer.";
+    }
 }
 
 export default function TextResponse({
@@ -43,9 +49,11 @@ export default function TextResponse({
     const router = useRouter();
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [isFallbackRecording, setIsFallbackRecording] = useState(false);
+    const [secondsLeft, setSecondsLeft] = useState(MAX_RECORDING_SECONDS);
     const [microphoneError, setMicrophoneError] = useState("");
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
+    const recordingTimerRef = useRef(null);
     const valueRef = useRef(value);
     const mountedRef = useRef(true);
 
@@ -64,11 +72,22 @@ export default function TextResponse({
         }
     }, [value, router, onSafetyTrigger]);
 
+    const clearRecordingTimer = () => {
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
+    };
+
     // Release the microphone if the page is left while recording
     useEffect(() => {
         mountedRef.current = true;
         return () => {
             mountedRef.current = false;
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+            }
             const recorder = mediaRecorderRef.current;
             if (recorder && recorder.state !== "inactive") {
                 recorder.onstop = null;
@@ -102,7 +121,15 @@ export default function TextResponse({
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+
+            // A low bitrate keeps a 90 second answer well under the upload limit.
+            // Some browsers ignore or reject the option, so fall back to the defaults.
+            let mediaRecorder;
+            try {
+                mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: AUDIO_BITS_PER_SECOND });
+            } catch {
+                mediaRecorder = new MediaRecorder(stream);
+            }
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
@@ -113,6 +140,7 @@ export default function TextResponse({
             };
 
             mediaRecorder.onstop = async () => {
+                clearRecordingTimer();
                 setIsFallbackRecording(false);
                 stream.getTracks().forEach((track) => track.stop());
 
@@ -126,19 +154,47 @@ export default function TextResponse({
                     return;
                 }
 
+                // Never try to upload something the server will refuse.
+                if (audioBlob.size > MAX_AUDIO_BYTES) {
+                    setMicrophoneError(
+                        `That recording was too long to send. Please keep it under ${MAX_RECORDING_SECONDS} seconds, or type your answer.`
+                    );
+                    return;
+                }
+
                 await sendAudioToTranscribeApi(audioBlob, `recording.${extension}`);
             };
 
             mediaRecorder.start();
             setIsFallbackRecording(true);
+            setSecondsLeft(MAX_RECORDING_SECONDS);
+
+            // Stop by itself at the maximum length, so a forgotten recording
+            // cannot grow until the upload is refused.
+            const startedAt = Date.now();
+            clearRecordingTimer();
+            recordingTimerRef.current = setInterval(() => {
+                const left = MAX_RECORDING_SECONDS - Math.floor((Date.now() - startedAt) / 1000);
+                if (left <= 0) {
+                    setSecondsLeft(0);
+                    setMicrophoneError(
+                        `Recording stopped at ${formatSeconds(MAX_RECORDING_SECONDS)}, which is the longest we can take. You can record more afterwards.`
+                    );
+                    stopMediaRecorder();
+                } else {
+                    setSecondsLeft(left);
+                }
+            }, 500);
         } catch (err) {
             console.error("Microphone access error:", err);
+            clearRecordingTimer();
             setIsFallbackRecording(false);
             setMicrophoneError("Unable to access the microphone. Check your browser permissions, or type your answer.");
         }
     };
 
     const stopMediaRecorder = () => {
+        clearRecordingTimer();
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             mediaRecorderRef.current.stop();
         }
@@ -157,8 +213,11 @@ export default function TextResponse({
             });
 
             if (!response.ok) {
+                // Vercel's own 413 page is not JSON, so tolerate a body we cannot read.
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || "Transcription request failed");
+                const failure = new Error(errorData.message || "Transcription request failed");
+                failure.status = response.status;
+                throw failure;
             }
 
             const data = await response.json();
@@ -182,9 +241,13 @@ export default function TextResponse({
             }
         } catch (error) {
             console.error("Audio transcription error:", error);
-            setMicrophoneError("We could not transcribe that recording. Please try again or type your answer.");
+            if (mountedRef.current) {
+                setMicrophoneError(transcribeErrorMessage(error));
+            }
         } finally {
-            setIsTranscribing(false);
+            if (mountedRef.current) {
+                setIsTranscribing(false);
+            }
         }
     };
 
@@ -275,9 +338,11 @@ export default function TextResponse({
 
                     {isTranscribing
                         ? "Transcribing audio..."
-                        : listening
-                            ? "Stop Recording..."
-                            : "Speak Answer"}
+                        : isFallbackRecording
+                            ? `Stop Recording... (${formatSeconds(secondsLeft)} left)`
+                            : listening
+                                ? "Stop Recording..."
+                                : "Speak Answer"}
                 </button>
 
                 {microphoneError && (

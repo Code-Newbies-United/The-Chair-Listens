@@ -41,6 +41,13 @@ export default async function handler(req, res) {
       );
     }
 
+    // The same 20 messages go to everyone, so let Vercel's CDN answer for 15
+    // seconds. Under load this turns thousands of requests into one query.
+    // (The sender sees their own new message at once: the page adds it itself.)
+    res.setHeader(
+      'Cache-Control',
+      'public, s-maxage=15, stale-while-revalidate=60',
+    );
     return res.status(200).json({ messages: data ?? [] });
   }
 
