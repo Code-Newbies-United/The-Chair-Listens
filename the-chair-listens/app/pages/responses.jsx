@@ -1,1127 +1,265 @@
-import { useState, useEffect, useRef } from "react";
+// Destination: pages/responses.jsx  (replaces the old copy of questions.jsx)
+// Flow: questions -> insight -> responses (Moment of Reflection) -> take-action -> stay-connected
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { checkForSafetyTrigger } from "@/lib/safety";
-import QuestionCard from "@/components/QuestionCard";
-import TextResponse from "@/components/TextResponse";
 
 const SCRIPT_TITLES = {
-  men_mental_health: "For Men",
-  ally_support: "Ally & Support System",
-  fast_track_activations: "Today's Event",
+    men_mental_health: "For Men",
+    ally_support: "Ally & Support System",
+    fast_track_activations: "Today's Event",
 };
 
-const CHAIR_BACKGROUND_STYLE = {
-  background:
-      "radial-gradient(circle at 100% 0%, rgba(141, 207, 148, 0.2), transparent 28%), radial-gradient(circle at 0% 90%, rgba(212, 233, 237, 0.1), transparent 25%), #2D5046",
-  backgroundColor: "#2D5046",
+const FALLBACK_REFLECTION = {
+    body: "Thank you for taking the time to pause and share your thoughts today.",
+    takeaways: [
+        "Your experiences and feelings are valid.",
+        "Taking time for self-reflection is an important step forward.",
+    ],
+    crisis: false,
 };
 
-export default function QuestionsPage({ locationName = "Pretoria" }) {
-  const router = useRouter();
-
-  const [questions, setQuestions] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [currentText, setCurrentText] = useState("");
-  const [answers, setAnswers] = useState([]);
-  const [reflection, setReflection] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [savingSession, setSavingSession] = useState(false);
-  const [reflectionLoading, setReflectionLoading] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const lastScriptKeyRef = useRef(null);
-
-  const script =
-      typeof router.query.script === "string" && SCRIPT_TITLES[router.query.script]
-          ? router.query.script
-          : "men_mental_health";
-
-  const location =
-      typeof router.query.location === "string"
-          ? router.query.location
-          : locationName;
-
-  const currentQuestion = questions[currentIndex];
-  const totalQuestions = questions.length;
-
-  const progress =
-      totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
-
-
-  useEffect(() => {
-    if (!router.isReady) return;
-
-    const fetchQuestions = async () => {
-      try {
-        setLoading(true);
-
-        const response = await fetch(
-            `/api/questions?script=${encodeURIComponent(script)}`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch questions");
-        }
-
-        const data = await response.json();
-
-        const formattedQuestions = Array.isArray(data.questions)
-            ? data.questions.map((item) => ({
-              id: item.id,
-              category: item.title || "Reflection",
-              title: item.title || "Reflection",
-              question: item.question_text || "",
-              placeholder:
-                  item.placeholder ||
-                  "Take your time. Say what feels true.",
-            }))
-            : [];
-
-        setQuestions(formattedQuestions);
-      } catch (error) {
-        console.error("Error loading questions:", error);
-        setQuestions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuestions();
-  }, [router.isReady, script]);
-
-
-  useEffect(() => {
-    if (lastScriptKeyRef.current !== null && lastScriptKeyRef.current !== script) {
-      setCurrentIndex(0);
-      setCurrentText("");
-      setReflection("");
-      setAnswers([]);
-    }
-    lastScriptKeyRef.current = script;
-  }, [script]);
-
-
-  const speakText = (text) => {
-    if (typeof window === "undefined" || !text) return;
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = 0.95;
-
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice =
-        voices.find(
-            (voice) =>
-                /en-ZA/i.test(voice.lang) &&
-                /natural|google|enhanced|premium/i.test(voice.name)
-        ) ||
-        voices.find((voice) => /en-ZA/i.test(voice.lang)) ||
-        voices.find((voice) => /^en/i.test(voice.lang));
-
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const stopSpeaking = () => {
-    if (typeof window === "undefined") return;
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-  };
-
-  const checkSafetyAndRedirect = (text) => {
-    if (!text?.trim()) return false;
-
-    const safetyResult = checkForSafetyTrigger(text);
-    if (!safetyResult) return false;
-
-    stopSpeaking();
-
-    alert(
-        safetyResult.message ||
-        "It sounds like you may need some immediate support. Please reach out to someone who can help."
-    );
-
-    router.push("/emergency");
-    return true;
-  };
-
-  const handleGetReflection = async () => {
-    if (!currentText.trim() || !currentQuestion) return;
-
-    if (checkSafetyAndRedirect(currentText)) return;
-
+// Query values may have been encoded twice on the way in, so decode defensively.
+function safeDecode(value) {
+    if (typeof value !== "string") return "";
     try {
-      setReflectionLoading(true);
-
-      const response = await fetch("/api/groq", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          script,
-          question: currentQuestion.question,
-          answer: currentText.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate reflection");
-      }
-
-      const data = await response.json();
-
-      setReflection(
-          data.text ||
-          data.reflection ||
-          data.message ||
-          "Thank you for sharing that. Take a moment to sit with what you have said."
-      );
-    } catch (error) {
-      console.error("Reflection error:", error);
-
-      setReflection(
-          "Thank you for taking the time to answer. There is value in giving yourself space to notice what is really going on."
-      );
-    } finally {
-      setReflectionLoading(false);
+        return decodeURIComponent(value);
+    } catch (_) {
+        return value;
     }
-  };
+}
 
-  const finishSession = async (finalAnswers) => {
-    if (savingSession) return;
-
+function safeParseJSON(value) {
+    if (!value) return null;
     try {
-      setSavingSession(true);
+        return JSON.parse(safeDecode(value));
+    } catch (_) {
+        return null;
+    }
+}
 
+// /api/session-reflection returns { overallReflection, takeaways: string[], crisis? }.
+// It also returns the same shape (without crisis) with a 500 if the AI is down.
+function normalizeReflection(raw) {
+    if (!raw || typeof raw !== "object") return null;
 
-      await fetch("/api/responses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          script,
-          location,
-          answers: finalAnswers,
-        }),
-      });
+    const body = typeof raw.overallReflection === "string" ? raw.overallReflection.trim() : "";
+    const takeaways = (Array.isArray(raw.takeaways) ? raw.takeaways : [])
+        .filter((t) => typeof t === "string" && t.trim())
+        .map((t) => t.trim())
+        .slice(0, 3);
 
+    if (!body && !takeaways.length) return null;
+    return { body, takeaways, crisis: raw.crisis === true };
+}
 
-      let summaryData = null;
-      try {
-        const summaryRes = await fetch("/api/session-reflection", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ script, answers: finalAnswers }),
+export default function ResponsesPage({ locationName = "Pretoria" }) {
+    const router = useRouter();
+    const [reflection, setReflection] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const script =
+        typeof router.query.script === "string" ? safeDecode(router.query.script) : "men_mental_health";
+    const trackTitle = SCRIPT_TITLES[script] || "For Men";
+    const location =
+        typeof router.query.location === "string" ? safeDecode(router.query.location) : locationName;
+
+    // Keep the same params so Back and Continue don't lose the session context.
+    const carryQuery = useMemo(() => {
+        const query = {};
+        ["script", "data", "location", "summary"].forEach((key) => {
+            if (typeof router.query[key] === "string") query[key] = router.query[key];
         });
+        return query;
+    }, [router.query]);
 
-        if (summaryRes.ok) {
-          summaryData = await summaryRes.json();
-        }
-      } catch (sumErr) {
-        console.error("Session summary generation error:", sumErr);
-      }
+    useEffect(() => {
+        if (!router.isReady) return;
+        let cancelled = false;
 
-      const encodedData = encodeURIComponent(
-          JSON.stringify(finalAnswers)
-      );
-
-      const queryParams = {
-        script: encodeURIComponent(script),
-        data: encodedData,
-        location: encodeURIComponent(location),
-      };
-
-      if (summaryData) {
-        queryParams.summary = encodeURIComponent(JSON.stringify(summaryData));
-      }
-
-      const queryString = new URLSearchParams(queryParams).toString();
-      await router.push(`/insight?${queryString}`);
-    } catch (error) {
-      console.error("Unable to save responses:", error);
-      setSavingSession(false);
-      alert("We couldn't save your responses just yet. Please try again.");
-    }
-  };
-
-  const handleNextQuestion = () => {
-    if (!currentQuestion || savingSession) return;
-
-    const trimmedAnswer = currentText.trim();
-    if (!trimmedAnswer) return;
-
-    if (checkSafetyAndRedirect(trimmedAnswer)) return;
-
-    const newAnswer = {
-      questionId: currentQuestion.id,
-      question: currentQuestion.question,
-      answer: trimmedAnswer,
-    };
-
-    const updatedAnswers = [...answers, newAnswer];
-
-    setAnswers(updatedAnswers);
-    setReflection("");
-    stopSpeaking();
-
-    if (currentIndex < totalQuestions - 1) {
-      setCurrentIndex((previous) => previous + 1);
-      setCurrentText("");
-      return;
-    }
-
-    finishSession(updatedAnswers);
-  };
-
-  const handleBack = () => {
-    if (savingSession) return;
-
-    stopSpeaking();
-
-    if (currentIndex > 0) {
-      const prevIndex = currentIndex - 1;
-      const previousAnswer = answers[prevIndex];
-
-      setCurrentIndex(prevIndex);
-      setCurrentText(previousAnswer?.answer || "");
-      setReflection("");
-      return;
-    }
-
-    router.push(
-        `/select-script?location=${encodeURIComponent(location)}`
-    );
-  };
-
-  useEffect(() => {
-    setReflection("");
-  }, [currentIndex]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined") {
-        window.speechSynthesis?.cancel();
-      }
-    };
-  }, []);
-
-  if (loading) {
-    return (
-        <main
-            className="questions-page loading-page"
-            style={CHAIR_BACKGROUND_STYLE}
-        >
-          <div className="loading-card">
-            <span className="script-text">One moment.</span>
-            <h1>Preparing your questions</h1>
-            <p>Take a breath. Your space is almost ready.</p>
-
-            <div className="loading-dots" aria-label="Loading">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-
-          <style jsx>{`
-          .questions-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 28px;
-            font-family: "Benton Sans", "Helvetica Neue", Arial, sans-serif;
-          }
-
-          .loading-card {
-            width: min(100%, 520px);
-            padding: 48px 36px;
-            border-radius: 27px;
-            background: #f5f2e8;
-            text-align: center;
-            box-shadow: 0 20px 50px rgba(17, 45, 37, 0.28);
-          }
-
-          .script-text {
-            display: block;
-            margin-bottom: 8px;
-            color: #bc9553;
-            font-family: "Pinyon Script", cursive;
-            font-size: 34px;
-          }
-
-          .loading-card h1 {
-            margin: 0;
-            color: #203f36;
-            font-size: clamp(28px, 6vw, 42px);
-            line-height: 1.05;
-          }
-
-          .loading-card p {
-            margin: 16px 0 0;
-            color: #52645e;
-            line-height: 1.6;
-          }
-
-          .loading-dots {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 28px;
-          }
-
-          .loading-dots span {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: #8dcf94;
-            animation: pulse 1.2s ease-in-out infinite;
-          }
-
-          .loading-dots span:nth-child(2) {
-            animation-delay: 0.15s;
-          }
-
-          .loading-dots span:nth-child(3) {
-            animation-delay: 0.3s;
-          }
-
-          @keyframes pulse {
-            0%,
-            100% {
-              opacity: 0.35;
-              transform: translateY(0);
-            }
-
-            50% {
-              opacity: 1;
-              transform: translateY(-5px);
-            }
-          }
-        `}</style>
-        </main>
-    );
-  }
-
-  if (!questions.length) {
-    return (
-        <main
-            className="questions-page empty-page"
-            style={CHAIR_BACKGROUND_STYLE}
-        >
-          <div className="empty-card">
-            <span className="script-text">A quiet pause.</span>
-
-            <h1>Nothing here yet.</h1>
-
-            <p>
-              We couldn't find any questions for this path. Please choose
-              another reflection.
-            </p>
-
-            <button
-                type="button"
-                onClick={() =>
-                    router.push(
-                        `/select-script?location=${encodeURIComponent(location)}`
-                    )
+        const load = async () => {
+            // 1. Use the summary already generated when the questions were finished.
+            const passed = normalizeReflection(safeParseJSON(router.query.summary));
+            if (passed) {
+                if (!cancelled) {
+                    setReflection(passed);
+                    setLoading(false);
                 }
-            >
-              Choose another path
-            </button>
-          </div>
+                return;
+            }
 
-          <style jsx>{`
-          .questions-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 28px;
-            font-family: "Benton Sans", "Helvetica Neue", Arial, sans-serif;
-          }
+            // 2. Otherwise try to generate it from the answers.
+            const answers = safeParseJSON(router.query.data);
+            if (Array.isArray(answers) && answers.length) {
+                try {
+                    const res = await fetch("/api/session-reflection", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ script, answers }),
+                    });
+                    if (res.ok) {
+                        const generated = normalizeReflection(await res.json());
+                        if (generated && !cancelled) {
+                            setReflection(generated);
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Reflection generation error:", err);
+                }
+            }
 
-          .empty-card {
-            width: min(100%, 520px);
-            padding: 48px 36px;
-            border-radius: 27px;
-            background: #f5f2e8;
-            text-align: center;
-            box-shadow: 0 20px 50px rgba(17, 45, 37, 0.28);
-          }
+            // 3. Never block the flow: show a general closing message.
+            if (!cancelled) {
+                setReflection(FALLBACK_REFLECTION);
+                setLoading(false);
+            }
+        };
 
-          .script-text {
-            display: block;
-            margin-bottom: 8px;
-            color: #bc9553;
-            font-family: "Pinyon Script", cursive;
-            font-size: 34px;
-          }
+        load();
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router.isReady]);
 
-          .empty-card h1 {
-            margin: 0;
-            color: #203f36;
-            font-size: 36px;
-          }
+    if (!router.isReady) return null;
 
-          .empty-card p {
-            margin: 16px auto 26px;
-            max-width: 400px;
-            color: #52645e;
-            line-height: 1.65;
-          }
+    const goBack = () => router.push({ pathname: "/insight", query: carryQuery });
+    const goNext = () => router.push({ pathname: "/take-action", query: carryQuery });
 
-          .empty-card button {
-            border: 0;
-            border-radius: 999px;
-            padding: 14px 22px;
-            background: #8dcf94;
-            color: #203f36;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            transition:
-              transform 180ms ease,
-              background 180ms ease;
-          }
+    return (
+        <main className="reflect-page">
+            <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800;900&family=Pinyon+Script&display=swap');
+        :root {
+          --rf-forest: #2d5046;
+          --rf-forest-dark: #203f36;
+          --rf-mint: #8dcf94;
+          --rf-mint-bright: #a5dfa9;
+          --rf-blue: #d4e9ed;
+          --rf-cream: #f5f2e8;
+          --rf-white: #fbfaf5;
+          --rf-ochre: #bc9553;
+          --rf-sage: #526b61;
+        }
+        .reflect-page, .reflect-page * { box-sizing: border-box; }
+        .reflect-page {
+          min-height: 100dvh;
+          width: 100%;
+          padding: max(18px, env(safe-area-inset-top)) max(13px, env(safe-area-inset-right)) max(30px, env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left));
+          color: var(--rf-white);
+          font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+          background: radial-gradient(circle at 100% 0%, rgba(141,207,148,.2), transparent 28%), radial-gradient(circle at 0% 90%, rgba(212,233,237,.1), transparent 25%), var(--rf-forest);
+        }
+        .rf-shell { width: min(100%, 760px); margin: 0 auto; }
+        .rf-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; padding:4px 3px 14px; }
+        .rf-brand { display:flex; align-items:center; gap:8px; font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+        .rf-brand-logo { width:34px; height:34px; flex:0 0 34px; border-radius:50%; object-fit:cover; border:1px solid rgba(245,242,232,.55); }
+        .rf-brand-mark { width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:var(--rf-mint); box-shadow:0 0 0 4px rgba(141,207,148,.12), 0 0 18px rgba(141,207,148,.25); }
+        .rf-location { display:inline-flex; align-items:center; gap:6px; max-width:55%; padding:7px 11px; border-radius:999px; background:var(--rf-mint); color:var(--rf-forest-dark); font-size:9px; font-weight:800; letter-spacing:.04em; }
+        .rf-location-dot { width:5px; height:5px; flex:0 0 5px; border-radius:50%; background:var(--rf-forest); }
+        .rf-back { display:inline-flex; align-items:center; gap:8px; margin:0 0 18px 3px; padding:0; border:0; background:transparent; color:rgba(251,250,245,.78); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+        .rf-back:hover { color:var(--rf-mint-bright); }
+        .rf-card { position:relative; isolation:isolate; overflow:hidden; border-radius:27px; background:var(--rf-cream); color:var(--rf-forest-dark); box-shadow:0 20px 50px rgba(17,45,37,.25); }
+        .rf-card::before, .rf-card::after { content:""; position:absolute; z-index:-1; border-radius:50%; pointer-events:none; }
+        .rf-card::before { width:310px; height:310px; top:-180px; right:-140px; background:var(--rf-blue); }
+        .rf-card::after { width:270px; height:270px; bottom:-190px; left:-145px; background:var(--rf-mint); opacity:.65; }
+        .rf-content { position:relative; z-index:1; padding:42px 42px 34px; }
+        .rf-eyebrow { display:flex; align-items:center; justify-content:center; gap:9px; margin:0 0 20px; color:var(--rf-sage); font-size:9px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; text-align:center; }
+        .rf-eyebrow-line { width:25px; height:1px; flex:0 0 25px; background:var(--rf-ochre); }
+        .rf-intro { max-width:610px; margin:0 auto 28px; text-align:center; }
+        .rf-headline { margin:0; color:var(--rf-forest-dark); font-size:clamp(40px, 8vw, 66px); line-height:.93; letter-spacing:-.06em; font-weight:900; }
+        .rf-script { margin:17px 0 0; color:var(--rf-ochre); font-family:"Pinyon Script", cursive; font-size:36px; line-height:1.05; }
+        .rf-panel { padding:26px; border:1px solid rgba(45,80,70,.12); border-radius:22px; background:rgba(251,250,245,.82); box-shadow:0 12px 30px rgba(17,45,37,.06); }
+        .rf-body { margin:0; color:#3f524c; font-size:16px; line-height:1.75; white-space:pre-line; }
+        .rf-takeaways { display:flex; flex-direction:column; gap:12px; margin:22px 0 0; padding:20px 0 0; border-top:1px solid rgba(45,80,70,.12); list-style:none; }
+        .rf-takeaways li { display:flex; align-items:flex-start; gap:10px; color:var(--rf-forest-dark); font-size:14px; line-height:1.65; font-weight:600; }
+        .rf-takeaways li::before { content:"✦"; flex:0 0 auto; margin-top:1px; color:var(--rf-ochre); font-size:13px; }
+        .rf-support { display:flex; align-items:center; justify-content:center; margin:22px 0 0; padding:14px 20px; border-radius:999px; background:var(--rf-forest-dark); color:var(--rf-white); font-size:14px; font-weight:800; text-decoration:none; }
+        .rf-support:focus-visible { outline:3px solid var(--rf-ochre); outline-offset:4px; }
+        .rf-loading { display:flex; align-items:center; justify-content:center; gap:7px; min-height:120px; }
+        .rf-loading span { width:9px; height:9px; border-radius:50%; background:var(--rf-forest); animation: rfPulse 1s ease-in-out infinite; }
+        .rf-loading span:nth-child(2) { animation-delay:.15s; }
+        .rf-loading span:nth-child(3) { animation-delay:.3s; }
+        @keyframes rfPulse { 0%,100% { opacity:.25; transform:scale(.8); } 50% { opacity:1; transform:scale(1); } }
+        .rf-after { display:flex; flex-direction:column; align-items:center; padding-top:24px; }
+        .rf-continue { display:inline-flex; align-items:center; justify-content:center; width:min(100%, 360px); padding:15px 24px; border:0; border-radius:999px; background:var(--rf-mint); color:var(--rf-forest-dark); font:inherit; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 7px 0 rgba(32,63,54,.18), 0 10px 22px rgba(17,45,37,.2); transition:transform 160ms ease, background 160ms ease; }
+        .rf-continue:hover:not(:disabled) { transform:translateY(-2px); background:var(--rf-mint-bright); }
+        .rf-continue:disabled { opacity:.5; cursor:default; }
+        .rf-continue:focus-visible, .rf-back:focus-visible { outline:3px solid var(--rf-ochre); outline-offset:4px; }
+        .rf-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+        .rf-footer-brand { color:var(--rf-mint-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
+        .rf-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        @media (max-width:600px) { .rf-content { padding:32px 20px 25px; } .rf-panel { padding:21px 17px; } .rf-body { font-size:15px; } .rf-script { font-size:32px; } }
+        @media (prefers-reduced-motion:reduce) { .rf-continue { transition:none; } .rf-loading span { animation:none; opacity:.7; } }
+      `}</style>
 
-          .empty-card button:hover {
-            background: #a5dfa9;
-            transform: translateY(-2px);
-          }
-        `}</style>
+            <div className="rf-shell">
+                <header className="rf-topbar">
+                    <div className="rf-brand">
+                        <img className="rf-brand-logo" src="/logos/factor-of-ten-logo.jpg" alt="Factor of Ten Foundation logo" />
+                        <span className="rf-brand-mark" aria-hidden="true" />
+                        The Chair Listens
+                    </div>
+                    <div className="rf-location">
+                        <span className="rf-location-dot" aria-hidden="true" />
+                        {location}
+                    </div>
+                </header>
+
+                <button type="button" className="rf-back" onClick={goBack}>⮜ Back</button>
+
+                <section className="rf-card">
+                    <div className="rf-content">
+                        <div className="rf-eyebrow">
+                            <span className="rf-eyebrow-line" />
+                            Moment of Reflection
+                            <span className="rf-eyebrow-line" />
+                        </div>
+
+                        <div className="rf-intro">
+                            <h1 className="rf-headline">What you shared today.</h1>
+                            <div className="rf-script">{trackTitle}</div>
+                        </div>
+
+                        <section className="rf-panel" aria-live="polite" aria-busy={loading}>
+                            {loading ? (
+                                <div className="rf-loading" role="status" aria-label="Preparing your reflection">
+                                    <span /><span /><span />
+                                </div>
+                            ) : (
+                                <>
+                                    {reflection?.body && <p className="rf-body">{reflection.body}</p>}
+                                    {reflection?.takeaways?.length > 0 && (
+                                        <ul className="rf-takeaways" aria-label="Key takeaways from your session">
+                                            {reflection.takeaways.map((item) => (
+                                                <li key={item}>{item}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    {reflection?.crisis && (
+                                        <a href="/emergency" className="rf-support">
+                                            Get support now
+                                        </a>
+                                    )}
+                                </>
+                            )}
+                        </section>
+                    </div>
+                </section>
+
+                <div className="rf-after">
+                    <button type="button" className="rf-continue" onClick={goNext} disabled={loading}>
+                        Continue
+                    </button>
+                </div>
+
+                <footer className="rf-footer">
+                    <span className="rf-footer-brand">FACTOR OF TEN</span>
+                    <span className="rf-footer-tagline">Know more. Ask more. Check sooner.</span>
+                </footer>
+            </div>
         </main>
     );
-  }
-
-  return (
-      <main className="questions-page" style={CHAIR_BACKGROUND_STYLE}>
-        <div className="questions-shell">
-          <header className="topbar">
-            <button
-                type="button"
-                className="back-button"
-                onClick={handleBack}
-                disabled={savingSession}
-                aria-label="Go back"
-            >
-              <span aria-hidden="true"></span>
-              <span>⮜ Back</span>
-            </button>
-
-            <div className="location-pill">
-              <span className="location-dot" />
-              {location}
-            </div>
-          </header>
-
-          <section className="question-shell">
-            <div className="decor-circle decor-circle-blue" />
-            <div className="decor-circle decor-circle-mint" />
-
-            <div className="question-inner">
-              <div className="intro">
-              <span className="eyebrow">
-                {SCRIPT_TITLES[script] || "Reflection"}
-              </span>
-
-                <h1>
-                  Take a moment
-                  <span className="chair-script">Tell the Chair</span>
-                </h1>
-
-                <p>
-                  There is no right answer. Just say what feels true for you.
-                </p>
-              </div>
-
-              <div className="progress-area">
-                <div className="progress-labels">
-                <span>
-                  Question {currentIndex + 1} of {totalQuestions}
-                </span>
-
-                  <span>{Math.round(progress)}%</span>
-                </div>
-
-                <div className="progress-track">
-                  <div
-                      className="progress-fill"
-                      style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className={`content-card ${reflection && !reflectionLoading ? "content-card-scrollable" : ""}`}>
-                <QuestionCard
-                    category={currentQuestion.category}
-                    question={currentQuestion.question}
-                />
-
-                <TextResponse
-                    key={currentIndex}
-                    value={currentText}
-                    onChange={setCurrentText}
-                    placeholder={currentQuestion.placeholder}
-                    disabled={savingSession}
-                />
-
-                <div className="action-row">
-                  <button
-                      type="button"
-                      className="reflection-button"
-                      onClick={handleGetReflection}
-                      disabled={
-                          !currentText.trim() ||
-                          reflectionLoading ||
-                          savingSession
-                      }
-                  >
-                    {reflectionLoading
-                        ? "Sitting with it..."
-                        : "Share & Reflect"}
-                  </button>
-                </div>
-
-                {reflectionLoading && (
-                    <div
-                        className="reflection-loading"
-                        aria-label="Generating reflection"
-                    >
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                )}
-
-                {reflection && !reflectionLoading && (
-                    <div className="reflection-card">
-                  <span className="reflection-script">
-                    A thought for you.
-                  </span>
-
-                      <p>{reflection}</p>
-
-                      <button
-                          type="button"
-                          className="listen-button"
-                          onClick={() =>
-                              isSpeaking
-                                  ? stopSpeaking()
-                                  : speakText(reflection)
-                          }
-                      >
-                    <span aria-hidden="true">
-                      {isSpeaking ? "■" : "▶"}
-                    </span>
-
-                        {isSpeaking ? "Stop listening" : "Listen"}
-                      </button>
-                    </div>
-                )}
-              </div>
-
-              <div className="navigation-row">
-                <button
-                    type="button"
-                    className="next-button"
-                    onClick={handleNextQuestion}
-                    disabled={!currentText.trim() || savingSession}
-                >
-                  {savingSession
-                      ? "Saving your reflection..."
-                      : currentIndex === totalQuestions - 1
-                          ? "Complete reflection"
-                          : "Continue"}
-
-                  {/*{!savingSession && (*/}
-                  {/*    <span aria-hidden="true"></span>*/}
-                  {/*)}*/}
-                </button>
-              </div>
-
-              <footer className="page-footer">
-                <span>A quiet place in a noisy world.</span>
-              </footer>
-            </div>
-          </section>
-        </div>
-
-        <style jsx>{`
-        .questions-page {
-          min-height: 100vh;
-          padding: 26px 20px 42px;
-          color: #203f36;
-          font-family: "Benton Sans", "Helvetica Neue", Arial, sans-serif;
-        }
-
-        .questions-shell {
-          width: min(100%, 680px);
-          margin: 0 auto;
-        }
-
-        .topbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 18px;
-        }
-
-        .back-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          border: 0;
-          background: transparent;
-          color: #f5f2e8;
-          font: inherit;
-          font-weight: 700;
-          cursor: pointer;
-          padding: 8px 0;
-        }
-
-        .back-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .back-button span:first-child {
-          font-size: 22px;
-          line-height: 1;
-        }
-
-        .location-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 9px 14px;
-          border-radius: 999px;
-          background: rgba(245, 242, 232, 0.95);
-          color: #52645e;
-          font-size: 13px;
-          font-weight: 700;
-          box-shadow: 0 8px 18px rgba(17, 45, 37, 0.12);
-        }
-
-        .location-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #8dcf94;
-        }
-
-        .question-shell {
-          position: relative;
-          overflow: hidden;
-          border-radius: 27px;
-          background: #f5f2e8;
-          box-shadow: 0 20px 50px rgba(17, 45, 37, 0.3);
-        }
-
-        .question-inner {
-          position: relative;
-          z-index: 2;
-          padding: 46px 42px 30px;
-        }
-
-        .decor-circle {
-          position: absolute;
-          z-index: 0;
-          border-radius: 50%;
-          pointer-events: none;
-        }
-
-        .decor-circle-blue {
-          top: -105px;
-          right: -95px;
-          width: 230px;
-          height: 230px;
-          background: #d4e9ed;
-          opacity: 0.85;
-        }
-
-        .decor-circle-mint {
-          bottom: -115px;
-          left: -100px;
-          width: 220px;
-          height: 220px;
-          background: #8dcf94;
-          opacity: 0.22;
-        }
-
-        .intro {
-          position: relative;
-          z-index: 2;
-          max-width: 500px;
-          margin: 0 auto;
-          text-align: center;
-        }
-
-        .eyebrow {
-          display: inline-block;
-          margin-bottom: 8px;
-          color: #bc9553;
-          font-family: "Pinyon Script", cursive;
-          font-size: 40px;
-          line-height: 1;
-        }
-
-        .intro h1 {
-          margin: 0;
-          color: #203f36;
-          font-size: clamp(32px, 7vw, 48px);
-          line-height: 0.98;
-          letter-spacing: -0.035em;
-        }
-
-        .intro h1 .chair-script {
-          display: block;
-          margin-top: 5px;
-          color: #2d5046;
-          font-family: "Pinyon Script", cursive;
-          font-size: 0.85em;
-          font-weight: 400;
-          letter-spacing: 0;
-        }
-
-        .intro p {
-          max-width: 430px;
-          margin: 18px auto 0;
-          color: #52645e;
-          font-size: 15px;
-          line-height: 1.7;
-        }
-
-        .progress-area {
-          position: relative;
-          z-index: 2;
-          margin-top: 34px;
-        }
-
-        .progress-labels {
-          display: flex;
-          justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 8px;
-          color: #526b61;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-        }
-
-        .progress-labels span:last-child {
-          color: #bc9553;
-        }
-
-        .progress-track {
-          height: 7px;
-          overflow: hidden;
-          border-radius: 999px;
-          background: #dce9df;
-        }
-
-        .progress-fill {
-          height: 100%;
-          border-radius: inherit;
-          background: #8dcf94;
-          transition: width 350ms ease;
-        }
-
-        .content-card {
-          position: relative;
-          z-index: 2;
-          margin-top: 25px;
-          padding: 25px;
-          border: 1px solid rgba(45, 80, 70, 0.08);
-          border-radius: 21px;
-          background: rgba(251, 250, 245, 0.8);
-          box-shadow: 0 12px 30px rgba(17, 45, 37, 0.08);
-        }
-        
-        .content-card-scrollable::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        .content-card-scrollable::-webkit-scrollbar-thumb {
-            background: #8dcf94;
-            border-radius: 999px;
-        }
-        
-        .content-card-scrollable::-webkit-scrollbar-thumb:hover {
-            background: #2d5046;
-        }
-
-        .action-row {
-          display: flex;
-          justify-content: center;
-          margin-top: 20px;
-        }
-
-        .reflection-button {
-          min-width: 170px;
-          border: 0;
-          border-radius: 999px;
-          padding: 13px 20px;
-          background: #8dcf94;
-          color: #203f36;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 800;
-          cursor: pointer;
-          box-shadow: 0 8px 20px rgba(141, 207, 148, 0.18);
-          transition:
-            transform 180ms ease,
-            background 180ms ease,
-            opacity 180ms ease;
-        }
-
-        .reflection-button:hover:not(:disabled) {
-          background: #a5dfa9;
-          transform: translateY(-2px);
-        }
-
-        .reflection-button:disabled {
-          opacity: 0.45;
-          cursor: not-allowed;
-          box-shadow: none;
-        }
-
-        .reflection-loading {
-          display: flex;
-          justify-content: center;
-          gap: 7px;
-          margin-top: 22px;
-        }
-
-        .reflection-loading span {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #bc9553;
-          animation: reflectionPulse 1s ease-in-out infinite;
-        }
-
-        .reflection-loading span:nth-child(2) {
-          animation-delay: 0.15s;
-        }
-
-        .reflection-loading span:nth-child(3) {
-          animation-delay: 0.3s;
-        }
-
-        @keyframes reflectionPulse {
-          0%,
-          100% {
-            opacity: 0.35;
-            transform: translateY(0);
-          }
-
-          50% {
-            opacity: 1;
-            transform: translateY(-4px);
-          }
-        }
-
-        .reflection-card {
-          margin-top: 25px;
-          padding: 24px;
-          border-radius: 18px;
-          background: #d4e9ed;
-          color: #203f36;
-        }
-
-        .reflection-script {
-          display: block;
-          margin-bottom: 8px;
-          color: #315da8;
-          font-family: "Pinyon Script", cursive;
-          font-size: 29px;
-        }
-
-        .reflection-card p {
-          margin: 0;
-          color: #31504a;
-          font-size: 15px;
-          line-height: 1.75;
-        }
-
-        .listen-button {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          margin-top: 18px;
-          border: 0;
-          border-radius: 999px;
-          padding: 10px 15px;
-          background: #bc9553;
-          color: #fffaf0;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 800;
-          cursor: pointer;
-          transition:
-            transform 180ms ease,
-            background 180ms ease;
-        }
-
-        .listen-button:hover {
-          background: #d1b071;
-          transform: translateY(-1px);
-        }
-
-        .navigation-row {
-          position: relative;
-          z-index: 2;
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 22px;
-        }
-
-        .next-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          border: 0;
-          border-radius: 999px;
-          padding: 14px 20px;
-          background: #203f36;
-          color: #f5f2e8;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 800;
-          cursor: pointer;
-          transition:
-            transform 180ms ease,
-            background 180ms ease,
-            opacity 180ms ease;
-        }
-
-        .next-button:hover:not(:disabled) {
-          background: #2d5046;
-          transform: translateY(-2px);
-        }
-
-        .next-button:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-
-        .next-button span {
-          font-size: 18px;
-          line-height: 1;
-        }
-
-        .page-footer {
-          position: relative;
-          z-index: 2;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 3px;
-          padding-top: 28px;
-          text-align: center;
-        }
-
-        .page-footer strong {
-          color: #2d5046;
-          font-size: 12px;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .page-footer span {
-          color: #52645e;
-          font-size: 11px;
-        }
-
-                @media (max-width: 600px) {
-          .questions-page {
-            padding: 16px 12px 28px;
-          }
-
-          .question-inner {
-            padding: 34px 20px 24px;
-          }
-
-          .content-card {
-            padding: 17px;
-            border-radius: 18px;
-          }
-
-          .intro h1 {
-            font-size: 34px;
-          }
-
-          .intro h1 .chair-script {
-            font-size: 0.85em;
-          }
-
-          .intro p {
-            font-size: 14px;
-          }
-
-          .action-row {
-            margin-top: 24px;
-          }
-
-          .reflection-button {
-            width: 100%;
-          }
-
-          .reflection-card {
-            margin-top: 28px;
-          }
-
-          .navigation-row {
-            justify-content: stretch;
-            margin-top: 28px;
-          }
-
-          .next-button {
-            width: 100%;
-          }
-
-          .topbar {
-            margin-bottom: 12px;
-          }
-
-          .back-button {
-            font-size: 13px;
-          }
-
-          .location-pill {
-            font-size: 11px;
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .loading-dots span,
-          .reflection-loading span {
-            animation: none;
-          }
-
-          .progress-fill,
-          .reflection-button,
-          .listen-button,
-          .next-button {
-            transition: none;
-          }
-        }
-      `}</style>
-      </main>
-  );
 }
