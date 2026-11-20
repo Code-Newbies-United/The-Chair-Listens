@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { LINKS } from "@/lib/campaignLinks";
+import AwarenessStrip from "@/components/AwarenessStrip";
 
 function InstagramIcon() {
     return (
@@ -172,6 +173,7 @@ export default function StayConnected() {
         .stay-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
         .stay-footer-brand { color:var(--stay-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
         .stay-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        .stay-strip-wrap { margin-bottom: 22px; }
         @media (max-width:390px) { .stay-brand-logo { width:29px; height:29px; flex-basis:29px; } }
         @media (max-width:600px) { .stay-content { padding:32px 20px 24px; } .stay-social-panel { padding:21px 17px; } .stay-title { font-size:clamp(38px, 10vw, 54px); } .stay-script { font-size:34px; } .stay-body { font-size:14px; } }
         @media (prefers-reduced-motion:reduce) { .stay-back, .stay-whatsapp-pill, .stay-social-icon, .stay-share, .stay-continue, .stay-social-icon::after, .stay-social-icon::before { transition:none; } }
@@ -204,6 +206,9 @@ export default function StayConnected() {
                         </div>
 
                         <section className="stay-social-panel" aria-labelledby="stay-follow-title">
+                            <div className="stay-strip-wrap">
+                                <AwarenessStrip />
+                            </div>
                             <a
                                 href="https://wa.me/27630282393"
                                 target="_blank"

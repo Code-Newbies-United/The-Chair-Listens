@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { LINKS } from "@/lib/campaignLinks";
 import DidYouKnowModal from "@/components/DidYouKnowModal";
+import AwarenessStrip from "@/components/AwarenessStrip";
 
 export default function TakeAction() {
     const router = useRouter();
@@ -76,6 +77,7 @@ export default function TakeAction() {
         .ta-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
         .ta-footer-brand { color:var(--ta-mint-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
         .ta-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        .ta-strip-wrap { margin-top: 20px; }
         @media (max-width:390px) { .ta-brand-logo { width:29px; height:29px; flex-basis:29px; } }
         @media (max-width:600px) { .ta-content { padding:32px 20px 25px; } .ta-pledge { padding:21px 17px; } .ta-pledge h2 { font-size:18px; } .ta-copy { font-size:14px; } .ta-script { font-size:34px; } .ta-headline { font-size:clamp(41px, 11vw, 58px); } }
         @media (prefers-reduced-motion:reduce) { .ta-primary, .ta-secondary, .ta-continue { transition:none; } }
@@ -112,6 +114,9 @@ export default function TakeAction() {
                             </ul>
                             <a href={LINKS.petition} className="ta-primary">Sign the Factor of Ten Petition</a>
                             <a href={LINKS.visitpage} className="ta-text-link">Visit the Factor of Ten page</a>
+                            <div className="ta-strip-wrap">
+                                <AwarenessStrip />
+                            </div>
                         </section>
                     </div>
                 </section>

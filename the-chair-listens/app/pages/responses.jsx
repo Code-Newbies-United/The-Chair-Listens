@@ -1,815 +1,265 @@
-import { useState, useEffect } from "react";
+// Destination: pages/responses.jsx  (replaces the old copy of questions.jsx)
+// Flow: questions -> insight -> responses (Moment of Reflection) -> take-action -> stay-connected
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import Link from "next/link";
-import { moderateMessage } from "@/lib/messageModeration";
+
+const SCRIPT_TITLES = {
+    men_mental_health: "For Men",
+    ally_support: "Ally & Support System",
+    fast_track_activations: "Today's Event",
+};
+
+const FALLBACK_REFLECTION = {
+    body: "Thank you for taking the time to pause and share your thoughts today.",
+    takeaways: [
+        "Your experiences and feelings are valid.",
+        "Taking time for self-reflection is an important step forward.",
+    ],
+    crisis: false,
+};
+
+// Query values may have been encoded twice on the way in, so decode defensively.
+function safeDecode(value) {
+    if (typeof value !== "string") return "";
+    try {
+        return decodeURIComponent(value);
+    } catch (_) {
+        return value;
+    }
+}
+
+function safeParseJSON(value) {
+    if (!value) return null;
+    try {
+        return JSON.parse(safeDecode(value));
+    } catch (_) {
+        return null;
+    }
+}
+
+// /api/session-reflection returns { overallReflection, takeaways: string[], crisis? }.
+// It also returns the same shape (without crisis) with a 500 if the AI is down.
+function normalizeReflection(raw) {
+    if (!raw || typeof raw !== "object") return null;
+
+    const body = typeof raw.overallReflection === "string" ? raw.overallReflection.trim() : "";
+    const takeaways = (Array.isArray(raw.takeaways) ? raw.takeaways : [])
+        .filter((t) => typeof t === "string" && t.trim())
+        .map((t) => t.trim())
+        .slice(0, 3);
+
+    if (!body && !takeaways.length) return null;
+    return { body, takeaways, crisis: raw.crisis === true };
+}
 
 export default function ResponsesPage({ locationName = "Pretoria" }) {
-  const router = useRouter();
-  const { script, data } = router.query;
-  const displayLocation = router.query.location || locationName;
+    const router = useRouter();
+    const [reflection, setReflection] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
+    const script =
+        typeof router.query.script === "string" ? safeDecode(router.query.script) : "men_mental_health";
+    const trackTitle = SCRIPT_TITLES[script] || "For Men";
+    const location =
+        typeof router.query.location === "string" ? safeDecode(router.query.location) : locationName;
 
-  const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null);
-
-  // Moderation state: { status: "nudge" | "blocked" | "crisis", matches: [...] }
-  const [moderation, setModeration] = useState(null);
-  const [nudgedText, setNudgedText] = useState("");
-
-  const currentScript = script || "men_mental_health";
-
-  useEffect(() => {
-    if (!router.isReady) return;
-
-    async function fetchSessionSummary() {
-      let parsedAnswers = [];
-      if (data) {
-        try {
-          parsedAnswers = JSON.parse(decodeURIComponent(data));
-        } catch (e) {
-          console.error("Failed to parse answers", e);
-        }
-      }
-
-      try {
-        const res = await fetch("/api/session-reflection", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            script: currentScript,
-            answers: parsedAnswers,
-          }),
+    // Keep the same params so Back and Continue don't lose the session context.
+    const carryQuery = useMemo(() => {
+        const query = {};
+        ["script", "data", "location", "summary"].forEach((key) => {
+            if (typeof router.query[key] === "string") query[key] = router.query[key];
         });
+        return query;
+    }, [router.query]);
 
-        const result = await res.json();
-        setSummary(result);
-      } catch (err) {
-        console.error("Error fetching summary:", err);
-        setSummary({
-          overallReflection:
-              "Thank you for taking the time to share your perspective today.",
-          takeaways: [
-            "Acknowledging your journey is an important step forward.",
-            "Your voice contributes meaningfully to our collective healing.",
-          ],
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
+    useEffect(() => {
+        if (!router.isReady) return;
+        let cancelled = false;
 
-    fetchSessionSummary();
-  }, [router.isReady, script, data]);
+        const load = async () => {
+            // 1. Use the summary already generated when the questions were finished.
+            const passed = normalizeReflection(safeParseJSON(router.query.summary));
+            if (passed) {
+                if (!cancelled) {
+                    setReflection(passed);
+                    setLoading(false);
+                }
+                return;
+            }
 
-  const handleMessageSubmit = async (e) => {
-    e.preventDefault();
-    if (!message.trim() || message.length > 1000) return;
+            // 2. Otherwise try to generate it from the answers.
+            const answers = safeParseJSON(router.query.data);
+            if (Array.isArray(answers) && answers.length) {
+                try {
+                    const res = await fetch("/api/session-reflection", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ script, answers }),
+                    });
+                    if (res.ok) {
+                        const generated = normalizeReflection(await res.json());
+                        if (generated && !cancelled) {
+                            setReflection(generated);
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Reflection generation error:", err);
+                }
+            }
 
-    const result = moderateMessage(message);
+            // 3. Never block the flow: show a general closing message.
+            if (!cancelled) {
+                setReflection(FALLBACK_REFLECTION);
+                setLoading(false);
+            }
+        };
 
-    // Blocked or crisis: never send, show the notice
-    if (result.status === "crisis" || result.status === "blocked") {
-      setModeration(result);
-      return;
-    }
+        load();
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router.isReady]);
 
-    // Gentle nudge once; sharing the same text again goes through
-    if (result.status === "nudge" && nudgedText !== message) {
-      setModeration(result);
-      setNudgedText(message);
-      return;
-    }
+    if (!router.isReady) return null;
 
-    setModeration(null);
-    setIsSubmitting(true);
-    setSubmitStatus(null);
+    const goBack = () => router.push({ pathname: "/insight", query: carryQuery });
+    const goNext = () => router.push({ pathname: "/take-action", query: carryQuery });
 
-    try {
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message.trim() }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-
-        // Server-side moderation rejection: show the gentle notice, not a crash
-        if (res.status === 422 && errData.code === "moderation") {
-          setModeration({ status: errData.status, matches: errData.matches || [] });
-          return;
+    return (
+        <main className="reflect-page">
+            <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800;900&family=Pinyon+Script&display=swap');
+        :root {
+          --rf-forest: #2d5046;
+          --rf-forest-dark: #203f36;
+          --rf-mint: #8dcf94;
+          --rf-mint-bright: #a5dfa9;
+          --rf-blue: #d4e9ed;
+          --rf-cream: #f5f2e8;
+          --rf-white: #fbfaf5;
+          --rf-ochre: #bc9553;
+          --rf-sage: #526b61;
         }
-
-        throw new Error(errData.error || "Failed to send message");
-      }
-
-      setSubmitStatus("success");
-      setMessage("");
-      setNudgedText("");
-    } catch (err) {
-      console.error("Error submitting message:", err);
-      setSubmitStatus("error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-      <main className="responses-page">
-        <div className="responses-shell">
-          <header className="topbar">
-            <div className="brand" aria-label="The Chair Listens">
-              <img
-                  className="brand-logo"
-                  src="/logos/factor-of-ten-logo.jpg"
-                  alt="Factor of Ten Foundation logo"
-              />
-              <span className="brand-mark" aria-hidden="true" />
-              <span>The Chair Listens</span>
-            </div>
-            <div className="location-pill">
-              <span className="location-dot" />
-              {displayLocation}
-            </div>
-          </header>
-
-          <section className="reflection-card">
-            <div className="decor-circle decor-circle-blue" aria-hidden="true" />
-            <div className="decor-circle decor-circle-mint" aria-hidden="true" />
-
-            <div className="card-content">
-              <div className="session-meta">
-                <div className="eyebrow">
-                  <span className="eyebrow-line" aria-hidden="true" />
-                  <span>A moment to reflect</span>
-                  <span className="eyebrow-line" aria-hidden="true" />
-                </div>
-              </div>
-
-              <div className="intro">
-                <div className="completion-icon" aria-hidden="true">
-                  <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
-                    <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div className="script-line">Session complete</div>
-                <h1 className="headline">
-                  Your
-                  <span className="headline-accent">Reflection</span>
-                </h1>
-                <p className="intro-copy">
-                  Thank you for making space for your thoughts, your story, and your voice.
-                </p>
-              </div>
-
-              {loading ? (
-                  <div className="loading-panel" role="status" aria-live="polite">
-                    <div className="chair-icon" aria-hidden="true">🪑</div>
-                    <div className="loading-track"><span /></div>
-                    <p>The Chair is bringing your reflection together...</p>
-                  </div>
-              ) : (
-                  <div className="summary-content">
-                    <section className="summary-section">
-                      <div className="section-heading">
-                        <span className="section-icon" aria-hidden="true">✧</span>
-                        <h2>Summary</h2>
-                      </div>
-                      <p className="summary-text">
-                        {summary?.overallReflection ||
-                            "Thank you for taking the time to share your perspective today."}
-                      </p>
-                    </section>
-
-                    <div className="section-divider" />
-
-                    <section className="summary-section takeaways-section">
-                      <div className="section-heading">
-                        <span className="section-icon" aria-hidden="true">✦</span>
-                        <h2>Key Takeaways</h2>
-                      </div>
-                      {summary?.takeaways?.length ? (
-                          <ul className="takeaway-list">
-                            {summary.takeaways.map((item, index) => (
-                                <li key={index} className="takeaway-item">
-                                  <span className="takeaway-bullet" aria-hidden="true">✦</span>
-                                  <span>{item}</span>
-                                </li>
-                            ))}
-                          </ul>
-                      ) : (
-                          <p className="summary-text">
-                            Your reflections are part of the conversation and can help create understanding.
-                          </p>
-                      )}
-                    </section>
-
-                    <div className="section-divider" />
-
-                    <section className="summary-section message-section">
-                      <div className="section-heading">
-                        <span className="section-icon" aria-hidden="true">✎</span>
-                        <h2>Leave a Message for the Community</h2>
-                      </div>
-
-                      {submitStatus === "success" ? (
-                          <div className="success-message">
-                            <p>Thank you. Your message has been shared with the community.</p>
-                          </div>
-                      ) : (
-                          <form onSubmit={handleMessageSubmit} className="message-form">
-                      <textarea
-                          className="message-input"
-                          placeholder="Share a thought, a word of encouragement, or a piece of your story..."
-                          value={message}
-                          onChange={(e) => {
-                            setMessage(e.target.value);
-                            if (moderation && moderation.status !== "nudge") setModeration(null);
-                          }}
-                          maxLength={1000}
-                          rows={4}
-                          disabled={isSubmitting}
-                      />
-
-                            {moderation && (
-                                <div className={`moderation-notice ${moderation.status}`} role="alert">
-                                  {moderation.status === "crisis" ? (
-                                      <>
-                                        <p>
-                                          It sounds like you may be going through something really heavy,
-                                          and we're glad you said it. We haven't posted this message,
-                                          because you matter more than a public wall. Please reach out
-                                          for support right now.
-                                        </p>
-                                        <Link href="/emergency" className="moderation-link">
-                                          Get help now
-                                        </Link>
-                                      </>
-                                  ) : (
-                                      <>
-                                        <p>
-                                          {moderation.status === "blocked"
-                                              ? "This message wasn't shared. Some wording can hurt people living with mental health conditions. Could you try something like:"
-                                              : "A small thought before you share. Different wording can feel kinder to readers:"}
-                                        </p>
-                                        {moderation.matches.length > 0 && (
-                                            <ul>
-                                              {moderation.matches.map((m) => (
-                                                  <li key={m.term}>
-                                                    <strong>{m.term}</strong> → {m.suggestion}
-                                                  </li>
-                                              ))}
-                                            </ul>
-                                        )}
-                                        {moderation.status === "nudge" && (
-                                            <p>Happy with it as is? Tap Share Message again.</p>
-                                        )}
-                                      </>
-                                  )}
-                                </div>
-                            )}
-
-                            <div className="message-footer">
-                        <span className={`char-count ${message.length > 900 ? "warning" : ""}`}>
-                          {message.length} / 1000
-                        </span>
-                              <button
-                                  type="submit"
-                                  className="submit-message-button"
-                                  disabled={isSubmitting || !message.trim() || message.length > 1000}
-                              >
-                                {isSubmitting ? "Sending..." : "Share Message"}
-                              </button>
-                            </div>
-                            {submitStatus === "error" && (
-                                <p className="error-text">Something went wrong. Please try again.</p>
-                            )}
-                          </form>
-                      )}
-                    </section>
-                  </div>
-              )}
-
-              <footer className="card-footer">
-                <p>You showed up. That matters.</p>
-              </footer>
-            </div>
-          </section>
-
-          <button
-              type="button"
-              onClick={() => router.push("/take-action")}
-              className="take-action-button"
-          >
-            <span aria-hidden="true">✦</span>
-            <span>Take Action</span>
-            <span className="button-arrow" aria-hidden="true"></span>
-          </button>
-          <button type="button" onClick={() => router.push("/")} className="home-button">
-            <span>Return to Start</span>
-            <span className="button-arrow" aria-hidden="true"></span>
-          </button>
-
-          <footer className="responses-footer">
-            <span className="responses-footer-brand">FACTOR OF TEN</span>
-            <span className="responses-footer-tagline">Know more. Ask more. Check sooner.</span>
-          </footer>
-        </div>
-
-        <style jsx>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap');
-
-        .responses-page {
-          min-height: 100vh;
+        .reflect-page, .reflect-page * { box-sizing: border-box; }
+        .reflect-page {
+          min-height: 100dvh;
           width: 100%;
-          box-sizing: border-box;
-          padding: 28px 20px 42px;
-          color: #203f36;
+          padding: max(18px, env(safe-area-inset-top)) max(13px, env(safe-area-inset-right)) max(30px, env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left));
+          color: var(--rf-white);
           font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-          background:
-            radial-gradient(circle at 100% 0%, rgba(141, 207, 148, 0.2), transparent 28%),
-            radial-gradient(circle at 0% 90%, rgba(212, 233, 237, 0.1), transparent 25%),
-            #2d5046;
+          background: radial-gradient(circle at 100% 0%, rgba(141,207,148,.2), transparent 28%), radial-gradient(circle at 0% 90%, rgba(212,233,237,.1), transparent 25%), var(--rf-forest);
         }
-
-        .responses-shell {
-          width: min(100%, 680px);
-          margin: 0 auto;
-        }
-
-        .topbar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 14px;
-          margin-bottom: 18px;
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #fbfaf5;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.13em;
-          text-transform: uppercase;
-        }
-
-        .brand-logo {
-          width: 34px;
-          height: 34px;
-          flex: 0 0 34px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 1px solid rgba(245, 242, 232, 0.55);
-        }
-
-        .brand-mark {
-          width: 9px;
-          height: 9px;
-          flex: 0 0 9px;
-          border-radius: 50%;
-          background: #8dcf94;
-          box-shadow: 0 0 0 4px rgba(141, 207, 148, 0.12),
-                    0 0 18px rgba(141, 207, 148, 0.25);
-        }
-
-        .location-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          flex-shrink: 0;
-          padding: 7px 10px;
-          border-radius: 100px;
-          background: #8dcf94;
-          color: #203f36;
-          font-size: 9px;
-          font-weight: 800;
-          letter-spacing: 0.04em;
-        }
-
-        .location-dot {
-          width: 5px;
-          height: 5px;
-          flex: 0 0 5px;
-          border-radius: 50%;
-          background: #2d5046;
-        }
-
-        .reflection-card {
-          position: relative;
-          isolation: isolate;
-          overflow: hidden;
-          border-radius: 27px;
-          background: #f5f2e8;
-          box-shadow: 0 20px 50px rgba(17, 45, 37, 0.3);
-        }
-
-        .card-content {
-          position: relative;
-          z-index: 1;
-          padding: 34px 42px 28px;
-        }
-
-        .decor-circle {
-          position: absolute;
-          z-index: -1;
-          border-radius: 50%;
-          pointer-events: none;
-        }
-
-        .decor-circle-blue {
-          top: -105px;
-          right: -95px;
-          width: 230px;
-          height: 230px;
-          background: #d4e9ed;
-          opacity: 0.85;
-        }
-
-        .decor-circle-mint {
-          bottom: -115px;
-          left: -100px;
-          width: 220px;
-          height: 220px;
-          background: #8dcf94;
-          opacity: 0.22;
-        }
-
-        .session-meta {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          margin-bottom: 28px;
-        }
-
-        .eyebrow {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 9px;
-          color: #526b61;
-          font-size: 9px;
-          font-weight: 800;
-          letter-spacing: 0.16em;
-          line-height: 1.4;
-          text-transform: uppercase;
-          text-align: center;
-        }
-
-        .eyebrow-line {
-          width: 25px;
-          height: 1px;
-          flex: 0 0 25px;
-          background: #bc9553;
-        }
-
-        .intro { max-width: 500px; margin: 0 auto; text-align: center; }
-
-        .completion-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 58px;
-          height: 58px;
-          margin: 0 auto 20px;
-          border-radius: 50%;
-          background: rgba(141, 207, 148, .28);
-          color: #2d5046;
-          border: 1px solid rgba(45, 80, 70, 0.12);
-        }
-
-        .script-line {
-          margin: 5px 0 19px;
-          color: #bc9553;
-          font-family: "Pinyon Script", cursive;
-          font-size: 40px;
-          line-height: 1;
-        }
-
-        .headline {
-          max-width: 760px;
-          margin: 0;
-          color: #203f36;
-          font-size: clamp(41px, 10vw, 72px);
-          line-height: 0.88;
-          letter-spacing: -0.06em;
-          font-weight: 900;
-        }
-
-        .headline-accent {
-          display: block;
-          color: #8dcf94;
-        }
-
-        .intro-copy {
-          max-width: 390px;
-          margin: 17px auto 0;
-          color: #52645e;
-          font-size: 14px;
-          line-height: 1.7;
-        }
-
-        .loading-panel {
-          margin-top: 30px;
-          padding: 27px 20px;
-          border: 1px solid rgba(45, 80, 70, 0.08);
-          border-radius: 20px;
-          background: rgba(251, 250, 245, 0.8);
-          text-align: center;
-        }
-
-        .chair-icon { margin-bottom: 10px; font-size: 31px; }
-        .loading-panel p { margin: 12px 0 0; color: #52645e; font-size: 13px; }
-
-        .loading-track {
-          width: min(100%, 190px);
-          height: 5px;
-          overflow: hidden;
-          margin: 0 auto;
-          border-radius: 999px;
-          background: #dce9df;
-        }
-
-        .loading-track span {
-          display: block;
-          width: 42%;
-          height: 100%;
-          border-radius: inherit;
-          background: #8dcf94;
-          animation: loading 1.4s ease-in-out infinite;
-        }
-
-        .summary-content {
-          margin-top: 29px;
-          padding: 25px;
-          border: 1px solid rgba(45, 80, 70, 0.08);
-          border-radius: 21px;
-          background: rgba(251, 250, 245, 0.8);
-          box-shadow: 0 12px 30px rgba(17, 45, 37, 0.06);
-        }
-
-        .section-heading { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
-        .section-icon { color: #bc9553; font-size: 19px; }
-        h2 {
-          margin: 0;
-          color: #2d5046;
-          font-size: 12px;
-          font-weight: 800;
-          letter-spacing: 0.09em;
-          text-transform: uppercase;
-        }
-
-        .summary-text {
-          margin: 0;
-          color: #52645e;
-          font-size: 15px;
-          line-height: 1.8;
-          white-space: pre-line;
-        }
-
-        .section-divider { height: 1px; margin: 23px 0; background: rgba(45, 80, 70, 0.13); }
-        .takeaway-list { display: flex; flex-direction: column; gap: 13px; margin: 0; padding: 0; list-style: none; }
-        .takeaway-item { display: flex; align-items: flex-start; gap: 11px; color: #31504a; font-size: 14px; line-height: 1.65; }
-        .takeaway-bullet { flex: 0 0 auto; margin-top: 2px; color: #bc9553; font-size: 13px; }
-
-        .message-section { margin-top: 5px; }
-
-        .message-form {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .message-input {
-          width: 100%;
-          box-sizing: border-box;
-          padding: 12px 14px;
-          border: 1px solid rgba(45, 80, 70, 0.15);
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.6);
-          color: #203f36;
-          font-family: inherit;
-          font-size: 14px;
-          line-height: 1.5;
-          resize: vertical;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .message-input:focus {
-          outline: none;
-          border-color: #8dcf94;
-          box-shadow: 0 0 0 3px rgba(141, 207, 148, 0.2);
-          background: #fff;
-        }
-
-        .message-input::placeholder {
-          color: #8ba39a;
-        }
-
-        .message-footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .char-count {
-          font-size: 11px;
-          color: #8ba39a;
-          font-weight: 600;
-        }
-
-        .char-count.warning {
-          color: #bc9553;
-        }
-
-        .submit-message-button {
-          padding: 8px 16px;
-          border: none;
-          border-radius: 999px;
-          background: #2d5046;
-          color: #fbfaf5;
-          font-size: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: background 0.2s ease, opacity 0.2s ease;
-        }
-
-        .submit-message-button:hover:not(:disabled) {
-          background: #203f36;
-        }
-
-        .submit-message-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .success-message {
-          padding: 15px;
-          border-radius: 12px;
-          background: #dce9df;
-          color: #2d5046;
-          font-size: 14px;
-          text-align: center;
-          font-weight: 500;
-        }
-
-        .success-message p { margin: 0; }
-
-        .error-text {
-          margin: 0;
-          color: #d9534f;
-          font-size: 12px;
-          text-align: right;
-        }
-
-        .moderation-notice {
-          padding: 13px 15px;
-          border-radius: 12px;
-          font-size: 13px;
-          line-height: 1.6;
-          background: #f3ead2;
-          color: #5a4a22;
-          border: 1px solid rgba(188, 149, 83, 0.4);
-        }
-
-        .moderation-notice.crisis {
-          background: #dce9df;
-          color: #2d5046;
-          border-color: rgba(45, 80, 70, 0.25);
-        }
-
-        .moderation-notice p { margin: 0 0 8px; }
-        .moderation-notice p:last-child { margin-bottom: 0; }
-        .moderation-notice ul { margin: 0 0 8px; padding-left: 18px; }
-
-        .moderation-link {
-          display: inline-block;
-          padding: 8px 16px;
-          border-radius: 999px;
-          background: #2d5046;
-          color: #fbfaf5;
-          font-weight: 700;
-          text-decoration: none;
-        }
-
-        .card-footer {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          margin-top: 28px;
-        }
-
-        .card-footer p {
-          margin: 0;
-          color: #526b61;
-          font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .take-action-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          width: 100%;
-          margin-top: 23px;
-          padding: 15px 22px;
-          border: 1px solid rgba(245, 242, 232, 0.28);
-          border-radius: 999px;
-          background: rgba(245, 242, 232, 0.08);
-          color: #fbfaf5;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 800;
-          cursor: pointer;
-          transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
-        }
-
-        .take-action-button:hover {
-          transform: translateY(-2px);
-          background: rgba(141, 207, 148, 0.16);
-          border-color: #8dcf94;
-        }
-
-        .take-action-button:focus-visible {
-          outline: 3px solid #d4e9ed;
-          outline-offset: 4px;
-        }
-
-        .home-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 13px;
-          width: 100%;
-          margin-top: 23px;
-          padding: 15px 22px;
-          border: 0;
-          border-radius: 999px;
-          background: #8dcf94;
-          color: #203f36;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 800;
-          cursor: pointer;
-          box-shadow: 0 8px 20px rgba(141, 207, 148, 0.18);
-          transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
-        }
-
-        .home-button:hover { transform: translateY(-2px); background: #a5dfa9; box-shadow: 0 10px 24px rgba(17, 45, 37, 0.18); }
-        .home-button:focus-visible { outline: 3px solid #d4e9ed; outline-offset: 4px; }
-        .button-arrow { font-size: 19px; line-height: 1; }
-
-        .responses-footer {
-          margin: 24px 0 0;
-          padding-top: 20px;
-          border-top: 1px solid rgba(245,242,232,.16);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-          text-align: center;
-        }
-        .responses-footer-brand { color: #a5dfa9; font-size: 11px; font-weight: 800; letter-spacing: .15em; }
-        .responses-footer-tagline { color: rgba(245,242,232,.58); font-size: 11px; }
-
-        @keyframes loading {
-          0% { transform: translateX(-120%); }
-          100% { transform: translateX(340%); }
-        }
-
-        @media (max-width: 390px) {
-          .brand-logo { width: 29px; height: 29px; flex-basis: 29px; }
-        }
-
-        @media (max-width: 560px) {
-          .responses-page { padding: 18px 13px 30px; }
-          .topbar { align-items: flex-start; }
-          .location-pill { max-width: 55%; padding: 8px 10px; font-size: 11px; }
-          .card-content { padding: 27px 20px 24px; }
-          .session-meta { margin-bottom: 25px; }
-          .eyebrow { font-size: 9px; }
-          .headline { font-size: 41px; }
-          .script-line { font-size: 36px; }
-          .summary-content { padding: 20px 17px; }
-          .summary-text { font-size: 14px; }
-          .card-footer { gap: 8px; }
-          .message-footer { flex-direction: column; align-items: flex-end; gap: 8px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .loading-track span { animation: none; }
-          .home-button, .take-action-button { transition: none; }
-        }
+        .rf-shell { width: min(100%, 760px); margin: 0 auto; }
+        .rf-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; padding:4px 3px 14px; }
+        .rf-brand { display:flex; align-items:center; gap:8px; font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+        .rf-brand-logo { width:34px; height:34px; flex:0 0 34px; border-radius:50%; object-fit:cover; border:1px solid rgba(245,242,232,.55); }
+        .rf-brand-mark { width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:var(--rf-mint); box-shadow:0 0 0 4px rgba(141,207,148,.12), 0 0 18px rgba(141,207,148,.25); }
+        .rf-location { display:inline-flex; align-items:center; gap:6px; max-width:55%; padding:7px 11px; border-radius:999px; background:var(--rf-mint); color:var(--rf-forest-dark); font-size:9px; font-weight:800; letter-spacing:.04em; }
+        .rf-location-dot { width:5px; height:5px; flex:0 0 5px; border-radius:50%; background:var(--rf-forest); }
+        .rf-back { display:inline-flex; align-items:center; gap:8px; margin:0 0 18px 3px; padding:0; border:0; background:transparent; color:rgba(251,250,245,.78); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+        .rf-back:hover { color:var(--rf-mint-bright); }
+        .rf-card { position:relative; isolation:isolate; overflow:hidden; border-radius:27px; background:var(--rf-cream); color:var(--rf-forest-dark); box-shadow:0 20px 50px rgba(17,45,37,.25); }
+        .rf-card::before, .rf-card::after { content:""; position:absolute; z-index:-1; border-radius:50%; pointer-events:none; }
+        .rf-card::before { width:310px; height:310px; top:-180px; right:-140px; background:var(--rf-blue); }
+        .rf-card::after { width:270px; height:270px; bottom:-190px; left:-145px; background:var(--rf-mint); opacity:.65; }
+        .rf-content { position:relative; z-index:1; padding:42px 42px 34px; }
+        .rf-eyebrow { display:flex; align-items:center; justify-content:center; gap:9px; margin:0 0 20px; color:var(--rf-sage); font-size:9px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; text-align:center; }
+        .rf-eyebrow-line { width:25px; height:1px; flex:0 0 25px; background:var(--rf-ochre); }
+        .rf-intro { max-width:610px; margin:0 auto 28px; text-align:center; }
+        .rf-headline { margin:0; color:var(--rf-forest-dark); font-size:clamp(40px, 8vw, 66px); line-height:.93; letter-spacing:-.06em; font-weight:900; }
+        .rf-script { margin:17px 0 0; color:var(--rf-ochre); font-family:"Pinyon Script", cursive; font-size:36px; line-height:1.05; }
+        .rf-panel { padding:26px; border:1px solid rgba(45,80,70,.12); border-radius:22px; background:rgba(251,250,245,.82); box-shadow:0 12px 30px rgba(17,45,37,.06); }
+        .rf-body { margin:0; color:#3f524c; font-size:16px; line-height:1.75; white-space:pre-line; }
+        .rf-takeaways { display:flex; flex-direction:column; gap:12px; margin:22px 0 0; padding:20px 0 0; border-top:1px solid rgba(45,80,70,.12); list-style:none; }
+        .rf-takeaways li { display:flex; align-items:flex-start; gap:10px; color:var(--rf-forest-dark); font-size:14px; line-height:1.65; font-weight:600; }
+        .rf-takeaways li::before { content:"✦"; flex:0 0 auto; margin-top:1px; color:var(--rf-ochre); font-size:13px; }
+        .rf-support { display:flex; align-items:center; justify-content:center; margin:22px 0 0; padding:14px 20px; border-radius:999px; background:var(--rf-forest-dark); color:var(--rf-white); font-size:14px; font-weight:800; text-decoration:none; }
+        .rf-support:focus-visible { outline:3px solid var(--rf-ochre); outline-offset:4px; }
+        .rf-loading { display:flex; align-items:center; justify-content:center; gap:7px; min-height:120px; }
+        .rf-loading span { width:9px; height:9px; border-radius:50%; background:var(--rf-forest); animation: rfPulse 1s ease-in-out infinite; }
+        .rf-loading span:nth-child(2) { animation-delay:.15s; }
+        .rf-loading span:nth-child(3) { animation-delay:.3s; }
+        @keyframes rfPulse { 0%,100% { opacity:.25; transform:scale(.8); } 50% { opacity:1; transform:scale(1); } }
+        .rf-after { display:flex; flex-direction:column; align-items:center; padding-top:24px; }
+        .rf-continue { display:inline-flex; align-items:center; justify-content:center; width:min(100%, 360px); padding:15px 24px; border:0; border-radius:999px; background:var(--rf-mint); color:var(--rf-forest-dark); font:inherit; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 7px 0 rgba(32,63,54,.18), 0 10px 22px rgba(17,45,37,.2); transition:transform 160ms ease, background 160ms ease; }
+        .rf-continue:hover:not(:disabled) { transform:translateY(-2px); background:var(--rf-mint-bright); }
+        .rf-continue:disabled { opacity:.5; cursor:default; }
+        .rf-continue:focus-visible, .rf-back:focus-visible { outline:3px solid var(--rf-ochre); outline-offset:4px; }
+        .rf-footer { margin:24px 0 0; padding-top:20px; border-top:1px solid rgba(245,242,232,.16); display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+        .rf-footer-brand { color:var(--rf-mint-bright); font-size:11px; font-weight:800; letter-spacing:.15em; }
+        .rf-footer-tagline { color:rgba(245,242,232,.58); font-size:11px; }
+        @media (max-width:600px) { .rf-content { padding:32px 20px 25px; } .rf-panel { padding:21px 17px; } .rf-body { font-size:15px; } .rf-script { font-size:32px; } }
+        @media (prefers-reduced-motion:reduce) { .rf-continue { transition:none; } .rf-loading span { animation:none; opacity:.7; } }
       `}</style>
-      </main>
-  );
+
+            <div className="rf-shell">
+                <header className="rf-topbar">
+                    <div className="rf-brand">
+                        <img className="rf-brand-logo" src="/logos/factor-of-ten-logo.jpg" alt="Factor of Ten Foundation logo" />
+                        <span className="rf-brand-mark" aria-hidden="true" />
+                        The Chair Listens
+                    </div>
+                    <div className="rf-location">
+                        <span className="rf-location-dot" aria-hidden="true" />
+                        {location}
+                    </div>
+                </header>
+
+                <button type="button" className="rf-back" onClick={goBack}>⮜ Back</button>
+
+                <section className="rf-card">
+                    <div className="rf-content">
+                        <div className="rf-eyebrow">
+                            <span className="rf-eyebrow-line" />
+                            Moment of Reflection
+                            <span className="rf-eyebrow-line" />
+                        </div>
+
+                        <div className="rf-intro">
+                            <h1 className="rf-headline">What you shared today.</h1>
+                            <div className="rf-script">{trackTitle}</div>
+                        </div>
+
+                        <section className="rf-panel" aria-live="polite" aria-busy={loading}>
+                            {loading ? (
+                                <div className="rf-loading" role="status" aria-label="Preparing your reflection">
+                                    <span /><span /><span />
+                                </div>
+                            ) : (
+                                <>
+                                    {reflection?.body && <p className="rf-body">{reflection.body}</p>}
+                                    {reflection?.takeaways?.length > 0 && (
+                                        <ul className="rf-takeaways" aria-label="Key takeaways from your session">
+                                            {reflection.takeaways.map((item) => (
+                                                <li key={item}>{item}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    {reflection?.crisis && (
+                                        <a href="/emergency" className="rf-support">
+                                            Get support now
+                                        </a>
+                                    )}
+                                </>
+                            )}
+                        </section>
+                    </div>
+                </section>
+
+                <div className="rf-after">
+                    <button type="button" className="rf-continue" onClick={goNext} disabled={loading}>
+                        Continue
+                    </button>
+                </div>
+
+                <footer className="rf-footer">
+                    <span className="rf-footer-brand">FACTOR OF TEN</span>
+                    <span className="rf-footer-tagline">Know more. Ask more. Check sooner.</span>
+                </footer>
+            </div>
+        </main>
+    );
 }
