@@ -1,9 +1,6 @@
 jest.mock("@/lib/requireAdmin", () => ({ requireAdmin: jest.fn() }));
 jest.mock("@/lib/supabaseAdmin", () => ({
-  supabaseAdmin: {
-    from: jest.fn(),
-    auth: { admin: { listUsers: jest.fn(), getUserById: jest.fn(), deleteUser: jest.fn() } },
-  },
+  supabaseAdmin: { from: jest.fn(), auth: { admin: {} } },
 }));
 
 import teamHandler from "../../../pages/api/admin/team";
@@ -15,12 +12,12 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 const ME = { id: "me", email: "me@example.com", role: "admin" };
 
 function mockRes() {
-  return { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+  return { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis(), setHeader: jest.fn() };
 }
 
 function chain(result) {
   const c = {};
-  ["select", "eq", "order", "update"].forEach((m) => {
+  ["select", "eq", "is", "gt", "order", "update", "insert"].forEach((m) => {
     c[m] = jest.fn(() => c);
   });
   c.maybeSingle = jest.fn(() => Promise.resolve(result));
@@ -53,80 +50,58 @@ describe("GET /api/admin/team", () => {
     expect(supabaseAdmin.from).not.toHaveBeenCalled();
   });
 
-  test("lists admins and only genuine pending invites", async () => {
-    supabaseAdmin.auth.admin.listUsers.mockResolvedValue({
-      data: {
-        users: [
-          { id: "me", email: "me@example.com", app_metadata: {} },
-          { id: "p1", email: "pending@example.com", created_at: "2026-11-01", app_metadata: { admin_invite: true } },
-          { id: "other", email: "random@example.com", app_metadata: {} },
-          { id: "done", email: "done@example.com", app_metadata: { admin_invite: true } },
-        ],
-      },
-      error: null,
-    });
-    fromSequence({
-      data: [
-        { user_id: "me", email: "me@example.com", role: "admin", active: true },
-        { user_id: "done", email: "done@example.com", role: "admin", active: true },
-      ],
-      error: null,
-    });
+  test("returns the admins and the open invitations", async () => {
+    const [, invitesQuery] = fromSequence(
+      { data: [{ user_id: "me", email: "me@example.com", role: "admin", active: true }], error: null },
+      { data: [{ id: "i1", email: "new@example.com", expires_at: "2099-01-01" }], error: null }
+    );
     const res = mockRes();
     await teamHandler({ method: "GET" }, res);
     const body = res.json.mock.calls[0][0];
     expect(res.status).toHaveBeenCalledWith(200);
     expect(body.me).toBe("me");
-    expect(body.invites.map((i) => i.email)).toEqual(["pending@example.com"]);
-    expect(body.admins).toHaveLength(2);
+    expect(body.admins).toHaveLength(1);
+    expect(body.invites.map((i) => i.email)).toEqual(["new@example.com"]);
+    expect(invitesQuery.is).toHaveBeenCalledWith("used_at", null);
+    expect(invitesQuery.is).toHaveBeenCalledWith("revoked_at", null);
+  });
+
+  test("never returns a code or a code hash", async () => {
+    fromSequence({ data: [], error: null }, { data: [{ id: "i1", email: "new@example.com" }], error: null });
+    const res = mockRes();
+    await teamHandler({ method: "GET" }, res);
+    expect(JSON.stringify(res.json.mock.calls[0][0])).not.toMatch(/code/);
   });
 });
 
 describe("POST /api/admin/revoke-invite", () => {
-  test("401 when not an active admin; nothing deleted", async () => {
+  test("401 when not an active admin; nothing changed", async () => {
     requireAdmin.mockResolvedValue(null);
     const res = mockRes();
-    await revokeHandler({ method: "POST", body: { user_id: "p1" } }, res);
+    await revokeHandler({ method: "POST", body: { invite_id: "i1" } }, res);
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(supabaseAdmin.auth.admin.deleteUser).not.toHaveBeenCalled();
+    expect(supabaseAdmin.from).not.toHaveBeenCalled();
   });
 
-  test("400 without a user id", async () => {
+  test("400 without an invitation id", async () => {
     const res = mockRes();
     await revokeHandler({ method: "POST", body: {} }, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  test("refuses to delete someone who is already an admin", async () => {
-    fromSequence({ data: { user_id: "a1" }, error: null });
+  test("404 when the invitation is already used, revoked or missing", async () => {
+    fromSequence({ data: [], error: null });
     const res = mockRes();
-    await revokeHandler({ method: "POST", body: { user_id: "a1" } }, res);
-    expect(res.status).toHaveBeenCalledWith(409);
-    expect(supabaseAdmin.auth.admin.deleteUser).not.toHaveBeenCalled();
-  });
-
-  test("refuses a normal user who is not an admin invite", async () => {
-    fromSequence({ data: null, error: null });
-    supabaseAdmin.auth.admin.getUserById.mockResolvedValue({
-      data: { user: { id: "u9", app_metadata: {} } },
-      error: null,
-    });
-    const res = mockRes();
-    await revokeHandler({ method: "POST", body: { user_id: "u9" } }, res);
+    await revokeHandler({ method: "POST", body: { invite_id: "gone" } }, res);
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(supabaseAdmin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
-  test("deletes a genuine pending invite", async () => {
-    fromSequence({ data: null, error: null });
-    supabaseAdmin.auth.admin.getUserById.mockResolvedValue({
-      data: { user: { id: "p1", app_metadata: { admin_invite: true } } },
-      error: null,
-    });
-    supabaseAdmin.auth.admin.deleteUser.mockResolvedValue({ error: null });
+  test("revokes an open invitation", async () => {
+    const [update] = fromSequence({ data: [{ id: "i1" }], error: null });
     const res = mockRes();
-    await revokeHandler({ method: "POST", body: { user_id: "p1" } }, res);
-    expect(supabaseAdmin.auth.admin.deleteUser).toHaveBeenCalledWith("p1");
+    await revokeHandler({ method: "POST", body: { invite_id: "i1" } }, res);
+    expect(update.update).toHaveBeenCalledWith({ revoked_at: expect.any(String) });
+    expect(update.is).toHaveBeenCalledWith("used_at", null);
     expect(res.status).toHaveBeenCalledWith(200);
   });
 });

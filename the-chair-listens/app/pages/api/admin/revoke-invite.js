@@ -1,6 +1,5 @@
 import { requireAdmin } from "@/lib/requireAdmin";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { hasAdminInviteFlag } from "@/lib/adminInvite";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,30 +11,23 @@ export default async function handler(req, res) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const userId = req.body?.user_id;
-  if (typeof userId !== "string" || !userId) {
+  const inviteId = req.body?.invite_id;
+  if (typeof inviteId !== "string" || !inviteId) {
     return res.status(400).json({ message: "An invitation is required." });
   }
 
   try {
-    const { data: existing, error: rowError } = await supabaseAdmin
-      .from("admins")
-      .select("user_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (rowError) throw rowError;
-    if (existing) {
-      return res.status(409).json({ message: "This person is already an admin. Deactivate them instead." });
-    }
-
-    const { data, error: lookupError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const user = data?.user;
-    if (lookupError || !user || !hasAdminInviteFlag(user)) {
+    const { data, error } = await supabaseAdmin
+      .from("admin_invites")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", inviteId)
+      .is("used_at", null)
+      .is("revoked_at", null)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
       return res.status(404).json({ message: "That invitation no longer exists." });
     }
-
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (deleteError) throw deleteError;
 
     return res.status(200).json({ success: true });
   } catch (err) {

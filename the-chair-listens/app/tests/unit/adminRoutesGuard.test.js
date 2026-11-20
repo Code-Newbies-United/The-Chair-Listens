@@ -12,19 +12,16 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), "utf8");
 const list = (dir, ext) =>
   fs.readdirSync(path.join(root, dir)).filter((f) => f.endsWith(ext)).map((f) => `${dir}/${f}`);
 
-// Intentionally public. Confirm this list with the ticket owner.
 const PUBLIC_PAGES = [
   "pages/admin/login.jsx",
-  "pages/admin/accept-invite.jsx",
-  "pages/admin/set-password.jsx",
+  "pages/admin/register.jsx",
 ];
 const PUBLIC_API = [
   "pages/api/admin-login.js",
   "pages/api/admin-logout.js", // only ends the caller's own session; harmless without one
-  "pages/api/admin/accept-invite.js",
-  "pages/api/admin/set-password.js",
+  "pages/api/admin/register.js", // needs a valid one-time code; rate limited
 ];
-// Admin-only API routes that live outside pages/api/admin
+
 const OTHER_ADMIN_API = ["pages/api/set-location.js", "pages/api/stats.js", "pages/api/visit-totals.js"];
 
 const GUARD = /requireAdminSSR|requireAdmin|withAdmin/;

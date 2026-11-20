@@ -1,72 +1,63 @@
 # Admin access runbook
 
-Admins sign in with their own email and password through Supabase Auth. Nobody can sign up by themselves: people are invited. Every admin page and API route checks, on **every request**, that the session is valid **and** that `admins.active = true`. Deactivating an admin blocks their very next request, even from an open session.
+Admins sign in with their own email and password through Supabase Auth. Nobody can sign up by themselves. An admin adds a person's email and sends them a one-time code, and the person creates their own login with it. No emails are sent. Every admin page and API route checks, on **every request**, that the session is valid **and** that `admins.active = true`. Deactivating an admin blocks their very next request.
 
-Each Supabase project (dev, test, production) is separate and needs its own setup below.
+Each Supabase project (dev, test, production) is separate and needs its own setup.
 
 ## 1. One-time setup per Supabase project
 
-1. **Table.** In the SQL editor run `database/admins.sql` (RLS on, no policy, no public access).
-2. **Sign-ups off.** Authentication > Sign In / Providers > turn **off** "Allow new users to sign up".
-3. **Password length.** Authentication > Sign In / Providers > Email > minimum password length **12**.
-4. **Site URL.** Authentication > URL Configuration > Site URL = this project's app URL (production URL for production, the client test URL for the test project, `http://localhost:3000` for dev).
-5. **Redirect URLs.** Add `http://localhost:3000/**`, the staging/test URL `/**`, and the production URL `/**`.
-6. **Custom SMTP.** Authentication > SMTP Settings. Supabase's built-in sender is heavily rate-limited and only delivers to team addresses, so real invitations need your own SMTP provider.
-7. **Invite template.** Authentication > Email Templates > "Invite user": paste `docs/invite-email-template.html`.
-8. **Environment variables** (Vercel and `.env.local`, see `app/.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Use the values of the matching project.
+1. In the SQL editor run `database/admins.sql`, then `database/admin-invites.sql`.
+2. Authentication > Sign In / Providers: turn **off** "Allow new users to sign up".
+3. Authentication > Sign In / Providers > Email: set the minimum password length to **12**.
+4. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` (Vercel and `.env.local`, see `app/.env.example`) to the values of the matching project.
 
-## 2. First admin (break-glass)
+No email provider is needed.
 
-Run from the `app` folder with `.env.local` pointing at the right project. Use **single quotes** in PowerShell so `$` is not expanded:
+## 2. First admin
 
-```powershell
-node scripts/add-admin.js add you@example.com 'a-long-password-12-plus'
-```
+From the `app` folder (single quotes in PowerShell):
 
-This sets the password from your shell, so use it only for the first admin or an emergency. Then log in at `/admin/login`.
+    node scripts/add-admin.js add you@example.com 'a-long-password-12-plus'
 
-## 3. Inviting more admins
+Then log in at `/admin/login`.
 
-Normal way: `node scripts/add-admin.js invite someone@example.com` (or `POST /api/admin/invite` with `{ "email": "..." }` while logged in as an admin).
+## 3. Adding more admins
 
-What happens:
+1. Log in, open the dashboard, tap **Manage Admins**.
+2. Enter the person's email and tap **Add admin**.
+3. A one-time code appears once. Tap **Copy message to send** and send it to them privately (for example WhatsApp).
+4. The person opens `/admin/register`, enters their email and the code, and chooses their own password (12 to 72 characters).
+5. They log in at `/admin/login`.
 
-1. Supabase emails the invite. The server marks the user as an admin invite (`app_metadata.admin_invite`), which the invitee cannot change.
-2. The link opens `/admin/accept-invite`. The person clicks **Accept invitation**; only then is the one-time token used.
-3. On `/admin/set-password` they choose a password (12 to 72 characters). The `admins` row is created and the invite flag is cleared.
-
-An invitation can never re-activate a deactivated admin: if an `admins` row already exists (active or not), set-password refuses.
+The code works once, expires after 7 days, and is stored hashed. Lost the code? Add the same email again for a new one (the old one stops working). To cancel, tap **Revoke** under "Waiting to register".
 
 ## 4. Deactivate or re-activate
 
-```powershell
-node scripts/add-admin.js deactivate someone@example.com
-node scripts/add-admin.js activate someone@example.com
-```
+On **Manage Admins**, tap **Deactivate** or **Re-activate**. It takes effect on their next request. You cannot deactivate yourself or the last active admin. Or from the shell:
 
-Takes effect on their next request.
+    node scripts/add-admin.js deactivate someone@example.com
+    node scripts/add-admin.js activate someone@example.com
 
 ## 5. Login, logout, rate limiting
 
-- Logging out ends that session at Supabase (server-side) and clears the cookies. Other devices stay signed in until they log out.
+- Logging out ends that session at Supabase and clears the cookies.
 - Cookies are httpOnly, sameSite=lax, and secure in production.
-- Failed logins are limited to 5 per email and IP per 15 minutes. This counter is in memory, so on Vercel it is per server instance. For stronger protection use a shared store (for example Upstash Redis). Supabase Auth also applies its own limits.
-- A signed-in user who is not an active admin receives no cookie.
+- Failed logins and failed registrations are limited to 5 per email and IP per 15 minutes. The counters are in memory, so on Vercel they apply per server instance.
+- A signed-in user who is not an active admin gets no session.
 
 ## 6. Hidden shortcut
 
-Tapping the logo on the landing page 5 times within 3 seconds opens `/admin/login`. It is only a shortcut; the login is the real protection.
+Tapping the logo on the landing page 5 times within 3 seconds opens `/admin/login`. The login is the real protection.
 
 ## 7. Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
-| Invite email never arrives | Custom SMTP configured? Address allowed by your SMTP provider? |
-| "invitation link is invalid or has expired" | Link already used, expired, or the person was already onboarded. Deactivated or removed? Re-invite requires deleting the old auth user first. |
-| Invite link opens the wrong site | Site URL of that Supabase project (step 4). |
-| Logged in but bounced to the login page | No active row in `admins` for that user. Run `add-admin.js activate`. |
-| Missing Supabase environment variables | `.env.local` / Vercel variables for that project. |
+| "email and code do not match" | Wrong code, expired (7 days), already used, or revoked. Add the email again for a new code. |
+| "An account with this email already exists" | An old test account. Delete it in Supabase > Authentication > Users, then register again. |
+| Logged in but sent back to login | No active row in `admins` for that user. Re-activate them. |
+| "Too many failed attempts" | Wait 15 minutes, or restart the server locally. |
 
 ## 8. Audit trail
 
-`requireAdmin(req, res)` returns `{ id, email, role }` for the active admin. When the audit trail (FIX-15.3) lands, admin routes should use `const admin = await requireAdmin(req, res)` and record `admin.id`.
+`requireAdmin(req, res)` returns `{ id, email, role }`. When the audit trail (FIX-15.3) lands, use `const admin = await requireAdmin(req, res)` and record `admin.id`.

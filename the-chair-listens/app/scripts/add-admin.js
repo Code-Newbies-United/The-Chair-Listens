@@ -2,12 +2,12 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { createClient } from "@supabase/supabase-js";
 
-const COMMANDS = ["invite", "add", "activate", "deactivate"];
+const COMMANDS = ["add", "activate", "deactivate"];
 const [command, emailArg, password] = process.argv.slice(2);
 const email = (emailArg || "").trim().toLowerCase();
 
 if (!COMMANDS.includes(command) || !email.includes("@")) {
-  console.error("Usage: node scripts/add-admin.js invite|add|activate|deactivate someone@example.com ['password' (add only)]");
+  console.error("Usage: node scripts/add-admin.js add|activate|deactivate someone@example.com ['password' (add only)]");
   process.exit(1);
 }
 
@@ -34,20 +34,7 @@ async function findUserByEmail(target) {
 }
 
 try {
-  if (command === "invite") {
-    const existing = await findUserByEmail(email);
-    if (existing) {
-      console.error(`A Supabase user with ${email} already exists. Use activate, or delete the user in the Supabase dashboard first.`);
-      process.exit(1);
-    }
-    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
-    if (error) throw error;
-    const { error: flagError } = await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
-      app_metadata: { admin_invite: true },
-    });
-    if (flagError) throw flagError;
-    console.log(`Invitation sent to ${email}. They set their own password from the email link.`);
-  } else if (command === "add") {
+  if (command === "add") {
     if (!password || password.length < 12) {
       console.error("Password must be at least 12 characters.");
       process.exit(1);
@@ -61,7 +48,6 @@ try {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
         password,
         email_confirm: true,
-        app_metadata: { admin_invite: null },
       });
       if (error) throw error;
     } else {
