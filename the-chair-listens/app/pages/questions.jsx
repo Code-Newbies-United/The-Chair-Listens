@@ -4,6 +4,7 @@ import { checkForSafetyTrigger } from "@/lib/safety";
 import QuestionCard from "@/components/QuestionCard";
 import TextResponse from "@/components/TextResponse";
 
+
 const SCRIPT_TITLES = {
   men_mental_health: "For Men",
   ally_support: "Ally & Support System",
@@ -47,7 +48,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
   const progress =
       totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
-  
+
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -100,7 +101,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     lastScriptKeyRef.current = script;
   }, [script]);
 
- 
+
   const speakText = (text) => {
     if (typeof window === "undefined" || !text) return;
 
@@ -203,7 +204,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
     try {
       setSavingSession(true);
 
-      
+
       await fetch("/api/responses", {
         method: "POST",
         headers: {
@@ -216,7 +217,7 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
         }),
       });
 
-      
+
       let summaryData = null;
       try {
         const summaryRes = await fetch("/api/session-reflection", {
@@ -247,7 +248,9 @@ export default function QuestionsPage({ locationName = "Pretoria" }) {
       }
 
       const queryString = new URLSearchParams(queryParams).toString();
-      await router.push(`/responses?${queryString}`);
+      await router.push(`/insight?${queryString}`);
+
+
     } catch (error) {
       console.error("Unable to save responses:", error);
       setSavingSession(false);
